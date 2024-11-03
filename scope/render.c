@@ -225,7 +225,7 @@ void draw_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
 	draw_flat_bottom_triangle(rt, pv0, pv1, pv3, pc0, pc1, pc3);
 }
 
-void clip_and_draw_triangle(RenderTarget* rt, StaticMeshes* static_meshes, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
+void clip_and_draw_triangle(RenderTarget* rt, Meshes* meshes, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
 {
 	// Clips the given triangle against the 4 screen edges.
 	Plane left = {
@@ -252,8 +252,8 @@ void clip_and_draw_triangle(RenderTarget* rt, StaticMeshes* static_meshes, V3 v0
 	Plane planes[] = { left, right, top, bottom};
 
 	// Flip between in/out buffers each plane.
-	float* projected_clipped_faces_in = static_meshes->projected_clipped_faces;
-	float* projected_clipped_faces_out = static_meshes->projected_clipped_faces_temp;
+	float* projected_clipped_faces_in = meshes->projected_clipped_faces;
+	float* projected_clipped_faces_out = meshes->projected_clipped_faces_temp;
 	
 	// Copy the face argument into the in buffer.
 	projected_clipped_faces_in[0] = v0[0];
@@ -557,7 +557,7 @@ void clip_and_draw_triangle(RenderTarget* rt, StaticMeshes* static_meshes, V3 v0
 
 	// All faces have been clipped, so draw them.
 	visible_faces_count = num_faces_to_process;
-	projected_clipped_faces_out = static_meshes->projected_clipped_faces;
+	projected_clipped_faces_out = meshes->projected_clipped_faces;
 
 	for (int i = 0; i < visible_faces_count; ++i)
 	{
@@ -700,7 +700,7 @@ void project(Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o)
 	o[2] = v_projected[2]; // Z/W
 }
 
-void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
+void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 {
 	// TODO: Calculate the projection matrix somewhere else, possibly have a RenderData struct?
 	//		 We can then recalculate that whenever fov/window size is changed.
@@ -729,14 +729,21 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 	projection_matrix[11] = -1;
 	projection_matrix[14] = 2 * far_plane * near_plane / (far_plane - near_plane);
 
-	const int* face_position_indices = static_meshes->face_position_indices;
-	const float* face_attributes = static_meshes->face_attributes;
 
-	float* world_space_positions = static_meshes->world_space_positions;
-	float* view_space_positions = static_meshes->view_space_positions;
+	// For each dynamic mesh, convert it's model coordinates into world space.
+	// Write out to after the world space positions of the static meshes.
+
+
+
+
+	const int* face_position_indices = meshes->face_position_indices;
+	const float* face_attributes = meshes->face_attributes;
+
+	float* world_space_positions = meshes->world_space_positions;
+	float* view_space_positions = meshes->view_space_positions;
 
 	// For each world space position, convert it to view space.
-	const int num_position_components = static_meshes->positions_count * STRIDE_POSITION;
+	const int num_position_components = meshes->positions_count * STRIDE_POSITION;
 	for (int i = 0; i < num_position_components; i += STRIDE_POSITION)
 	{
 		V4 v = {
@@ -759,13 +766,13 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 	int face_offset = 0;
 	int front_face_offset = 0;
 
-	float* front_faces = static_meshes->front_faces;
+	float* front_faces = meshes->front_faces;
 
-	for (int i = 0; i < static_meshes->mesh_count; ++i)
+	for (int i = 0; i < meshes->mesh_count; ++i)
 	{
 		int front_face_count = 0;
 
-		const int mesh_faces_end = face_offset + static_meshes->face_counts[i];
+		const int mesh_faces_end = face_offset + meshes->face_counts[i];
 
 		for (int j = face_offset; j < mesh_faces_end; ++j)
 		{
@@ -857,18 +864,17 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 
 		// Update the number of front faces for the current mesh.
 		// This is needed for frustum culling.
-		static_meshes->front_face_counts[i] = front_face_count;
+		meshes->front_face_counts[i] = front_face_count;
 
 		// Update the offsets for the next mesh.
-		face_offset += static_meshes->face_counts[i];
+		face_offset += meshes->face_counts[i];
 	}
 
-	// Frustum culling. TODO: Refactor.
-	
-	float* clipped_faces = static_meshes->clipped_faces;
-	int* clipped_face_counts = static_meshes->clipped_face_counts;
+	// Frustum culling
+	float* clipped_faces = meshes->clipped_faces;
+	int* clipped_face_counts = meshes->clipped_face_counts;
 
-	float* bounding_spheres = static_meshes->mesh_bounding_spheres;
+	float* bounding_spheres = meshes->mesh_bounding_spheres;
 
 	ViewFrustum view_frustum; 
 	create_clipping_view_frustum(near_plane, fov, aspectRatio, &view_frustum);
@@ -876,7 +882,7 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 	int clipped_faces_index = 0; // Store the index to write the clipped faces out to.
 	
 	face_offset = 0;
-	for (int i = 0; i < static_meshes->mesh_count; ++i)
+	for (int i = 0; i < meshes->mesh_count; ++i)
 	{
 		int visible_faces_count = 0;
 
@@ -931,7 +937,7 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 		else if (1 == mesh_visible && 0 == num_planes_to_clip_against)
 		{
 			// Just copy the vertices over.
-			for (int j = face_offset; j < face_offset + static_meshes->front_face_counts[i]; ++j)
+			for (int j = face_offset; j < face_offset + meshes->front_face_counts[i]; ++j)
 			{
 				int index_face = j * STRIDE_ENTIRE_FACE;
 					
@@ -951,7 +957,7 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 
 			// Initially read from the front_faces buffer.
 			float* temp_clipped_faces_in = front_faces;
-			float* temp_clipped_faces_out = static_meshes->temp_clipped_faces_out;
+			float* temp_clipped_faces_out = meshes->temp_clipped_faces_out;
 			
 			// Store the index to write out to, needs to be defined here so we can
 			// update the clipped_faces_index after writing to the clipped_faces buffer.
@@ -959,7 +965,7 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 
 			// After each plane, we will have a different number of faces to clip again.
 			// Initially set this to the number of front faces.
-			int num_faces_to_process = static_meshes->front_face_counts[i];
+			int num_faces_to_process = meshes->front_face_counts[i];
 
 			// This is needed as an offset into the front_faces buffer for the first plane.
 			int clipped_faces_offset = face_offset;
@@ -988,7 +994,7 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 					// Initially we used the in front faces buffer,
 					// after the first iteration we have wrote to the out
 					// buffer, so that can now be our in buffer.
-					temp_clipped_faces_out = static_meshes->temp_clipped_faces_in;
+					temp_clipped_faces_out = meshes->temp_clipped_faces_in;
 
 					// Now we want to read from the start of the in buffer, 
 					// not the offset into the front faces buffer.
@@ -999,7 +1005,7 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 				if (num_planes_clipped_against == num_planes_to_clip_against - 1)
 				{
 					// On the last plane, we want to write out to the clipped faces.
-					temp_clipped_faces_out = static_meshes->clipped_faces;
+					temp_clipped_faces_out = meshes->clipped_faces;
 					index_out = clipped_faces_index;
 				}
 
@@ -1335,10 +1341,10 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 		}
 
 		// Store the number of visible faces of the mesh after clipping.
-		static_meshes->clipped_face_counts[i] = visible_faces_count;
+		meshes->clipped_face_counts[i] = visible_faces_count;
 
 		// Move to the next mesh.
-		face_offset += static_meshes->front_face_counts[i];
+		face_offset += meshes->front_face_counts[i];
 	}
 
 	// TODO: Lighting
@@ -1355,7 +1361,7 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 	
 	// This must be done mesh by mesh so we know what texture to use.
 	face_offset = 0;
-	for (int i = 0; i < static_meshes->mesh_count; ++i)
+	for (int i = 0; i < meshes->mesh_count; ++i)
 	{
 		for (int j = face_offset; j < face_offset + clipped_face_counts[i]; ++j)
 		{
@@ -1409,7 +1415,7 @@ void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix)
 				clipped_faces[clipped_face_index + 35] * projected_v2[2],
 			};
 
-			clip_and_draw_triangle(rt, static_meshes, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
+			clip_and_draw_triangle(rt, meshes, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
 		}
 
 		face_offset += clipped_face_counts[i];

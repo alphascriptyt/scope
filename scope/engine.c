@@ -136,10 +136,10 @@ void start_engine(Engine* engine)
     Texture* menzter_texture = load_texture_from_bmp("C:\\Users\\olive\\source\\repos\\scope\\scope\\res\\textures\\menzter.bmp");
     
     // Use calloc to initialise all members to 0.
-    StaticMeshes* static_meshes = calloc(1, sizeof(StaticMeshes));
-    if (0 == static_meshes)
+    Meshes* meshes = calloc(1, sizeof(Meshes));
+    if (0 == meshes)
     {
-        log_error("Failed to calloc for static_meshes.");
+        log_error("Failed to calloc for meshes.");
         return;
     }
 
@@ -157,8 +157,8 @@ void start_engine(Engine* engine)
     V3 scale = { 1, 1, 1 };
     V3 scale1 = { 4, 4, 4 };
     
-    load_static_mesh_from_obj(static_meshes, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
-    load_static_mesh_from_obj(static_meshes, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj", pos1, eulers, scale1);
+    load_static_mesh_from_obj(meshes, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
+    load_static_mesh_from_obj(meshes, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj", pos1, eulers, scale1);
 
 
     char fps_str[32] = "fps";
@@ -223,7 +223,7 @@ void start_engine(Engine* engine)
         //       And just write into them in the first stages.
        
 
-        render(engine->render_target, static_meshes, view_matrix);
+        render(engine->render_target, meshes, view_matrix);
 
         // Draw ui elements.
         draw_ui(engine);
@@ -252,7 +252,7 @@ void start_engine(Engine* engine)
 
     }
 
-    free_static_meshes(static_meshes);
+    free_meshes(meshes);
 }
 
 void create_window(Engine* engine, const char* title)

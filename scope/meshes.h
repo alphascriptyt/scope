@@ -1,7 +1,12 @@
 #ifndef MESHES_H
 #define MESHES_H
 
+
+#include "status.h"
 #include "maths/vector3.h"
+
+#include <stdio.h>
+#include <stdlib.h>
 
 // Define the size of strides for the arrays.
 #define STRIDE_FACE_POSITIONS	3
@@ -37,6 +42,7 @@
 // have to apply a transformation to a vertex once due to indexed rendering.
 typedef struct
 {
+
 	// TODO: Plural or not plural.
 	int mesh_count;
 
@@ -51,7 +57,7 @@ typedef struct
 	int* clipped_face_counts;	// Number of faces that are visible to the camera after clipping.
 	int* mesh_texture_ids;		// The texture id for each mesh.
 
-	float* mesh_bounding_spheres;// [MAX_MESHES * STRIDE_SPHERE] ;
+	float* mesh_bounding_spheres;
 
 	// Buffers for vertex positions at different stages of the render.
 	// We only need to store the world space positions as the meshes will not move.
@@ -62,11 +68,14 @@ typedef struct
 	float* uvs;
 	float* normals;
 
+	// Dynamic meshes.
+	float* model_matrices;
 
-	// Store the view spcae positions.
+
+
+
+	// Store the view space positions.
 	float* view_space_positions;
-
-
 
 	// Buffers defining the faces.
 	int* face_position_indices; 
@@ -87,15 +96,18 @@ typedef struct
 	float* projected_clipped_faces_temp;
 	
 
-} StaticMeshes;
+} Meshes;
 
 
+void parse_obj_counts(FILE* file, int* num_vertices, int* num_uvs, int* num_normals, int* num_faces);
 
 // Load a static mesh from a .obj file, the transforms will be applied to the vertices and will be unchangeable.
-void load_static_mesh_from_obj(StaticMeshes* static_meshes, const char* file, const V3 position, const V3 orientation, const V3 scale);
-void free_static_meshes(StaticMeshes* static_meshes);
+void load_dynamic_mesh_from_obj(Meshes* meshes, const char* file, const V3 position, const V3 orientation, const V3 scale);
+void load_static_mesh_from_obj(Meshes* meshes, const char* file, const V3 position, const V3 orientation, const V3 scale);
+void free_meshes(Meshes* meshes);
 
-
-
+// Helpers for resizing the meshes buffers.
+Status resize_int_buffer(int** out_buffer, const int len);
+Status resize_float_buffer(float** out_buffer, const int len);
 
 #endif

@@ -12,7 +12,7 @@
 
 // We will want static meshes that have their model matrices stored only and dynamic ones that the model matrices will have to be generated
 
-void clip_and_draw_triangle(RenderTarget* rt, StaticMeshes* static_meshes, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
+void clip_and_draw_triangle(RenderTarget* rt, Meshes* meshes, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
 void draw_flat_bottom_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
 void draw_flat_top_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
 void draw_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
@@ -31,6 +31,6 @@ void project(Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o);
 // 4. RENDER_STAGE: Lighting
 // 5. RENDER_STAGE: Projection
 // 6. RENDER_STAGE: Clipping & Drawing Triangles
-void render(RenderTarget* rt, StaticMeshes* static_meshes, const M4 view_matrix);
+void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix);
 
 #endif
