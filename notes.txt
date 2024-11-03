@@ -1,0 +1,6 @@
+# This file contains some interesting points I've found along the way.
+
+
+- Using basic DOD, at very early stages, the renderer is twice as fast as the OOP way.
+- I had thought that not using indexed rendering could improve performance due to direct memory access, however, because of the increased
+  per vertex operations like matrix multiplication, it was a decent slowdown.
