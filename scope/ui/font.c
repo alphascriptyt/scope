@@ -17,7 +17,7 @@ Font load_font()
 	// TODO: Make this some sort of load_bitmap function.
 	// Load the bitmap containing the defined characters.
 	HBITMAP h_bitmap = LoadImageA(NULL, 
-		"C:/Users/olive/source/repos/scope/scope/res/minogram_6x10_font.bmp",
+		"C:/Users/olive/source/repos/scope/scope/res/fonts/minogram_6x10_font.bmp",
 		IMAGE_BITMAP,
 		0, 0,
 		LR_LOADFROMFILE

@@ -133,7 +133,7 @@ Engine* init_engine()
 void start_engine(Engine* engine)
 {
     // TODO: How can textures be stored? I think just an array of texture* then the mesh has a texture id.
-    Texture* menzter_texture = load_texture_from_bmp("C:\\Users\\olive\\source\\repos\\scope\\scope\\res\\menzter.bmp");
+    Texture* menzter_texture = load_texture_from_bmp("C:\\Users\\olive\\source\\repos\\scope\\scope\\res\\textures\\menzter.bmp");
     
     // Use calloc to initialise all members to 0.
     StaticMeshes* static_meshes = calloc(1, sizeof(StaticMeshes));
@@ -157,8 +157,8 @@ void start_engine(Engine* engine)
     V3 scale = { 1, 1, 1 };
     V3 scale1 = { 4, 4, 4 };
     
-    load_static_mesh_from_obj(static_meshes, "C:/Users/olive/source/repos/scope/scope/res/suzanne.obj", pos, eulers1, scale);
-    load_static_mesh_from_obj(static_meshes, "C:/Users/olive/source/repos/scope/scope/res/menzter.obj", pos1, eulers, scale1);
+    load_static_mesh_from_obj(static_meshes, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
+    load_static_mesh_from_obj(static_meshes, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj", pos1, eulers, scale1);
 
 
     char fps_str[32] = "fps";
