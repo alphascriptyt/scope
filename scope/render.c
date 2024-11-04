@@ -729,17 +729,85 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 	projection_matrix[11] = -1;
 	projection_matrix[14] = 2 * far_plane * near_plane / (far_plane - near_plane);
 
+	float* world_space_positions = meshes->world_space_positions;
+	
+	// TODO: Comments + refactor.
+	int position_offset = 0;
+	int index_world_space_out = meshes->positions_count - meshes->model_space_positions_count;
+	for (int i = 0; i < meshes->mesh_count; ++i)
+	{
+		if (meshes->model_matrix_updated_flags[i] == 0)
+			continue;
 
-	// For each dynamic mesh, convert it's model coordinates into world space.
-	// Write out to after the world space positions of the static meshes.
+		int index_model_matrix = i * 16;
+		M4 model_matrix = { 0 };
+		for (int j = 0; j < 16; ++j)
+		{
+			model_matrix[j] = meshes->model_matrices[index_model_matrix + j];
+		}
 
+		V3 center = { 0 };
 
+		// Convert model space to world space positions whilst also calculating the new bounding sphere.
+		for (int j = 0; j < meshes->mesh_positions_counts[i]; ++j)
+		{
+			int index_model_space_position = (j + position_offset) * STRIDE_POSITION;
 
+			V4 model_space_position = {
+				meshes->model_space_positions[index_model_space_position],
+				meshes->model_space_positions[index_model_space_position + 1],
+				meshes->model_space_positions[index_model_space_position + 2],
+				1
+			};
+
+			V4 world_space_position;
+			m4_mul_v4(model_matrix, model_space_position, world_space_position);
+
+			world_space_positions[index_world_space_out++] = world_space_position[0];
+			world_space_positions[index_world_space_out++] = world_space_position[1];
+			world_space_positions[index_world_space_out++] = world_space_position[2];
+
+			v3_add_v3(center, world_space_position);
+		}
+
+		// TODO: Make a function to compute the bounding sphere as we do this twice.
+		v3_mul_f(center, 1.f / meshes->mesh_positions_counts[i]);
+
+		float radius_squared = 0;
+		for (int j = 0; j < meshes->mesh_positions_counts[i]; ++j)
+		{
+			int index_world_space_position = (j + position_offset) * STRIDE_POSITION;
+
+			V4 v = {
+				meshes->world_space_positions[index_world_space_position],
+				meshes->world_space_positions[index_world_space_position + 1],
+				meshes->world_space_positions[index_world_space_position + 2],
+				1
+			};
+
+			// Calculate the length of the line between the center and the vertex.
+			v3_sub_v3(v, center);
+			radius_squared = max(size_squared(v), radius_squared);
+		}
+
+		// Store the bounding sphere.
+		int index_bs = i * STRIDE_SPHERE;
+		meshes->mesh_bounding_spheres[index_bs] = center[0];
+		meshes->mesh_bounding_spheres[++index_bs] = center[1];
+		meshes->mesh_bounding_spheres[++index_bs] = center[2];
+		meshes->mesh_bounding_spheres[++index_bs] = sqrtf(radius_squared);
+
+		// Reset the flag.
+		printf("Updated: %d\n", i);
+		meshes->model_matrix_updated_flags[i] = 0;
+
+		position_offset += meshes->mesh_positions_counts[i];
+	}
 
 	const int* face_position_indices = meshes->face_position_indices;
 	const float* face_attributes = meshes->face_attributes;
 
-	float* world_space_positions = meshes->world_space_positions;
+	
 	float* view_space_positions = meshes->view_space_positions;
 
 	// For each world space position, convert it to view space.

@@ -78,13 +78,28 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     engine->previous_mouse_y = center.y;
                 }
             }
-            
             else if (VK_ESCAPE == wParam)
             {
                 engine->game_running = 0;
             }
 
-            //TODO: on_keyup?
+            else if ('1' == wParam)
+            {
+                V3 pos = { 0, 0, -20 };
+                V3 eulers = { 0.5, 1,  0.2 };
+                V3 scale = { 1, 2, 1 };
+                M4 model_matrix;
+                make_model_m4(pos, eulers, scale, model_matrix);
+
+                for (int i = 0; i < 16; ++i)
+                {
+                    engine->meshes->model_matrices[i] = model_matrix[i];
+                }
+
+                engine->meshes->model_matrix_updated_flags[0] = 1;
+            }
+
+            // TODO: on_keyup?
         }
 
         break;
@@ -136,8 +151,8 @@ void start_engine(Engine* engine)
     Texture* menzter_texture = load_texture_from_bmp("C:\\Users\\olive\\source\\repos\\scope\\scope\\res\\textures\\menzter.bmp");
     
     // Use calloc to initialise all members to 0.
-    Meshes* meshes = calloc(1, sizeof(Meshes));
-    if (0 == meshes)
+    engine->meshes = calloc(1, sizeof(Meshes));
+    if (0 == engine->meshes)
     {
         log_error("Failed to calloc for meshes.");
         return;
@@ -157,9 +172,8 @@ void start_engine(Engine* engine)
     V3 scale = { 1, 1, 1 };
     V3 scale1 = { 4, 4, 4 };
     
-    load_static_mesh_from_obj(meshes, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
-    load_static_mesh_from_obj(meshes, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj", pos1, eulers, scale1);
-
+    load_mesh_from_obj(engine->meshes, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
+    load_mesh_from_obj(engine->meshes, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj", pos1, eulers, scale1);
 
     char fps_str[32] = "fps";
     engine->ui_text[0] = create_text(fps_str, 10, 10, 0x00FF0000, 3);
@@ -223,7 +237,7 @@ void start_engine(Engine* engine)
         //       And just write into them in the first stages.
        
 
-        render(engine->render_target, meshes, view_matrix);
+        render(engine->render_target, engine->meshes, view_matrix);
 
         // Draw ui elements.
         draw_ui(engine);
@@ -252,7 +266,7 @@ void start_engine(Engine* engine)
 
     }
 
-    free_meshes(meshes);
+    free_meshes(engine->meshes);
 }
 
 void create_window(Engine* engine, const char* title)

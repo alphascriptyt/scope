@@ -43,11 +43,17 @@
 typedef struct
 {
 
+	// TODO: REFACTORRRR AND COMMENTS........
+
 	// TODO: Plural or not plural.
 	int mesh_count;
+	
+	int* model_matrix_updated_flags;
 
 	// Store the size of the buffers.
 	int positions_count;
+	int model_space_positions_count;
+
 	int colours_count;
 	int uvs_count;
 	int normals_count;
@@ -57,7 +63,13 @@ typedef struct
 	int* clipped_face_counts;	// Number of faces that are visible to the camera after clipping.
 	int* mesh_texture_ids;		// The texture id for each mesh.
 
+	int* mesh_positions_counts; // The model matrix transform is model specific, therefore, we must store how many positions the mesh has.
+
 	float* mesh_bounding_spheres;
+
+	float* model_matrices;
+	float* model_space_positions;
+
 
 	// Buffers for vertex positions at different stages of the render.
 	// We only need to store the world space positions as the meshes will not move.
@@ -68,10 +80,7 @@ typedef struct
 	float* uvs;
 	float* normals;
 
-	// Dynamic meshes.
-	float* model_matrices;
-
-
+	
 
 
 	// Store the view space positions.
@@ -102,8 +111,7 @@ typedef struct
 void parse_obj_counts(FILE* file, int* num_vertices, int* num_uvs, int* num_normals, int* num_faces);
 
 // Load a static mesh from a .obj file, the transforms will be applied to the vertices and will be unchangeable.
-void load_dynamic_mesh_from_obj(Meshes* meshes, const char* file, const V3 position, const V3 orientation, const V3 scale);
-void load_static_mesh_from_obj(Meshes* meshes, const char* file, const V3 position, const V3 orientation, const V3 scale);
+void load_mesh_from_obj(Meshes* meshes, const char* file, const V3 position, const V3 orientation, const V3 scale);
 void free_meshes(Meshes* meshes);
 
 // Helpers for resizing the meshes buffers.

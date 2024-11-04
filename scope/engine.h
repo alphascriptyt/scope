@@ -3,6 +3,7 @@
 
 #include "render_target.h"
 #include "camera.h"
+#include "meshes.h"
 
 #include "ui/text.h"
 
@@ -43,6 +44,8 @@ typedef struct
 	int window_width;
 	int window_height;
 	
+	// TODO: Some sort of scene thing rather than just meshes
+	Meshes* meshes;
 
 } Engine;
 

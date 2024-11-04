@@ -56,23 +56,7 @@ void parse_obj_counts(FILE* file, int* num_positions, int* num_uvs, int* num_nor
 	printf("Faces: %d\n", *num_faces);
 }
 
-void load_dynamic_mesh_from_obj(Meshes* meshes, const char* file, const V3 position, const V3 orientation, const V3 scale)
-{
-	// TODO: We should load the mesh exactly the same here, for example, the colours, normals, uvs, positions etc.
-
-	// The only different step is instead of precalculating the world space positions like with the static meshes. 
-	// We store the model matrix and the model positions.
-
-	// We will need new meshes buffers, like model_positions and model_matrices.
-
-	// We should be able to call a function to do the shared code. 
-
-	// We will also need a separate buffer and count of dynamic meshes so we can access them via indices.
-
-
-}
-
-void load_static_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position, const V3 orientation, const V3 scale)
+void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position, const V3 orientation, const V3 scale)
 {
 	// TODO: Eventually could check the filetype.
 	FILE* file = fopen(filename, "r");
@@ -105,7 +89,7 @@ void load_static_mesh_from_obj(Meshes* meshes, const char* filename, const V3 po
 
 	resize_float_buffer(&meshes->world_space_positions, (meshes->positions_count + positions_count) * STRIDE_POSITION);
 	resize_float_buffer(&meshes->view_space_positions, (meshes->positions_count + positions_count) * STRIDE_POSITION);
-	
+
 	// Calculate the new number of faces in the buffer.
 	int new_face_len = face_offset + face_count;
 
@@ -133,6 +117,7 @@ void load_static_mesh_from_obj(Meshes* meshes, const char* filename, const V3 po
 	resize_int_buffer(&meshes->front_face_counts, new_meshes_count);
 	resize_int_buffer(&meshes->clipped_face_counts, new_meshes_count);
 	resize_int_buffer(&meshes->mesh_texture_ids, new_meshes_count);
+	resize_int_buffer(&meshes->model_matrix_updated_flags, new_meshes_count);
 	resize_float_buffer(&meshes->mesh_bounding_spheres, new_meshes_count * STRIDE_SPHERE);
 
 	// Set the face count for the new mesh.
@@ -144,11 +129,24 @@ void load_static_mesh_from_obj(Meshes* meshes, const char* filename, const V3 po
 	M4 model_matrix;
 	make_model_m4(position, orientation, scale, model_matrix);
 
+	resize_float_buffer(&meshes->model_space_positions, (meshes->model_space_positions_count + positions_count) * STRIDE_POSITION);
+
+	resize_float_buffer(&meshes->model_matrices, (meshes->mesh_count + 1) * 16);
+
+	int index = meshes->mesh_count * 16;
+	for (int i = 0; i < 16; ++i)
+	{
+		meshes->model_matrices[index++] = model_matrix[i];
+	}
+
+	resize_int_buffer(&meshes->mesh_positions_counts, (meshes->mesh_count + 1));
+
 	// Move to the start of the file again so we can read it.
 	rewind(file);
 
 	// Define offsets to the start of the new mesh in the array.
 	int positions_offset = meshes->positions_count * STRIDE_POSITION;
+	int model_space_positions_offset = meshes->model_space_positions_count * STRIDE_POSITION;
 	int normals_offset = meshes->normals_count * STRIDE_NORMAL;
 	int uvs_offset = meshes->uvs_count * STRIDE_UV;
 	int colours_index = meshes->colours_count * STRIDE_COLOUR;
@@ -180,6 +178,12 @@ void load_static_mesh_from_obj(Meshes* meshes, const char* filename, const V3 po
 				1
 			};
 
+			// Store the model space position.
+			meshes->model_space_positions[model_space_positions_offset++] = v[0];
+			meshes->model_space_positions[model_space_positions_offset++] = v[1];
+			meshes->model_space_positions[model_space_positions_offset++] = v[2];
+
+			// Pre-calculate the world space positions.
 			V4 world_v;
 			m4_mul_v4(model_matrix, v, world_v);
 
@@ -338,6 +342,12 @@ void load_static_mesh_from_obj(Meshes* meshes, const char* filename, const V3 po
 	meshes->positions_count += positions_count;
 	meshes->normals_count += normals_count;
 	meshes->uvs_count += uvs_count;
+
+	// Flag that the mesh's world space positions doesn't need to be re-calculated.
+	meshes->model_matrix_updated_flags[meshes->mesh_count] = 0;
+
+	meshes->mesh_positions_counts[meshes->mesh_count] = positions_count;
+	meshes->model_space_positions_count += positions_count;
 
 	// Update the number of meshes.
 	++meshes->mesh_count;
