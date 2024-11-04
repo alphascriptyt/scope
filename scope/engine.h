@@ -4,6 +4,7 @@
 #include "render_target.h"
 #include "camera.h"
 #include "meshes.h"
+#include "render_settings.h"
 
 #include "ui/text.h"
 
@@ -43,6 +44,7 @@ typedef struct
 	float upscaling_factor;
 	int window_width;
 	int window_height;
+	RenderSettings* render_settings;
 	
 	// TODO: Some sort of scene thing rather than just meshes
 	Meshes* meshes;

@@ -1,0 +1,53 @@
+#ifndef RENDER_SETTINGS_H
+#define RENDER_SETTINGS_H
+
+#include "canvas.h"
+
+#include "maths/matrix4.h"
+#include "maths/utils.h"
+
+// TODO: RenderSettings is a bit off. We also want to store the view frustum
+//		 as this won't change unless fov changes. This stuff is slightly 
+//		 different to the fov/near/farplane.
+//			
+typedef struct
+{
+	float fov;
+	float near_plane; 
+
+	// TODO: ^^^ Will have to experiment. We want this as large as possible without clipping too close. Apparently
+	//	   Large outdoor scene: nearplane 0.1-1, far 500-1000/
+	//	   Small indoor scene: nearplane 0.1-0.01, 50-100. 
+	//float nearPlane = near_plane_dist * -1.f;
+
+	float far_plane;
+	M4 projection_matrix;
+
+} RenderSettings;
+
+inline void update_projection_m4(RenderSettings* rs, const Canvas* canvas)
+{
+	float aspectRatio = canvas->width / (float)(canvas->height);
+
+	float yScale = 1.f / tanf(radians(rs->fov) / 2.f);
+	float xScale = yScale / aspectRatio;
+
+	rs->projection_matrix[0] = xScale;
+	rs->projection_matrix[1] = 0;
+	rs->projection_matrix[2] = 0;
+	rs->projection_matrix[3] = 0;
+	rs->projection_matrix[4] = 0;
+	rs->projection_matrix[5] = yScale;
+	rs->projection_matrix[6] = 0;
+	rs->projection_matrix[7] = 0;
+	rs->projection_matrix[8] = 0;
+	rs->projection_matrix[9] = 0;
+	rs->projection_matrix[10] = -(rs->far_plane + rs->near_plane) / (rs->far_plane - rs->near_plane);
+	rs->projection_matrix[11] = -1;
+	rs->projection_matrix[12] = 0;
+	rs->projection_matrix[13] = 0;
+	rs->projection_matrix[14] = 2 * rs->far_plane * rs->near_plane / (rs->far_plane - rs->near_plane);
+	rs->projection_matrix[15] = 0;
+}
+
+#endif

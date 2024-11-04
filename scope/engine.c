@@ -85,18 +85,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             else if ('1' == wParam)
             {
-                V3 pos = { 0, 0, -20 };
-                V3 eulers = { 0.5, 1,  0.2 };
-                V3 scale = { 1, 2, 1 };
-                M4 model_matrix;
-                make_model_m4(pos, eulers, scale, model_matrix);
-
-                for (int i = 0; i < 16; ++i)
-                {
-                    engine->meshes->model_matrices[i] = model_matrix[i];
-                }
-
-                engine->meshes->model_matrix_updated_flags[0] = 1;
+                engine->render_settings->fov += 5;
+                printf("FOV: %f\n", engine->render_settings->fov);
+                update_projection_m4(engine->render_settings,
+                    engine->render_target->canvas);
+            }
+            else if ('2' == wParam)
+            {
+                
+                engine->render_settings->fov -= 5;
+                printf("FOV: %f\n", engine->render_settings->fov);
+                update_projection_m4(engine->render_settings,
+                    engine->render_target->canvas);
             }
 
             // TODO: on_keyup?
@@ -147,6 +147,16 @@ Engine* init_engine()
 
 void start_engine(Engine* engine)
 {
+    RenderSettings render_settings = {
+        .fov = 60.f,
+        .near_plane = 1.f,
+        .far_plane = 100.f,
+    };
+
+    update_projection_m4(&render_settings, engine->render_target->canvas);
+    engine->render_settings = &render_settings;
+
+
     // TODO: How can textures be stored? I think just an array of texture* then the mesh has a texture id.
     Texture* menzter_texture = load_texture_from_bmp("C:\\Users\\olive\\source\\repos\\scope\\scope\\res\\textures\\menzter.bmp");
     
@@ -155,7 +165,7 @@ void start_engine(Engine* engine)
     if (0 == engine->meshes)
     {
         log_error("Failed to calloc for meshes.");
-        return;
+        return; // TODO: Status.
     }
 
     log_info("Engine started!");
@@ -210,6 +220,7 @@ void start_engine(Engine* engine)
     };
     M4 view_matrix;
 
+    float dir = 1;
     engine->game_running = 1;
     while (engine->game_running)
     {
@@ -224,6 +235,41 @@ void start_engine(Engine* engine)
         handle_input(engine, &camera, dt);
         calculate_view_matrix(&camera, view_matrix);
 
+        
+        // TEMP, spinning and scaling cause why not
+        if (eulers[1] > radians(360))
+        {
+            eulers[0] = 0;
+            eulers[1] = 0;
+        }
+        else
+        {
+            eulers[0] -= dt;
+            eulers[1] += dt;
+        }
+
+        if (scale[0] > 3)
+        {
+            dir = -1;
+        }
+        else if (scale[0] < 1)
+        {
+            dir = 1;
+        }
+        scale[0] += dt * dir;
+        scale[1] += dt * dir;
+        scale[2] += dt * dir;
+
+        M4 model_matrix;
+        make_model_m4(pos, eulers, scale, model_matrix);
+
+        for (int i = 0; i < 16; ++i)
+        {
+            engine->meshes->mesh_model_matrices[i] = model_matrix[i];
+        }
+
+        engine->meshes->model_matrix_updated_flags[0] = 1;
+        
         // Clear the canvas.
         //fill_canvas(engine->canvas, 0x22222222);
         clear_render_target(engine->render_target, 0x22222222);
@@ -235,9 +281,15 @@ void start_engine(Engine* engine)
         //       Also, the bounding sphere will need to be regenerated.
         //       It would be nice to keep the other arrays the same.
         //       And just write into them in the first stages.
+
+
+
+
+
        
 
-        render(engine->render_target, engine->meshes, view_matrix);
+        render(engine->render_target, engine->render_settings, 
+            engine->meshes, view_matrix);
 
         // Draw ui elements.
         draw_ui(engine);
@@ -557,8 +609,10 @@ void on_resize(Engine* engine)
     engine->window_height = height;
 
     // Resize the render target.
-    //resize_canvas(engine->canvas, (int)(width / engine->upscaling_factor), (int)(height / engine->upscaling_factor));
     resize_render_target(engine->render_target, (int)(width / engine->upscaling_factor), (int)(height / engine->upscaling_factor));
+
+    // Update the projection matrix.
+    update_projection_m4(&engine->render_settings, engine->render_target->canvas);
 
     // Update the bitmapinfo.
     engine->canvas_bitmap.bmiHeader.biWidth = engine->render_target->canvas->width;

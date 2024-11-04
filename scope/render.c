@@ -676,7 +676,7 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 	}
 }
 
-void project(Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o)
+void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o)
 {
 	V4 v_projected;
 	m4_mul_v4(projection_matrix, v, v_projected);
@@ -700,69 +700,57 @@ void project(Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o)
 	o[2] = v_projected[2]; // Z/W
 }
 
-void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
+void model_to_world_space(Meshes* meshes)
 {
-	// TODO: Calculate the projection matrix somewhere else, possibly have a RenderData struct?
-	//		 We can then recalculate that whenever fov/window size is changed.
-	// TODO: I think a RenderData struct that contains fov, nearplane/farplane etc.
-	float aspectRatio = rt->canvas->width / (float)(rt->canvas->height);
+	// Locally store to avoid dereferencing the pointers constantly.
+	// Not sure if this is a speedup or not. TODO: Time at some point.
+	const int meshes_count = meshes->meshes_count;
+	const int* mesh_positions_counts = meshes->mesh_positions_counts;
+	const float* mesh_model_matrices = meshes->mesh_model_matrices;
+	const float* model_space_positions = meshes->model_space_positions;
 
-	// TODO: What is this radians(60).....
-	// I think here 60 is the vertical FOV!!
-
-	float fov = 60.f;
-
-
-	float yScale = 1.f / tanf(radians(fov) / 2.f);
-	float xScale = yScale / aspectRatio;
-
-	float near_plane = 1.f; // TODO: Will have to experiment. We want this as large as possible without clipping too close. Apparently
-						  //	   Large outdoor scene: nearplane 0.1-1, far 500-1000/
-						  //	   Small indoor scene: nearplane 0.1-0.01, 50-100. 
-	//float nearPlane = near_plane_dist * -1.f;
-	float far_plane = 100.f;
-
-	M4 projection_matrix = { 0 };
-	projection_matrix[0] = xScale;
-	projection_matrix[5] = yScale;
-	projection_matrix[10] = -(far_plane + near_plane) / (far_plane - near_plane);
-	projection_matrix[11] = -1;
-	projection_matrix[14] = 2 * far_plane * near_plane / (far_plane - near_plane);
-
+	int* model_matrix_updated_flags = meshes->model_matrix_updated_flags;
 	float* world_space_positions = meshes->world_space_positions;
-	
-	// TODO: Comments + refactor.
+	float* mesh_bounding_spheres = meshes->mesh_bounding_spheres;
+
 	int position_offset = 0;
-	int index_world_space_out = meshes->positions_count - meshes->model_space_positions_count;
-	for (int i = 0; i < meshes->mesh_count; ++i)
+	int index_world_space_out = 0;
+
+	for (int i = 0; i < meshes_count; ++i)
 	{
-		if (meshes->model_matrix_updated_flags[i] == 0)
+		// Only update if the mesh's transform has changed.
+		if (model_matrix_updated_flags[i] == 0)
 			continue;
 
+		// TODO: Do we want to make the model matrix here instead?
 		int index_model_matrix = i * 16;
 		M4 model_matrix = { 0 };
 		for (int j = 0; j < 16; ++j)
 		{
-			model_matrix[j] = meshes->model_matrices[index_model_matrix + j];
+			model_matrix[j] = mesh_model_matrices[index_model_matrix + j];
 		}
 
 		V3 center = { 0 };
 
 		// Convert model space to world space positions whilst also calculating the new bounding sphere.
-		for (int j = 0; j < meshes->mesh_positions_counts[i]; ++j)
+		for (int j = 0; j < mesh_positions_counts[i]; ++j)
 		{
 			int index_model_space_position = (j + position_offset) * STRIDE_POSITION;
 
+			// TODO: A function like inline read_v4(float* out, float* in, int offset);
+			// V4 model_space_position;
+			// read_v4(model_space_position, model_space_positions, index_model_space_position)
 			V4 model_space_position = {
-				meshes->model_space_positions[index_model_space_position],
-				meshes->model_space_positions[index_model_space_position + 1],
-				meshes->model_space_positions[index_model_space_position + 2],
+				model_space_positions[index_model_space_position],
+				model_space_positions[index_model_space_position + 1],
+				model_space_positions[index_model_space_position + 2],
 				1
 			};
 
 			V4 world_space_position;
 			m4_mul_v4(model_matrix, model_space_position, world_space_position);
 
+			// inline write_v4()?
 			world_space_positions[index_world_space_out++] = world_space_position[0];
 			world_space_positions[index_world_space_out++] = world_space_position[1];
 			world_space_positions[index_world_space_out++] = world_space_position[2];
@@ -770,18 +758,18 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 			v3_add_v3(center, world_space_position);
 		}
 
-		// TODO: Make a function to compute the bounding sphere as we do this twice.
-		v3_mul_f(center, 1.f / meshes->mesh_positions_counts[i]);
+		// TODO: Make a function to compute the bounding sphere?.
+		v3_mul_f(center, 1.f / mesh_positions_counts[i]);
 
 		float radius_squared = 0;
-		for (int j = 0; j < meshes->mesh_positions_counts[i]; ++j)
+		for (int j = 0; j < mesh_positions_counts[i]; ++j)
 		{
 			int index_world_space_position = (j + position_offset) * STRIDE_POSITION;
 
 			V4 v = {
-				meshes->world_space_positions[index_world_space_position],
-				meshes->world_space_positions[index_world_space_position + 1],
-				meshes->world_space_positions[index_world_space_position + 2],
+				world_space_positions[index_world_space_position],
+				world_space_positions[index_world_space_position + 1],
+				world_space_positions[index_world_space_position + 2],
 				1
 			};
 
@@ -792,22 +780,23 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 
 		// Store the bounding sphere.
 		int index_bs = i * STRIDE_SPHERE;
-		meshes->mesh_bounding_spheres[index_bs] = center[0];
-		meshes->mesh_bounding_spheres[++index_bs] = center[1];
-		meshes->mesh_bounding_spheres[++index_bs] = center[2];
-		meshes->mesh_bounding_spheres[++index_bs] = sqrtf(radius_squared);
+		mesh_bounding_spheres[index_bs] = center[0];
+		mesh_bounding_spheres[++index_bs] = center[1];
+		mesh_bounding_spheres[++index_bs] = center[2];
+		mesh_bounding_spheres[++index_bs] = sqrtf(radius_squared);
 
-		// Reset the flag.
-		printf("Updated: %d\n", i);
-		meshes->model_matrix_updated_flags[i] = 0;
+		// Reset the flag to show we've updated the world space positions
+		// with respect to the most recent transform.
+		model_matrix_updated_flags[i] = 0;
 
-		position_offset += meshes->mesh_positions_counts[i];
+		// Offset to the next mesh's positions.
+		position_offset += mesh_positions_counts[i];
 	}
+}
 
-	const int* face_position_indices = meshes->face_position_indices;
-	const float* face_attributes = meshes->face_attributes;
-
-	
+void world_to_view_space(Meshes* meshes, const M4 view_matrix)
+{
+	const float* world_space_positions = meshes->world_space_positions;
 	float* view_space_positions = meshes->view_space_positions;
 
 	// For each world space position, convert it to view space.
@@ -824,11 +813,30 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 		V4 v_view_space;
 		m4_mul_v4(view_matrix, v, v_view_space);
 
-		// There is no need to save the w component as it is always 1 until after projection.
+		// There is no need to save the w component as it is always 1 until 
+		// after projection.
 		view_space_positions[i] = v_view_space[0];
 		view_space_positions[i + 1] = v_view_space[1];
 		view_space_positions[i + 2] = v_view_space[2];
 	}
+}
+
+void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, const M4 view_matrix)
+{
+	
+	// Transform model space positions to world space.
+	model_to_world_space(meshes);
+
+	// Transform world space positions to view space.
+	world_to_view_space(meshes, view_matrix);
+	
+
+	const int* face_position_indices = meshes->face_position_indices;
+	const float* face_attributes = meshes->face_attributes;
+
+	float* world_space_positions = meshes->world_space_positions;
+	
+	float* view_space_positions = meshes->view_space_positions;
 
 	// Perform backface culling.
 	int face_offset = 0;
@@ -836,11 +844,11 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 
 	float* front_faces = meshes->front_faces;
 
-	for (int i = 0; i < meshes->mesh_count; ++i)
+	for (int i = 0; i < meshes->meshes_count; ++i)
 	{
 		int front_face_count = 0;
 
-		const int mesh_faces_end = face_offset + meshes->face_counts[i];
+		const int mesh_faces_end = face_offset + meshes->mesh_faces_counts[i];
 
 		for (int j = face_offset; j < mesh_faces_end; ++j)
 		{
@@ -932,25 +940,26 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 
 		// Update the number of front faces for the current mesh.
 		// This is needed for frustum culling.
-		meshes->front_face_counts[i] = front_face_count;
+		meshes->mesh_front_faces_counts[i] = front_face_count;
 
 		// Update the offsets for the next mesh.
-		face_offset += meshes->face_counts[i];
+		face_offset += meshes->mesh_faces_counts[i];
 	}
 
 	// Frustum culling
 	float* clipped_faces = meshes->clipped_faces;
-	int* clipped_face_counts = meshes->clipped_face_counts;
+	int* mesh_clipped_faces_counts = meshes->mesh_clipped_faces_counts;
 
 	float* bounding_spheres = meshes->mesh_bounding_spheres;
 
 	ViewFrustum view_frustum; 
-	create_clipping_view_frustum(near_plane, fov, aspectRatio, &view_frustum);
+	create_clipping_view_frustum(settings->near_plane, settings->fov, 
+		rt->canvas->width / (float)(rt->canvas->height), &view_frustum);
 
 	int clipped_faces_index = 0; // Store the index to write the clipped faces out to.
 	
 	face_offset = 0;
-	for (int i = 0; i < meshes->mesh_count; ++i)
+	for (int i = 0; i < meshes->meshes_count; ++i)
 	{
 		int visible_faces_count = 0;
 
@@ -1005,7 +1014,7 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 		else if (1 == mesh_visible && 0 == num_planes_to_clip_against)
 		{
 			// Just copy the vertices over.
-			for (int j = face_offset; j < face_offset + meshes->front_face_counts[i]; ++j)
+			for (int j = face_offset; j < face_offset + meshes->mesh_front_faces_counts[i]; ++j)
 			{
 				int index_face = j * STRIDE_ENTIRE_FACE;
 					
@@ -1033,7 +1042,7 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 
 			// After each plane, we will have a different number of faces to clip again.
 			// Initially set this to the number of front faces.
-			int num_faces_to_process = meshes->front_face_counts[i];
+			int num_faces_to_process = meshes->mesh_front_faces_counts[i];
 
 			// This is needed as an offset into the front_faces buffer for the first plane.
 			int clipped_faces_offset = face_offset;
@@ -1409,10 +1418,10 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 		}
 
 		// Store the number of visible faces of the mesh after clipping.
-		meshes->clipped_face_counts[i] = visible_faces_count;
+		meshes->mesh_clipped_faces_counts[i] = visible_faces_count;
 
 		// Move to the next mesh.
-		face_offset += meshes->front_face_counts[i];
+		face_offset += meshes->mesh_front_faces_counts[i];
 	}
 
 	// TODO: Lighting
@@ -1429,9 +1438,9 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 	
 	// This must be done mesh by mesh so we know what texture to use.
 	face_offset = 0;
-	for (int i = 0; i < meshes->mesh_count; ++i)
+	for (int i = 0; i < meshes->meshes_count; ++i)
 	{
-		for (int j = face_offset; j < face_offset + clipped_face_counts[i]; ++j)
+		for (int j = face_offset; j < face_offset + mesh_clipped_faces_counts[i]; ++j)
 		{
 			int clipped_face_index = j * STRIDE_ENTIRE_FACE;
 
@@ -1458,9 +1467,9 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 			};
 
 			V3 projected_v0, projected_v1, projected_v2;
-			project(rt->canvas, projection_matrix, v0, projected_v0);
-			project(rt->canvas, projection_matrix, v1, projected_v1);
-			project(rt->canvas, projection_matrix, v2, projected_v2);
+			project(rt->canvas, settings->projection_matrix, v0, projected_v0);
+			project(rt->canvas, settings->projection_matrix, v1, projected_v1);
+			project(rt->canvas, settings->projection_matrix, v2, projected_v2);
 
 			V4 colour0 = {
 				clipped_faces[clipped_face_index + 8] * projected_v0[2],
@@ -1486,6 +1495,6 @@ void render(RenderTarget* rt, Meshes* meshes, const M4 view_matrix)
 			clip_and_draw_triangle(rt, meshes, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
 		}
 
-		face_offset += clipped_face_counts[i];
+		face_offset += mesh_clipped_faces_counts[i];
 	}
 }

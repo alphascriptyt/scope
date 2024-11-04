@@ -77,9 +77,9 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 
 	// Calculate the offsets to the next index after the last face in the buffer.
 	int face_offset = 0;
-	for (int i = 0; i < meshes->mesh_count; ++i)
+	for (int i = 0; i < meshes->meshes_count; ++i)
 	{
-		face_offset += meshes->face_counts[i];
+		face_offset += meshes->mesh_faces_counts[i];
 	}
 
 	// Resize the meshes buffers for storing the new data.
@@ -111,17 +111,17 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 	// A face is defined in two separate buffers, position indices and 'attribute' indices.
 	resize_int_buffer(&meshes->face_position_indices, new_face_len * STRIDE_FACE_POSITIONS);
 
-	int new_meshes_count = meshes->mesh_count + 1;
+	int new_meshes_count = meshes->meshes_count + 1;
 
-	resize_int_buffer(&meshes->face_counts, new_meshes_count);
-	resize_int_buffer(&meshes->front_face_counts, new_meshes_count);
-	resize_int_buffer(&meshes->clipped_face_counts, new_meshes_count);
+	resize_int_buffer(&meshes->mesh_faces_counts, new_meshes_count);
+	resize_int_buffer(&meshes->mesh_front_faces_counts, new_meshes_count);
+	resize_int_buffer(&meshes->mesh_clipped_faces_counts, new_meshes_count);
 	resize_int_buffer(&meshes->mesh_texture_ids, new_meshes_count);
 	resize_int_buffer(&meshes->model_matrix_updated_flags, new_meshes_count);
 	resize_float_buffer(&meshes->mesh_bounding_spheres, new_meshes_count * STRIDE_SPHERE);
 
 	// Set the face count for the new mesh.
-	meshes->face_counts[meshes->mesh_count] = face_count;
+	meshes->mesh_faces_counts[meshes->meshes_count] = face_count;
 
 	// Make the model matrix so we can pre-convert the model space to world space.
 
@@ -129,24 +129,23 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 	M4 model_matrix;
 	make_model_m4(position, orientation, scale, model_matrix);
 
-	resize_float_buffer(&meshes->model_space_positions, (meshes->model_space_positions_count + positions_count) * STRIDE_POSITION);
+	resize_float_buffer(&meshes->model_space_positions, (meshes->positions_count + positions_count) * STRIDE_POSITION);
 
-	resize_float_buffer(&meshes->model_matrices, (meshes->mesh_count + 1) * 16);
+	resize_float_buffer(&meshes->mesh_model_matrices, (meshes->meshes_count + 1) * 16);
 
-	int index = meshes->mesh_count * 16;
+	int index = meshes->meshes_count * 16;
 	for (int i = 0; i < 16; ++i)
 	{
-		meshes->model_matrices[index++] = model_matrix[i];
+		meshes->mesh_model_matrices[index++] = model_matrix[i];
 	}
 
-	resize_int_buffer(&meshes->mesh_positions_counts, (meshes->mesh_count + 1));
+	resize_int_buffer(&meshes->mesh_positions_counts, (meshes->meshes_count + 1));
 
 	// Move to the start of the file again so we can read it.
 	rewind(file);
 
 	// Define offsets to the start of the new mesh in the array.
 	int positions_offset = meshes->positions_count * STRIDE_POSITION;
-	int model_space_positions_offset = meshes->model_space_positions_count * STRIDE_POSITION;
 	int normals_offset = meshes->normals_count * STRIDE_NORMAL;
 	int uvs_offset = meshes->uvs_count * STRIDE_UV;
 	int colours_index = meshes->colours_count * STRIDE_COLOUR;
@@ -179,9 +178,9 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 			};
 
 			// Store the model space position.
-			meshes->model_space_positions[model_space_positions_offset++] = v[0];
-			meshes->model_space_positions[model_space_positions_offset++] = v[1];
-			meshes->model_space_positions[model_space_positions_offset++] = v[2];
+			meshes->model_space_positions[positions_offset] = v[0];
+			meshes->model_space_positions[positions_offset + 1] = v[1];
+			meshes->model_space_positions[positions_offset + 2] = v[2];
 
 			// Pre-calculate the world space positions.
 			V4 world_v;
@@ -327,7 +326,7 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 	}
 
 	// Store the bounding sphere.
-	int i = meshes->mesh_count * STRIDE_SPHERE;
+	int i = meshes->meshes_count * STRIDE_SPHERE;
 	meshes->mesh_bounding_spheres[i++] = center[0];
 	meshes->mesh_bounding_spheres[i++] = center[1];
 	meshes->mesh_bounding_spheres[i++] = center[2];
@@ -344,13 +343,12 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 	meshes->uvs_count += uvs_count;
 
 	// Flag that the mesh's world space positions doesn't need to be re-calculated.
-	meshes->model_matrix_updated_flags[meshes->mesh_count] = 0;
+	meshes->model_matrix_updated_flags[meshes->meshes_count] = 0;
 
-	meshes->mesh_positions_counts[meshes->mesh_count] = positions_count;
-	meshes->model_space_positions_count += positions_count;
+	meshes->mesh_positions_counts[meshes->meshes_count] = positions_count;
 
 	// Update the number of meshes.
-	++meshes->mesh_count;
+	++meshes->meshes_count;
 
 	// Close the file.
 	if (fclose(file) != 0)
@@ -365,7 +363,7 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 void free_meshes(Meshes* meshes)
 {
 	// TODO: If i ever dynamically allocate those.
-	//free(meshes->descriptions.face_counts);
+	//free(meshes->descriptions.mesh_faces_counts);
 	//free(meshes->descriptions.vertex_counts);
 
 	/*
