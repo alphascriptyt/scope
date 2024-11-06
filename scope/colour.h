@@ -1,6 +1,8 @@
 #ifndef COLOUR_H
 #define COLOUR_H
 
+// TODO: Rename colour helpers or something?
+
 inline int float_rgb_to_int(float r, float g, float b)
 {
 	return ((int)(r * 255) << 16

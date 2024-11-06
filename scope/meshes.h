@@ -8,14 +8,15 @@
 #include <stdlib.h>
 
 // Define the size of strides for the arrays.
-#define STRIDE_FACE_POSITIONS	3
-#define STRIDE_FACE_ATTRIBUTES	27	// u, v, x, y, z, r, g, b, a - per vertex TODO: Could separate normals out.
+#define STRIDE_FACE_VERTICES	3
+#define STRIDE_FACE_ATTRIBUTES	18	// u, v, r, g, b, a - per vertex
 #define STRIDE_COLOUR	4			// RGBA so we can have colour and texture.
 #define STRIDE_POSITION 3
 #define STRIDE_NORMAL	3
 #define STRIDE_UV		2
 #define STRIDE_SPHERE	4			// Center (x,y,z), Radius	
 #define STRIDE_ENTIRE_FACE 36		// x, y, z, u, v, x, y, z, r, g, b, a - per vertex TODO: Could think about this more.
+#define STRIDE_MESH_TRANSFORM 9		// Position, Direction, Scale
 
 // TODO: Need to think if i will differentiate between textures and no textures for this. With textures we would need the extra u,v.
 
@@ -57,29 +58,34 @@ typedef struct
 
 	// Per mesh sizes.
 	int* mesh_positions_counts;		// The model matrix transform is model specific, therefore, we must store how many positions the mesh has.
+	int* mesh_normals_counts;		// The model normal matrix transform is model specific, therefore, we must store how many normals the mesh has.
 	int* mesh_faces_counts;			// Number of faces.
 	int* mesh_front_faces_counts;	// Number of faces that are visible to the camera.
 	int* mesh_clipped_faces_counts;	// Number of faces that are visible to the camera after clipping.
 
 	// Per mesh data.
-	int* model_matrix_updated_flags; // Tells the renderer that the world space positions need recalculating.
-	int* mesh_texture_ids;			 // The texture id for each mesh.
-	float* mesh_bounding_spheres;	 // The bounding sphere for each mesh in view space.
-	float* mesh_model_matrices;		 // The model matrix for each mesh. TODO: Should this be the transforms instead?
+	int* mesh_transforms_updated_flags; // Tells the renderer that the world space positions need recalculating.
+	int* mesh_texture_ids;				// The texture id for each mesh.
+	float* mesh_bounding_spheres;		// The bounding sphere for each mesh in view space.
+	float* mesh_transforms;				// Position, Direction, Scale
 
 	// Per vertex attributes.
 	float* colours;
 	float* uvs;
-	float* normals;
+	float* model_space_normals;
 
 	// Coordinate space buffers. 
 	float* model_space_positions;	// Original model positions without any transforms applied.
 	float* world_space_positions;	// Positions after applying the model matrix.
 	float* view_space_positions;	// Positions after applying the view matrix.
 
+	float* world_space_normals;
+	float* view_space_normals;
+
 	// Buffers defining the faces.
 	int* face_position_indices;		// The indices to positions that make up the faces of each mesh, used for indexed rendering.
-	float* face_attributes;			// An interleaved buffer of the per vertex data { u, v, x, y, z, r, g, b, a} for each vertex of each face.
+	int* face_normal_indices;		// The indices to normals that make up the faces of each mesh, used for indexed rendering.
+	float* face_attributes;			// An interleaved buffer of the per vertex data { u, v, r, g, b, a} for each vertex of each face.
 
 	// Buffers used for backface culling.
 	float* front_faces;				// An invertleaved buffer of {x, y, z, u, v, x, y, z, r, g, b, a} for each vertex of each front face. 
@@ -102,8 +108,5 @@ void parse_obj_counts(FILE* file, int* num_vertices, int* num_uvs, int* num_norm
 void load_mesh_from_obj(Meshes* meshes, const char* file, const V3 position, const V3 orientation, const V3 scale);
 void free_meshes(Meshes* meshes);
 
-// Helpers for resizing the meshes buffers.
-Status resize_int_buffer(int** out_buffer, const int len);
-Status resize_float_buffer(float** out_buffer, const int len);
 
 #endif

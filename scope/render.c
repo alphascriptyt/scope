@@ -225,6 +225,110 @@ void draw_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
 	draw_flat_bottom_triangle(rt, pv0, pv1, pv3, pc0, pc1, pc3);
 }
 
+float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, const float a, const float b)
+{
+	// TODO: Comments, check maths etc.
+
+	// calculate the direction of the light to the vertex
+	V3 light_dir; 
+	v3_sub_v3_out(light_pos, v, light_dir);
+
+	float light_distance = size(light_dir);
+
+	v3_mul_f(light_dir, 1.f / light_distance);
+
+	// Calculate how much the vertex is lit
+	float diffuse_factor = max(0.0f, dot(light_dir, n));
+
+	float attenuation = 1.0f / (1.0f + (a * light_distance) + (b * light_distance * light_distance));
+	float dp = diffuse_factor * attenuation;
+
+	// TODO: What is the name for this after attentuation is applied to the 
+	// diffsue factor?
+	return dp;
+}
+
+void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V3 colour)
+{
+	if (x0 > x1)
+	{
+		float temp = x1;
+		x1 = x0;
+		x0 = temp;
+
+		temp = y1;
+		y1 = y0;
+		y0 = temp;
+	}
+
+
+	// TODO: Refactor and optimise.
+
+	// Integer Based Bresenham's Algorithm: https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+
+	int dlong = abs(x1 - x0);
+	int dshort = abs(y1 - y0);
+	int slong = x0 < x1 ? 1 : -1; // x direction
+	int sshort = y0 < y1 ? 1 : -1; // y direction
+	int x = x0;
+	int y = y0;
+
+	int y_longer = 0;
+	if (dlong <= dshort) 
+	{
+		int temp = dshort;
+		dshort = dlong;
+		dlong = dshort;
+
+		temp = sshort;
+		sshort = slong;
+		slong = temp;
+
+		y_longer = 1;
+	}
+
+	int D = 2 * dshort - dlong;
+
+	int colour_int = float_rgb_to_int(colour[0], colour[1], colour[2]);
+
+	for (int i = 0; i <= dlong; ++i) 
+	{
+
+		if (y_longer) 
+		{
+			y += slong;
+		}
+		else {
+			x += slong;
+		}
+
+
+		if (x > -1 && x < rt->canvas->width - 1 && y > -1 && y < rt->canvas->height - 1) 
+		{
+			int pos = y * rt->canvas->width + x;
+			rt->canvas->pixels[pos] = colour_int;
+			rt->depth_buffer[pos] = 0;
+		}
+
+
+
+		if (D >= 0) {
+			if (y_longer) {
+				x += sshort;
+			}
+			else {
+				y += sshort;
+			}
+
+			D += 2 * (dshort - dlong);
+		}
+		else {
+			D += 2 * dshort;
+		}
+	}
+
+}
+
 void clip_and_draw_triangle(RenderTarget* rt, Meshes* meshes, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
 {
 	// Clips the given triangle against the 4 screen edges.
@@ -706,29 +810,68 @@ void model_to_world_space(Meshes* meshes)
 	// Not sure if this is a speedup or not. TODO: Time at some point.
 	const int meshes_count = meshes->meshes_count;
 	const int* mesh_positions_counts = meshes->mesh_positions_counts;
-	const float* mesh_model_matrices = meshes->mesh_model_matrices;
+	const float* mesh_transforms = meshes->mesh_transforms;
 	const float* model_space_positions = meshes->model_space_positions;
 
-	int* model_matrix_updated_flags = meshes->model_matrix_updated_flags;
+	int* mesh_transforms_updated_flags = meshes->mesh_transforms_updated_flags;
 	float* world_space_positions = meshes->world_space_positions;
 	float* mesh_bounding_spheres = meshes->mesh_bounding_spheres;
 
+	// TODO: Convert model space normals to world space! 
+	//		 Actually, also store them in view space. Maybe a separate loop for cache?
+	// TODO: NORMAL MATRIX. 
+	// TODO: https://paroj.github.io/gltut/Illumination/Tut09%20Normal%20Transformation.html
+
 	int position_offset = 0;
-	int index_world_space_out = 0;
+	int normal_offset = 0;
+	int index_world_space_position_out = 0;
+	int index_world_space_normal_out = 0;
 
 	for (int i = 0; i < meshes_count; ++i)
 	{
 		// Only update if the mesh's transform has changed.
-		if (model_matrix_updated_flags[i] == 0)
+		if (mesh_transforms_updated_flags[i] == 0)
 			continue;
 
-		// TODO: Do we want to make the model matrix here instead?
-		int index_model_matrix = i * 16;
-		M4 model_matrix = { 0 };
-		for (int j = 0; j < 16; ++j)
-		{
-			model_matrix[j] = mesh_model_matrices[index_model_matrix + j];
-		}
+		// Unpack the mesh's transform and make a model matrix out of it.
+		// Make a normal matrix as well.
+		int index_mesh_transform = i * STRIDE_MESH_TRANSFORM;
+
+		const V3 position = {
+			mesh_transforms[index_mesh_transform],
+			mesh_transforms[++index_mesh_transform],
+			mesh_transforms[++index_mesh_transform]
+		};
+
+		const V3 direction = {
+			mesh_transforms[++index_mesh_transform],
+			mesh_transforms[++index_mesh_transform],
+			mesh_transforms[++index_mesh_transform]
+		};
+
+		const V3 scale = {
+			mesh_transforms[++index_mesh_transform],
+			mesh_transforms[++index_mesh_transform],
+			mesh_transforms[++index_mesh_transform]
+		};
+
+		M4 model_matrix;
+		make_model_m4(position, direction, scale, model_matrix);
+
+
+		// Define the model's normal matrix.
+		// Essentially no translation, keep the rotation, and inverse scale.
+		M4 model_normal_matrix;
+		M4 rotation_m4;
+		make_rotation_m4(direction[0], direction[1], direction[2], rotation_m4);
+
+		M4 scale_m4;
+		identity(scale_m4);
+		scale_m4[0] = 1.f / scale[0];
+		scale_m4[5] = 1.f / scale[1];
+		scale_m4[10] = 1.f / scale[2];
+
+		m4_mul_m4(rotation_m4, scale_m4, model_normal_matrix);
 
 		V3 center = { 0 };
 
@@ -751,9 +894,9 @@ void model_to_world_space(Meshes* meshes)
 			m4_mul_v4(model_matrix, model_space_position, world_space_position);
 
 			// inline write_v4()?
-			world_space_positions[index_world_space_out++] = world_space_position[0];
-			world_space_positions[index_world_space_out++] = world_space_position[1];
-			world_space_positions[index_world_space_out++] = world_space_position[2];
+			world_space_positions[index_world_space_position_out++] = world_space_position[0];
+			world_space_positions[index_world_space_position_out++] = world_space_position[1];
+			world_space_positions[index_world_space_position_out++] = world_space_position[2];
 
 			v3_add_v3(center, world_space_position);
 		}
@@ -785,22 +928,82 @@ void model_to_world_space(Meshes* meshes)
 		mesh_bounding_spheres[++index_bs] = center[2];
 		mesh_bounding_spheres[++index_bs] = sqrtf(radius_squared);
 
+		// Calculate the world space normals.
+		const int* mesh_normals_counts = meshes->mesh_normals_counts;
+		const float* model_space_normals = meshes->model_space_normals;
+
+		float* world_space_normals = meshes->world_space_normals;
+
+		for (int j = 0; j < mesh_normals_counts[i]; ++j)
+		{
+			int index_model_space_normal = (j + normal_offset) * STRIDE_NORMAL;
+
+			V4 model_space_normal = {
+				model_space_normals[index_model_space_normal],
+				model_space_normals[index_model_space_normal + 1],
+				model_space_normals[index_model_space_normal + 2],
+				0 // We don't want any translation, although the normal matrix has none anyways.
+			};
+
+			V4 world_space_dir;
+			m4_mul_v4(model_normal_matrix, model_space_normal, world_space_dir);
+
+			V3 world_space_normal = {
+				world_space_dir[0],
+				world_space_dir[1],
+				world_space_dir[2] 
+			};
+			normalise(world_space_normal);
+
+			// inline write_v4()?
+			world_space_normals[index_world_space_normal_out++] = world_space_normal[0];
+			world_space_normals[index_world_space_normal_out++] = world_space_normal[1];
+			world_space_normals[index_world_space_normal_out++] = world_space_normal[2];
+		}
+
 		// Reset the flag to show we've updated the world space positions
 		// with respect to the most recent transform.
-		model_matrix_updated_flags[i] = 0;
+		mesh_transforms_updated_flags[i] = 0;
 
 		// Offset to the next mesh's positions.
 		position_offset += mesh_positions_counts[i];
+		normal_offset += mesh_normals_counts[i];
 	}
 }
 
-void world_to_view_space(Meshes* meshes, const M4 view_matrix)
+void world_to_view_space(Meshes* meshes, PointLights* point_lights, const M4 view_matrix)
 {
+	// Transform the world space mesh positions.
 	const float* world_space_positions = meshes->world_space_positions;
 	float* view_space_positions = meshes->view_space_positions;
 
 	// For each world space position, convert it to view space.
-	const int num_position_components = meshes->positions_count * STRIDE_POSITION;
+	int num_position_components = meshes->positions_count * STRIDE_POSITION;
+	for (int i = 0; i < num_position_components; i += STRIDE_POSITION)
+	{
+		V4 v = {
+			world_space_positions[i],
+			world_space_positions[i + 1],
+			world_space_positions[i + 2],
+			1
+		};
+
+		V4 v_view_space;
+		m4_mul_v4(view_matrix, v, v_view_space);
+
+		// There is no need to save the w component as it is always 1 until 
+		// after projection.
+		view_space_positions[i] = v_view_space[0];
+		view_space_positions[i + 1] = v_view_space[1];
+		view_space_positions[i + 2] = v_view_space[2];
+	}
+	
+	// Transform the world space light positions.
+	world_space_positions = point_lights->world_space_positions;
+	view_space_positions = point_lights->view_space_positions;
+
+	// For each world space position, convert it to view space.
+	num_position_components = point_lights->count * STRIDE_POSITION;
 	for (int i = 0; i < num_position_components; i += STRIDE_POSITION)
 	{
 		V4 v = {
@@ -821,22 +1024,26 @@ void world_to_view_space(Meshes* meshes, const M4 view_matrix)
 	}
 }
 
-void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, const M4 view_matrix)
+void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, PointLights* point_lights, const M4 view_matrix)
 {
-	
-	// Transform model space positions to world space.
-	model_to_world_space(meshes);
+	// TODO: Can these transformations ever be combined so we make a model view matrix, then we are doing less matrix multiplications overall?
+	//		 Not sure because we need the world coordinates anyways for physics.
 
+	// TODO: Calculate normal matrix by inverting scale and applying rotation. No translation.
+
+	// TODO: Need to calculate view matrix and model matrix by passing the args in here, then I can just straight take the 
 	// Transform world space positions to view space.
-	world_to_view_space(meshes, view_matrix);
-	
+	model_to_world_space(meshes);
+	 
+	// Transforms lights as well as meshes.
+	world_to_view_space(meshes, point_lights, view_matrix);
 
 	const int* face_position_indices = meshes->face_position_indices;
+	const int* face_normal_indices = meshes->face_normal_indices;
 	const float* face_attributes = meshes->face_attributes;
 
-	float* world_space_positions = meshes->world_space_positions;
-	
 	float* view_space_positions = meshes->view_space_positions;
+	float* view_space_normals = meshes->view_space_normals;
 
 	// Perform backface culling.
 	int face_offset = 0;
@@ -852,12 +1059,12 @@ void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, co
 
 		for (int j = face_offset; j < mesh_faces_end; ++j)
 		{
-			const int face_index = j * STRIDE_FACE_POSITIONS;
+			const int face_index = j * STRIDE_FACE_VERTICES;
 
 			// Get the indices to the first component of each vertex position.
-			int index_v0 = face_position_indices[face_index];
-			int index_v1 = face_position_indices[face_index + 1];
-			int index_v2 = face_position_indices[face_index + 2];
+			const int index_v0 = face_position_indices[face_index];
+			const int index_v1 = face_position_indices[face_index + 1];
+			const int index_v2 = face_position_indices[face_index + 2];
 
 			int index_parts_v0 = index_v0 * STRIDE_POSITION;
 			int index_parts_v1 = index_v1 * STRIDE_POSITION;
@@ -887,19 +1094,29 @@ void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, co
 			{
 				int index_face_attributes = j * STRIDE_FACE_ATTRIBUTES;
 
+				// Get the indices to the first component of each vertex normal.
+				const int index_n0 = face_normal_indices[face_index];
+				const int index_n1 = face_normal_indices[face_index + 1];
+				const int index_n2 = face_normal_indices[face_index + 2];
+
+				int index_parts_n0 = index_n0 * STRIDE_NORMAL;
+				int index_parts_n1 = index_n1 * STRIDE_NORMAL;
+				int index_parts_n2 = index_n2 * STRIDE_NORMAL;
+
 				// Copy all the face vertex data.
 				// We copy the attributes over here as well because when clipping we need the data
 				// all together for lerping.
-
 				front_faces[front_face_offset++] = v0[0];
 				front_faces[front_face_offset++] = v0[1];
 				front_faces[front_face_offset++] = v0[2];
 
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
+
+				front_faces[front_face_offset++] = view_space_normals[index_parts_n0];
+				front_faces[front_face_offset++] = view_space_normals[index_parts_n0 + 1];
+				front_faces[front_face_offset++] = view_space_normals[index_parts_n0 + 2];
+
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
@@ -912,9 +1129,11 @@ void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, co
 
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
+
+				front_faces[front_face_offset++] = view_space_normals[index_parts_n1];
+				front_faces[front_face_offset++] = view_space_normals[index_parts_n1 + 1];
+				front_faces[front_face_offset++] = view_space_normals[index_parts_n1 + 2];
+
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
@@ -926,9 +1145,11 @@ void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, co
 
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
+
+				front_faces[front_face_offset++] = view_space_normals[index_parts_n2];
+				front_faces[front_face_offset++] = view_space_normals[index_parts_n2 + 1];
+				front_faces[front_face_offset++] = view_space_normals[index_parts_n2 + 2];
+
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
 				front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
@@ -945,6 +1166,17 @@ void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, co
 		// Update the offsets for the next mesh.
 		face_offset += meshes->mesh_faces_counts[i];
 	}
+
+	/*
+	TODO: 
+	Going forward I am going to do broad phase frustum culling,
+	then if the mesh passes, we must perform the lighting, this
+	way we won't get inconsistent lighting with clipped vertices
+	being closer to the light.
+	After lighting is performed, we do the actual clipping,
+	this way the colours are lerped so it stays consistent.
+	
+	*/
 
 	// Frustum culling
 	float* clipped_faces = meshes->clipped_faces;
@@ -1011,7 +1243,146 @@ void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, co
 		{
 			continue;
 		}
-		else if (1 == mesh_visible && 0 == num_planes_to_clip_against)
+
+		// At this point we know the mesh is partially visible at least.
+		// Apply lighting here so that the if a vertex is clipped closer
+		// to the light, the lighing doesn't change.
+
+		// TODO: COMMENTS.
+
+		// For each face.
+		for (int j = face_offset; j < face_offset + meshes->mesh_front_faces_counts[i]; ++j)
+		{
+			int index_face = j * STRIDE_ENTIRE_FACE;
+
+			// For each vertex apply lighting directly to the colour.
+
+			// 12 attributes per vertex. TODO: STRIDE for this?
+			for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += 12)
+			{
+				
+				const V3 pos = {
+					front_faces[k],
+					front_faces[k + 1],
+					front_faces[k + 2],
+				};
+
+				const V3 normal = {
+					front_faces[k + 5],
+					front_faces[k + 6],
+					front_faces[k + 7],
+				};
+
+				const V4 start = {
+					front_faces[k],
+					front_faces[k + 1],
+					front_faces[k + 2],
+					1
+				};
+
+				V3 end = {
+					front_faces[k],
+					front_faces[k + 1],
+					front_faces[k + 2],
+				};
+
+				
+				V3 dir;
+				v3_mul_f_out(normal, 5.f, dir);
+
+				v3_add_v3(end, dir);
+
+				V4 end4 = {
+					end[0],
+					end[1],
+					end[2],
+					1
+				};
+
+				V3 s, e;
+
+
+
+				project(rt->canvas, settings->projection_matrix, start, s);
+				project(rt->canvas, settings->projection_matrix, end, e);
+
+				V3 col = { 1,0,1 };
+				draw_line(rt, s[0], s[1], e[0], e[1], col);
+
+				// TODO: Normals must also be rotated. This should be done in 
+				// the view space step. I believe there was an actual matrix
+				// for this.
+				// TODO: NORMALS NEED TO HAVE MODEL MATRIX APPLIED, AND THEN
+				// VIEW MATRIX AS WELL. WILL NEED TO BE DONE BOTH STEPS.
+				
+
+
+				// Only need RGB, only need A for combining with texture???
+
+				// This is how much light it absorbs?
+				V3 colour = {
+					front_faces[k + 8],
+					front_faces[k + 9],
+					front_faces[k + 10],
+				};
+
+				// TODO: THIS IS ALL TEMPORARY FOR ONE LIGHT NO SPECIAL MATHS.
+
+				// For each light
+				for (int i_light = 0; i_light < point_lights->count; ++i_light)
+				{
+					int i_light_pos = i_light * 3;
+					int i_light_attr = i_light * STRIDE_POINT_LIGHT_ATTRIBUTES;
+
+					const V3 light_pos =
+					{
+						point_lights->view_space_positions[i_light_pos],
+						point_lights->view_space_positions[i_light_pos + 1],
+						point_lights->view_space_positions[i_light_pos + 2]
+					};
+
+					const V3 light_colour =
+					{
+						point_lights->attributes[i_light_attr],
+						point_lights->attributes[i_light_attr + 1],
+						point_lights->attributes[i_light_attr + 2]
+					};
+
+					float strength = point_lights->attributes[3];
+
+					// TODO: Could cache this? Then the user can also set
+					//		 the attenuation?
+					float a = 0.1f / strength;
+					float b = 0.01f / strength;
+
+					float df = calculate_diffuse_factor(pos, normal, light_pos, a, b);
+
+					// TODO: ALL TEMPPPP
+					if (df > 1) df = 1;
+					if (df < 0) df = 0;
+
+					front_faces[k + 8] = df;
+					front_faces[k + 9] = df;
+					front_faces[k + 10] = df;
+
+
+				}
+
+
+
+			}
+
+			
+		}
+
+
+
+
+
+
+
+
+		if (1 == mesh_visible && 0 == num_planes_to_clip_against)
 		{
 			// Just copy the vertices over.
 			for (int j = face_offset; j < face_offset + meshes->mesh_front_faces_counts[i]; ++j)

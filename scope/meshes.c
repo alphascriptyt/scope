@@ -9,6 +9,7 @@
 
 #include "utils/logger.h"
 #include "utils/str_utils.h"
+#include "utils/memory_utils.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -84,11 +85,15 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 
 	// Resize the meshes buffers for storing the new data.
 	resize_float_buffer(&meshes->colours, (meshes->colours_count + positions_count) * STRIDE_COLOUR);
-	resize_float_buffer(&meshes->normals, (meshes->normals_count + normals_count) * STRIDE_NORMAL);
 	resize_float_buffer(&meshes->uvs, (meshes->uvs_count + uvs_count) * STRIDE_UV);
+
+	resize_float_buffer(&meshes->model_space_normals, (meshes->normals_count + normals_count) * STRIDE_NORMAL);
 
 	resize_float_buffer(&meshes->world_space_positions, (meshes->positions_count + positions_count) * STRIDE_POSITION);
 	resize_float_buffer(&meshes->view_space_positions, (meshes->positions_count + positions_count) * STRIDE_POSITION);
+
+	resize_float_buffer(&meshes->world_space_normals, (meshes->normals_count + normals_count) * STRIDE_NORMAL);
+	resize_float_buffer(&meshes->view_space_normals, (meshes->normals_count + normals_count) * STRIDE_NORMAL);
 
 	// Calculate the new number of faces in the buffer.
 	int new_face_len = face_offset + face_count;
@@ -108,8 +113,9 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 		resize_float_buffer(&meshes->projected_clipped_faces_temp, face_count * STRIDE_PROJECTED_FACE * (int)pow(2, 4));
 	}
 
-	// A face is defined in two separate buffers, position indices and 'attribute' indices.
-	resize_int_buffer(&meshes->face_position_indices, new_face_len * STRIDE_FACE_POSITIONS);
+	// A face is defined in three separate buffers, position indices, normal indices and attributes.
+	resize_int_buffer(&meshes->face_position_indices, new_face_len * STRIDE_FACE_VERTICES);
+	resize_int_buffer(&meshes->face_normal_indices, new_face_len * STRIDE_FACE_VERTICES);
 
 	int new_meshes_count = meshes->meshes_count + 1;
 
@@ -117,7 +123,7 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 	resize_int_buffer(&meshes->mesh_front_faces_counts, new_meshes_count);
 	resize_int_buffer(&meshes->mesh_clipped_faces_counts, new_meshes_count);
 	resize_int_buffer(&meshes->mesh_texture_ids, new_meshes_count);
-	resize_int_buffer(&meshes->model_matrix_updated_flags, new_meshes_count);
+	resize_int_buffer(&meshes->mesh_transforms_updated_flags, new_meshes_count);
 	resize_float_buffer(&meshes->mesh_bounding_spheres, new_meshes_count * STRIDE_SPHERE);
 
 	// Set the face count for the new mesh.
@@ -131,15 +137,21 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 
 	resize_float_buffer(&meshes->model_space_positions, (meshes->positions_count + positions_count) * STRIDE_POSITION);
 
-	resize_float_buffer(&meshes->mesh_model_matrices, (meshes->meshes_count + 1) * 16);
+	resize_float_buffer(&meshes->mesh_transforms, (meshes->meshes_count + 1) * STRIDE_MESH_TRANSFORM);
 
-	int index = meshes->meshes_count * 16;
-	for (int i = 0; i < 16; ++i)
-	{
-		meshes->mesh_model_matrices[index++] = model_matrix[i];
-	}
+	int index = meshes->meshes_count * STRIDE_MESH_TRANSFORM;
+	meshes->mesh_transforms[index] = position[0];
+	meshes->mesh_transforms[++index] = position[1];
+	meshes->mesh_transforms[++index] = position[2];
+	meshes->mesh_transforms[++index] = orientation[0];
+	meshes->mesh_transforms[++index] = orientation[1];
+	meshes->mesh_transforms[++index] = orientation[2];
+	meshes->mesh_transforms[++index] = scale[0];
+	meshes->mesh_transforms[++index] = scale[1];
+	meshes->mesh_transforms[++index] = scale[2];
 
 	resize_int_buffer(&meshes->mesh_positions_counts, (meshes->meshes_count + 1));
+	resize_int_buffer(&meshes->mesh_normals_counts, (meshes->meshes_count + 1));
 
 	// Move to the start of the file again so we can read it.
 	rewind(file);
@@ -149,7 +161,8 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 	int normals_offset = meshes->normals_count * STRIDE_NORMAL;
 	int uvs_offset = meshes->uvs_count * STRIDE_UV;
 	int colours_index = meshes->colours_count * STRIDE_COLOUR;
-	int faces_positions_offset = face_offset * STRIDE_FACE_POSITIONS;
+	int faces_positions_offset = face_offset * STRIDE_FACE_VERTICES;
+	int faces_normals_offset = face_offset * STRIDE_FACE_VERTICES;
 	int faces_attributes_offset = face_offset * STRIDE_FACE_ATTRIBUTES;
 	
 	// Fill the buffers from the file.
@@ -193,9 +206,9 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 
 		else if (strcmp(tokens[0], "vn") == 0)
 		{
-			meshes->normals[normals_offset++] = (float)atof(tokens[1]);
-			meshes->normals[normals_offset++] = (float)atof(tokens[2]);
-			meshes->normals[normals_offset++] = (float)atof(tokens[3]);
+			meshes->model_space_normals[normals_offset++] = (float)atof(tokens[1]);
+			meshes->model_space_normals[normals_offset++] = (float)atof(tokens[2]);
+			meshes->model_space_normals[normals_offset++] = (float)atof(tokens[3]);
 		}
 
 		else if (strcmp(tokens[0], "vt") == 0)
@@ -229,18 +242,12 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 			// We split the position and attribute indices up as they aren't always used together.
 			// TODO: Should the attribute indices be split up.
 			meshes->face_position_indices[faces_positions_offset++] = meshes->positions_count + face_indices[0];
-
-			//meshes->face_attribute_indices[faces_positions_offset++] = meshes->uvs_count + face_indices[1];
-			//meshes->face_attribute_indices[faces_positions_offset++] = meshes->normals_count + face_indices[2];
-			//meshes->face_attribute_indices[faces_positions_offset++] = meshes->colours_count + colours_index;
-
 			meshes->face_position_indices[faces_positions_offset++] = meshes->positions_count + face_indices[3];
-
-			//meshes->face_attribute_indices[faces_positions_offset++] = meshes->uvs_count + face_indices[4];
-			//meshes->face_attribute_indices[faces_positions_offset++] = meshes->normals_count + face_indices[5];
-			//meshes->face_attribute_indices[faces_positions_offset++] = meshes->colours_count + colours_index;
-
 			meshes->face_position_indices[faces_positions_offset++] = meshes->positions_count + face_indices[6];
+
+			meshes->face_normal_indices[faces_normals_offset++] = meshes->normals_count + face_indices[2];
+			meshes->face_normal_indices[faces_normals_offset++] = meshes->normals_count + face_indices[5];
+			meshes->face_normal_indices[faces_normals_offset++] = meshes->normals_count + face_indices[8];
 
 			//meshes->face_attribute_indices[faces_positions_offset++] = meshes->uvs_count + face_indices[7];
 			//meshes->face_attribute_indices[faces_positions_offset++] = meshes->normals_count + face_indices[8];
@@ -251,9 +258,6 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 			// Vertex 1
 			meshes->face_attributes[faces_attributes_offset++] = meshes->uvs[meshes->uvs_count + face_indices[1]];				// U
 			meshes->face_attributes[faces_attributes_offset++] = meshes->uvs[meshes->uvs_count + face_indices[1] + 1];			// V
-			meshes->face_attributes[faces_attributes_offset++] = meshes->normals[meshes->normals_count + face_indices[2]];		// X
-			meshes->face_attributes[faces_attributes_offset++] = meshes->normals[meshes->normals_count + face_indices[2] + 1]; // Y
-			meshes->face_attributes[faces_attributes_offset++] = meshes->normals[meshes->normals_count + face_indices[2] + 2]; // Z
 
 			// TODO: TEMP: Hardcode colour
 			meshes->face_attributes[faces_attributes_offset++] = 1; // R
@@ -264,27 +268,21 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 			// Vertex 2
 			meshes->face_attributes[faces_attributes_offset++] = meshes->uvs[meshes->uvs_count + face_indices[4]];				// U
 			meshes->face_attributes[faces_attributes_offset++] = meshes->uvs[meshes->uvs_count + face_indices[4] + 1];			// V
-			meshes->face_attributes[faces_attributes_offset++] = meshes->normals[meshes->normals_count + face_indices[5]];		// X
-			meshes->face_attributes[faces_attributes_offset++] = meshes->normals[meshes->normals_count + face_indices[5] + 1]; // Y
-			meshes->face_attributes[faces_attributes_offset++] = meshes->normals[meshes->normals_count + face_indices[5] + 2]; // Z
-
+			
 			// TODO: TEMP: Hardcode colour
-			meshes->face_attributes[faces_attributes_offset++] = 0; // R
-			meshes->face_attributes[faces_attributes_offset++] = 1; // G
+			meshes->face_attributes[faces_attributes_offset++] = 1; // R
+			meshes->face_attributes[faces_attributes_offset++] = 0; // G
 			meshes->face_attributes[faces_attributes_offset++] = 0; // B
 			meshes->face_attributes[faces_attributes_offset++] = 1; // A
 
 			// Vertex 2
 			meshes->face_attributes[faces_attributes_offset++] = meshes->uvs[meshes->uvs_count + face_indices[7]];				// U
 			meshes->face_attributes[faces_attributes_offset++] = meshes->uvs[meshes->uvs_count + face_indices[7] + 1];			// V
-			meshes->face_attributes[faces_attributes_offset++] = meshes->normals[meshes->normals_count + face_indices[8]];		// X
-			meshes->face_attributes[faces_attributes_offset++] = meshes->normals[meshes->normals_count + face_indices[8] + 1]; // Y
-			meshes->face_attributes[faces_attributes_offset++] = meshes->normals[meshes->normals_count + face_indices[8] + 2]; // Z
 
 			// TODO: TEMP: Hardcode colour
-			meshes->face_attributes[faces_attributes_offset++] = 0; // R
+			meshes->face_attributes[faces_attributes_offset++] = 1; // R
 			meshes->face_attributes[faces_attributes_offset++] = 0; // G
-			meshes->face_attributes[faces_attributes_offset++] = 1; // B
+			meshes->face_attributes[faces_attributes_offset++] = 0; // B
 			meshes->face_attributes[faces_attributes_offset++] = 1; // A
 		}
 	}
@@ -294,7 +292,7 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 
 	// TODO: Would be cool to have something to render the bounding spherre......
 	int n = 0;
-	for (int i = face_offset * STRIDE_FACE_POSITIONS; i < new_face_len * STRIDE_FACE_POSITIONS; ++i)
+	for (int i = face_offset * STRIDE_FACE_VERTICES; i < new_face_len * STRIDE_FACE_VERTICES; ++i)
 	{
 		int index = meshes->face_position_indices[i] * STRIDE_POSITION;
 		V3 v = {
@@ -311,7 +309,7 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 
 	// Find farthest vertex from the center to calculate the radius.
 	float radius_squared = 0;
-	for (int i = face_offset * STRIDE_FACE_POSITIONS; i < new_face_len * STRIDE_FACE_POSITIONS; ++i)
+	for (int i = face_offset * STRIDE_FACE_VERTICES; i < new_face_len * STRIDE_FACE_VERTICES; ++i)
 	{
 		int index = meshes->face_position_indices[i] * STRIDE_POSITION;
 		V3 v = {
@@ -343,9 +341,12 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 	meshes->uvs_count += uvs_count;
 
 	// Flag that the mesh's world space positions doesn't need to be re-calculated.
-	meshes->model_matrix_updated_flags[meshes->meshes_count] = 0;
+	// TODO: Is there any need to do this here???
+	// NOTE: CURRENTLY SET TO RECALC WHILST UPDATING CODE
+	meshes->mesh_transforms_updated_flags[meshes->meshes_count] = 1;
 
 	meshes->mesh_positions_counts[meshes->meshes_count] = positions_count;
+	meshes->mesh_normals_counts[meshes->meshes_count] = normals_count;
 
 	// Update the number of meshes.
 	++meshes->meshes_count;
@@ -357,8 +358,6 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 		log_error("Failed to close file after loading .obj file.");
 	}
 }
-
-
 
 void free_meshes(Meshes* meshes)
 {
@@ -379,32 +378,6 @@ void free_meshes(Meshes* meshes)
 	free(meshes->normals);
 	free(meshes->uvs);*/
 
-}
-
-Status resize_int_buffer(int** out_buffer, const int len)
-{
-	int* temp_ptr = realloc(*out_buffer, len * sizeof(int));
-	if (temp_ptr == NULL)
-	{
-		log_error("Failed to resize_int_buffer.");
-		return NullPtrError;
-	}
-
-	*out_buffer = temp_ptr;
-	return Success;
-}
-
-Status resize_float_buffer(float** out_buffer, const int len)
-{
-	float* temp_ptr = realloc(*out_buffer, len * sizeof(float));
-	if (temp_ptr == NULL)
-	{
-		log_error("Failed to resize_float_buffer.");
-		return NullPtrError;
-	}
-
-	*out_buffer = temp_ptr;
-	return Success;
 }
 
 

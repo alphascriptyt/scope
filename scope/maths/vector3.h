@@ -76,6 +76,13 @@ inline void v3_add_v3(V3 v0, const V3 v1)
 	v0[2] += v1[2];
 }
 
+inline void v3_add_v3_out(const V3 v0, const V3 v1, V3 out)
+{
+	out[0] = v0[0] + v1[0];
+	out[1] = v0[1] + v1[1];
+	out[2] = v0[2] + v1[2];
+}
+
 inline void v3_sub_f(V3 v, const float f)
 {
 	v[0] -= f;

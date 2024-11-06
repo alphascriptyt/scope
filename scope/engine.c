@@ -2,6 +2,7 @@
 
 #include "canvas.h"
 #include "meshes.h"
+#include "lights.h"
 #include "render.h"
 #include "camera.h"
 #include "texture.h"
@@ -168,6 +169,13 @@ void start_engine(Engine* engine)
         return; // TODO: Status.
     }
 
+    engine->point_lights = calloc(1, sizeof(PointLights));
+    if (0 == engine->point_lights)
+    {
+        log_error("Failed to calloc for point_lights.");
+        return; // TODO: Status.
+    }
+
     log_info("Engine started!");
 
     V3 pos = { 0, 0, -3 };
@@ -182,8 +190,17 @@ void start_engine(Engine* engine)
     V3 scale = { 1, 1, 1 };
     V3 scale1 = { 4, 4, 4 };
     
-    load_mesh_from_obj(engine->meshes, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
+    //load_mesh_from_obj(engine->meshes, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
     load_mesh_from_obj(engine->meshes, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj", pos1, eulers, scale1);
+
+
+    V3 pos2 = { 0, 5, 0 };
+    V3 red = { 1,0,0 };
+    create_point_light(engine->point_lights, pos2, red, 5);
+
+
+
+
 
     char fps_str[32] = "fps";
     engine->ui_text[0] = create_text(fps_str, 10, 10, 0x00FF0000, 3);
@@ -263,12 +280,15 @@ void start_engine(Engine* engine)
         M4 model_matrix;
         make_model_m4(pos, eulers, scale, model_matrix);
 
-        for (int i = 0; i < 16; ++i)
-        {
-            engine->meshes->mesh_model_matrices[i] = model_matrix[i];
-        }
+        engine->meshes->mesh_transforms[3] = eulers[0];
+        engine->meshes->mesh_transforms[4] = eulers[1];
+        engine->meshes->mesh_transforms[5] = eulers[2];
+        engine->meshes->mesh_transforms[6] = scale[0];
+        engine->meshes->mesh_transforms[7] = scale[1];
+        engine->meshes->mesh_transforms[8] = scale[2];
 
-        engine->meshes->model_matrix_updated_flags[0] = 1;
+
+        engine->meshes->mesh_transforms_updated_flags[0] = 1;
         
         // Clear the canvas.
         //fill_canvas(engine->canvas, 0x22222222);
@@ -289,7 +309,7 @@ void start_engine(Engine* engine)
        
 
         render(engine->render_target, engine->render_settings, 
-            engine->meshes, view_matrix);
+            engine->meshes, engine->point_lights, view_matrix);
 
         // Draw ui elements.
         draw_ui(engine);
@@ -612,7 +632,7 @@ void on_resize(Engine* engine)
     resize_render_target(engine->render_target, (int)(width / engine->upscaling_factor), (int)(height / engine->upscaling_factor));
 
     // Update the projection matrix.
-    update_projection_m4(&engine->render_settings, engine->render_target->canvas);
+    update_projection_m4(engine->render_settings, engine->render_target->canvas);
 
     // Update the bitmapinfo.
     engine->canvas_bitmap.bmiHeader.biWidth = engine->render_target->canvas->width;
