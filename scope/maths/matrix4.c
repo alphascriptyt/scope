@@ -178,8 +178,32 @@ void transpose_m4(const M4 in, M4 out)
 	out[15] = in[15];
 }
 
-void invert_m3(const M4 in, M4 out)
+void m4_copy_m3(const M4 in, M4 out)
 {
+	// TODO: Rename better? Like specific it takes the rotation ??? 
+	// or something about it overwritting the other values
+	// Used for copying the top left 3x3 portion of the m4.
+
+	
+	out[0] = in[0];
+	out[1] = in[1];
+	out[2] = in[2];
+	out[3] = 0;
+
+	out[4] = in[4];
+	out[5] = in[5];
+	out[6] = in[6];
+	out[7] = 0;
+
+	out[8] = in[8];
+	out[9] = in[9];
+	out[10] = in[10];
+	out[11] = 0;
+
+	out[12] = in[12];
+	out[13] = in[13];
+	out[14] = in[14];
+	out[15] = 1; // TODO: Not sure about this
 }
 
 char* m4_to_str(const M4 m)

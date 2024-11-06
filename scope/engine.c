@@ -288,7 +288,7 @@ void start_engine(Engine* engine)
         engine->meshes->mesh_transforms[8] = scale[2];
 
 
-        engine->meshes->mesh_transforms_updated_flags[0] = 1;
+        //engine->meshes->mesh_transforms_updated_flags[0] = 1;
         
         // Clear the canvas.
         //fill_canvas(engine->canvas, 0x22222222);

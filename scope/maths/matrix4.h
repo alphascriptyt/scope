@@ -26,6 +26,8 @@ void make_model_m4(const V3 position, const V3 orientation, const V3 scale, M4 o
 
 void transpose_m4(const M4 in, M4 out);
 
+void m4_copy_m3(const M4 in, M4 out);
+
 char* m4_to_str(const M4 m);
 
 #endif

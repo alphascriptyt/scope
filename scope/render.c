@@ -997,7 +997,7 @@ void world_to_view_space(Meshes* meshes, PointLights* point_lights, const M4 vie
 		view_space_positions[i + 1] = v_view_space[1];
 		view_space_positions[i + 2] = v_view_space[2];
 	}
-	
+
 	// Transform the world space light positions.
 	world_space_positions = point_lights->world_space_positions;
 	view_space_positions = point_lights->view_space_positions;
@@ -1021,6 +1021,48 @@ void world_to_view_space(Meshes* meshes, PointLights* point_lights, const M4 vie
 		view_space_positions[i] = v_view_space[0];
 		view_space_positions[i + 1] = v_view_space[1];
 		view_space_positions[i + 2] = v_view_space[2];
+	}
+
+
+	// For each world space normal, convert it to view space.
+	int num_normal_components = meshes->normals_count * STRIDE_NORMAL;
+	const float* world_space_normals = meshes->world_space_normals;
+	float* view_space_normals = meshes->view_space_normals;
+
+	// View matrix has no scale, so just get the top left 3x3 containing,
+	// the rotation.
+	M4 view_normal_matrix;
+	m4_copy_m3(view_matrix, view_normal_matrix);
+
+	//printf("vm\n%s\n\n\n", m4_to_str(view_matrix));
+	//printf("vnm\n%s", m4_to_str(view_normal_matrix));
+
+	for (int i = 0; i < num_normal_components; i += STRIDE_NORMAL)
+	{
+		V4 dir = {
+			world_space_normals[i],
+			world_space_normals[i + 1],
+			world_space_normals[i + 2],
+			0
+		};
+
+		V4 dir_view_space;
+		m4_mul_v4(view_normal_matrix, dir, dir_view_space);
+
+		V3 n_view_space = {
+			dir_view_space[0],
+			dir_view_space[1],
+			dir_view_space[2]
+		};
+
+		// TODO: Test, can we pass a v4 as a v3 to ignore w ?
+		normalise(n_view_space);
+
+		// There is no need to save the w component as it is always 1 until 
+		// after projection.
+		view_space_normals[i]	  = n_view_space[0];
+		view_space_normals[i + 1] = n_view_space[1];
+		view_space_normals[i + 2] = n_view_space[2];
 	}
 }
 
@@ -1288,9 +1330,9 @@ void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, Po
 
 				
 				V3 dir;
-				v3_mul_f_out(normal, 5.f, dir);
-
+				v3_mul_f_out(normal, 3.f, dir);
 				v3_add_v3(end, dir);
+
 
 				V4 end4 = {
 					end[0],
@@ -1307,6 +1349,8 @@ void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, Po
 				project(rt->canvas, settings->projection_matrix, end, e);
 
 				V3 col = { 1,0,1 };
+
+				// TODO: THIs is awful haha
 				draw_line(rt, s[0], s[1], e[0], e[1], col);
 
 				// TODO: Normals must also be rotated. This should be done in 
@@ -1315,8 +1359,6 @@ void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, Po
 				// TODO: NORMALS NEED TO HAVE MODEL MATRIX APPLIED, AND THEN
 				// VIEW MATRIX AS WELL. WILL NEED TO BE DONE BOTH STEPS.
 				
-
-
 				// Only need RGB, only need A for combining with texture???
 
 				// This is how much light it absorbs?

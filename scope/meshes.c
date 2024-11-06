@@ -261,8 +261,8 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 
 			// TODO: TEMP: Hardcode colour
 			meshes->face_attributes[faces_attributes_offset++] = 1; // R
-			meshes->face_attributes[faces_attributes_offset++] = 0; // G
-			meshes->face_attributes[faces_attributes_offset++] = 0; // B
+			meshes->face_attributes[faces_attributes_offset++] = 1; // G
+			meshes->face_attributes[faces_attributes_offset++] = 1; // B
 			meshes->face_attributes[faces_attributes_offset++] = 1; // A
 			
 			// Vertex 2
@@ -271,8 +271,8 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 			
 			// TODO: TEMP: Hardcode colour
 			meshes->face_attributes[faces_attributes_offset++] = 1; // R
-			meshes->face_attributes[faces_attributes_offset++] = 0; // G
-			meshes->face_attributes[faces_attributes_offset++] = 0; // B
+			meshes->face_attributes[faces_attributes_offset++] = 1; // G
+			meshes->face_attributes[faces_attributes_offset++] = 1; // B
 			meshes->face_attributes[faces_attributes_offset++] = 1; // A
 
 			// Vertex 2
@@ -281,8 +281,8 @@ void load_mesh_from_obj(Meshes* meshes, const char* filename, const V3 position,
 
 			// TODO: TEMP: Hardcode colour
 			meshes->face_attributes[faces_attributes_offset++] = 1; // R
-			meshes->face_attributes[faces_attributes_offset++] = 0; // G
-			meshes->face_attributes[faces_attributes_offset++] = 0; // B
+			meshes->face_attributes[faces_attributes_offset++] = 1; // G
+			meshes->face_attributes[faces_attributes_offset++] = 1; // B
 			meshes->face_attributes[faces_attributes_offset++] = 1; // A
 		}
 	}
