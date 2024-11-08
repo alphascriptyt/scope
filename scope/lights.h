@@ -22,7 +22,7 @@ A light does not need an alpha.
 
 
 // TODO: When I have scenes, I think this will just be in the scene.
-//		 Will we have a single meshes/lights struct per scene?
+//		 Will we have a single models/lights struct per scene?
  
 typedef struct
 {

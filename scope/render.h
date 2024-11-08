@@ -1,7 +1,7 @@
 #ifndef RENDER_H
 #define RENDER_H
 
-#include "meshes.h"
+#include "models.h"
 #include "lights.h"
 
 #include "render_target.h"
@@ -20,7 +20,7 @@ float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, const
 void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V3 colour);
 
 
-void clip_and_draw_triangle(RenderTarget* rt, Meshes* meshes, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
+void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
 void draw_flat_bottom_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
 void draw_flat_top_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
 void draw_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
@@ -28,8 +28,8 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 
 void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o);
 
-void model_to_world_space(Meshes* meshes);
-void world_to_view_space(Meshes* meshes, PointLights* point_lights, const M4 view_matrix);
+void model_to_world_space(Models* models);
+void world_to_view_space(Models* models, PointLights* point_lights, const M4 view_matrix);
 
 // Render Pipeline Stages:
 // 
@@ -41,6 +41,6 @@ void world_to_view_space(Meshes* meshes, PointLights* point_lights, const M4 vie
 // 4. RENDER_STAGE: Lighting
 // 5. RENDER_STAGE: Projection
 // 6. RENDER_STAGE: Clipping & Drawing Triangles
-void render(RenderTarget* rt, const RenderSettings* settings, Meshes* meshes, PointLights* point_lights, const M4 view_matrix);
+void render(RenderTarget* rt, const RenderSettings* settings, Models* models, PointLights* point_lights, const M4 view_matrix);
 
 #endif

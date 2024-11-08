@@ -3,7 +3,7 @@
 
 #include "status.h"
 
-// Helpers for resizing the meshes buffers.
+// Helpers for resizing the models buffers.
 Status resize_int_buffer(int** out_buffer, const int len);
 Status resize_float_buffer(float** out_buffer, const int len);
 

@@ -3,7 +3,7 @@
 
 #include "render_target.h"
 #include "camera.h"
-#include "meshes.h"
+#include "models.h"
 #include "lights.h"
 #include "render_settings.h"
 
@@ -47,8 +47,8 @@ typedef struct
 	int window_height;
 	RenderSettings* render_settings;
 	
-	// TODO: Some sort of scene thing rather than just meshes/lights
-	Meshes* meshes;
+	// TODO: Some sort of scene thing rather than just models/lights
+	Models* models;
 	PointLights* point_lights;
 
 } Engine;

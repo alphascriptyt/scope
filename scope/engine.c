@@ -1,9 +1,9 @@
 #include "engine.h"
 
 #include "canvas.h"
-#include "meshes.h"
+#include "models.h"
 #include "lights.h"
-#include "render.h"
+//#include "render.h"
 #include "camera.h"
 #include "texture.h"
 
@@ -148,6 +148,7 @@ Engine* init_engine()
 
 void start_engine(Engine* engine)
 {
+    
     RenderSettings render_settings = {
         .fov = 60.f,
         .near_plane = 1.f,
@@ -162,12 +163,32 @@ void start_engine(Engine* engine)
     Texture* menzter_texture = load_texture_from_bmp("C:\\Users\\olive\\source\\repos\\scope\\scope\\res\\textures\\menzter.bmp");
     
     // Use calloc to initialise all members to 0.
-    engine->meshes = calloc(1, sizeof(Meshes));
-    if (0 == engine->meshes)
+    engine->models = calloc(1, sizeof(Models));
+    if (0 == engine->models)
     {
-        log_error("Failed to calloc for meshes.");
+        log_error("Failed to calloc for Models.");
         return; // TODO: Status.
     }
+
+
+
+
+    ///// TEMP: TESTING.
+
+    load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
+    printf("mbs_count: %d\n", engine->models->mbs_count);
+    printf("mis_count: %d\n", engine->models->mis_count);
+    printf("max_mb_faces: %d\n", engine->models->max_mb_faces);
+    printf("mbs_total_faces: %d\n", engine->models->mbs_total_faces);
+    printf("mbs_total_positions: %d\n", engine->models->mbs_total_positions);
+    printf("mbs_total_normals: %d\n", engine->models->mbs_total_normals);
+    printf("mbs_total_uvs: %d\n", engine->models->mbs_total_uvs);
+
+
+
+    return;
+
+    /////
 
     engine->point_lights = calloc(1, sizeof(PointLights));
     if (0 == engine->point_lights)
@@ -188,19 +209,16 @@ void start_engine(Engine* engine)
     // TODO: Rename everything from orientation to eulers as thats what it is
     // TODO: Helper function to convert pitch,yaw,roll to direction and vice versa?
     V3 scale = { 1, 1, 1 };
+    V3 plane_scale = { 10, 0.1, 10 };
     V3 scale1 = { 4, 4, 4 };
     
-    //load_mesh_from_obj(engine->meshes, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
-    load_mesh_from_obj(engine->meshes, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj", pos1, eulers, scale1);
+    //load_mesh_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
+    //load_mesh_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj", pos1, eulers, plane_scale);
 
 
-    V3 pos2 = { 0, 5, 0 };
+    V3 pos2 = { 5, 5, 0 };
     V3 red = { 1,0,0 };
-    create_point_light(engine->point_lights, pos2, red, 5);
-
-
-
-
+    create_point_light(engine->point_lights, pos2, red, 3);
 
     char fps_str[32] = "fps";
     engine->ui_text[0] = create_text(fps_str, 10, 10, 0x00FF0000, 3);
@@ -252,7 +270,7 @@ void start_engine(Engine* engine)
         handle_input(engine, &camera, dt);
         calculate_view_matrix(&camera, view_matrix);
 
-        
+        /*
         // TEMP, spinning and scaling cause why not
         if (eulers[1] > radians(360))
         {
@@ -280,23 +298,25 @@ void start_engine(Engine* engine)
         M4 model_matrix;
         make_model_m4(pos, eulers, scale, model_matrix);
 
-        engine->meshes->mesh_transforms[3] = eulers[0];
-        engine->meshes->mesh_transforms[4] = eulers[1];
-        engine->meshes->mesh_transforms[5] = eulers[2];
-        engine->meshes->mesh_transforms[6] = scale[0];
-        engine->meshes->mesh_transforms[7] = scale[1];
-        engine->meshes->mesh_transforms[8] = scale[2];
+        engine->models->mesh_transforms[3] = eulers[0];
+        engine->models->mesh_transforms[4] = eulers[1];
+        engine->models->mesh_transforms[5] = eulers[2];
+        engine->models->mesh_transforms[6] = scale[0];
+        engine->models->mesh_transforms[7] = scale[1];
+        engine->models->mesh_transforms[8] = scale[2];
 
 
-        //engine->meshes->mesh_transforms_updated_flags[0] = 1;
-        
+        //engine->models->transforms_updated_flags[0] = 1;
+        */
+
+
         // Clear the canvas.
         //fill_canvas(engine->canvas, 0x22222222);
         clear_render_target(engine->render_target, 0x22222222);
 
         // Render scene.
 
-        // TODO: I think for the dynamic meshes the only different steps
+        // TODO: I think for the dynamic models the only different steps
         //       are that they need a model matrix and model coords stored.
         //       Also, the bounding sphere will need to be regenerated.
         //       It would be nice to keep the other arrays the same.
@@ -308,8 +328,8 @@ void start_engine(Engine* engine)
 
        
 
-        render(engine->render_target, engine->render_settings, 
-            engine->meshes, engine->point_lights, view_matrix);
+        //render(engine->render_target, engine->render_settings, 
+        //    engine->models, engine->point_lights, view_matrix);
 
         // Draw ui elements.
         draw_ui(engine);
@@ -338,7 +358,7 @@ void start_engine(Engine* engine)
 
     }
 
-    free_meshes(engine->meshes);
+    free_models(engine->models);
 }
 
 void create_window(Engine* engine, const char* title)

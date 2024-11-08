@@ -5,7 +5,7 @@
 void create_point_light(PointLights* lights, const V3 position, const V3 colour, float strength)
 {
 	// Resize the view positions buffers.
-	// TODO: I Would like to use STRIDE_POSITION without importing meshes.
+	// TODO: I Would like to use STRIDE_POSITION without importing models.
 	resize_float_buffer(&lights->world_space_positions, lights->count * 3);
 	resize_float_buffer(&lights->view_space_positions, lights->count * 3);
 
