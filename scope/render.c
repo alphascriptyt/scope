@@ -1165,9 +1165,9 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 				int index_parts_n1 = index_n1 * STRIDE_NORMAL;
 				int index_parts_n2 = index_n2 * STRIDE_NORMAL;
 
-				const int index_uv0 = face_uvs_indices[face_index] ;
-				const int index_uv1 = face_uvs_indices[face_index + 1] ;
-				const int index_uv2 = face_uvs_indices[face_index + 2] ;
+				const int index_uv0 = face_uvs_indices[face_index] + mb_uvs_offset;
+				const int index_uv1 = face_uvs_indices[face_index + 1] + mb_uvs_offset;
+				const int index_uv2 = face_uvs_indices[face_index + 2] + mb_uvs_offset;
 
 				int index_parts_uv0 = index_uv0 * STRIDE_UV;
 				int index_parts_uv1 = index_uv1 * STRIDE_UV;
