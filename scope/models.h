@@ -16,7 +16,7 @@
 #define STRIDE_UV		2
 #define STRIDE_SPHERE	4			// Center (x,y,z), Radius	
 #define STRIDE_ENTIRE_FACE 36		// x, y, z, u, v, x, y, z, r, g, b, a - per vertex TODO: Could think about this more.
-#define STRIDE_MESH_TRANSFORM 9		// Position, Direction, Scale
+#define STRIDE_MI_TRANSFORM 9		// Position, Direction, Scale
 
 // TODO: Need to think if i will differentiate between textures and no textures for this. With textures we would need the extra u,v.
 
@@ -70,6 +70,23 @@ typedef struct
 	int mbs_total_normals;
 	int mbs_total_uvs;
 
+	/*
+	TODO: I need lists of the offsets to the starts of the buffers.
+	For example,
+
+	mbs_positions_offsets that contains the offsets into the 
+	mbs_face_position_indices, so actually, maybe its not too bad
+	cause its more an offset into the vertices? as those buffers
+	are the same size right?? Removing a mb could get tricky here.
+	But then how often am i gonna remove a mb....
+	
+	*/
+
+	int* mbs_faces_offsets;
+	int* mbs_positions_offsets;
+	int* mbs_normals_offsets;
+	int* mbs_uvs_offsets;
+
 	int* mbs_positions_counts;			// The model matrix transform is model specific, therefore, we must store how many positions the mesh has.
 	int* mbs_normals_counts;			// The model normal matrix transform is model specific, therefore, we must store how many normals the mesh has.
 	int* mbs_faces_counts;				// Number of faces in the model.
@@ -122,9 +139,10 @@ typedef struct
 } Models;
 
 
+// Initialises the models struct.
 void init_models(Models* models);
 
-
+// Parses the obj file for the number of each component.
 void parse_obj_counts(FILE* file, int* num_vertices, int* num_uvs, int* num_normals, int* num_faces);
 
 // Load a static mesh from a .obj file, the transforms will be applied to the vertices and will be unchangeable.
@@ -132,7 +150,15 @@ void parse_obj_counts(FILE* file, int* num_vertices, int* num_uvs, int* num_norm
 
 void load_model_base_from_obj(Models* models, const char* filename);
 
-void create_model_instance(Models* models, int mb_index, const V3 position, const V3 orientation, const V3 scale);
+
+// TODO: It would be nice to be able to create different model
+//		 instances without memory allocating each time. I think
+//		 allocating a bigger pool of memory would be nice, then
+//		 we can allocate when we need more capacity. So we would
+//		 have like a capacity for each buffer size.
+
+// Allocates memory for n instances of the ModelBase at mb_index.
+void create_model_instances(Models* models, int mb_index, int n);
 
 void free_models(Models* models);
 

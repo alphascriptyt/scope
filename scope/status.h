@@ -3,8 +3,10 @@
 
 typedef enum
 {
-	Success,
-	NullPtrError
+	OK,
+	ALLOC_ERR,
+	INVALID_ARG
+
 
 } Status;
 

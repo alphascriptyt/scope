@@ -3,7 +3,7 @@
 #include "canvas.h"
 #include "models.h"
 #include "lights.h"
-//#include "render.h"
+#include "render.h"
 #include "camera.h"
 #include "texture.h"
 
@@ -146,9 +146,12 @@ Engine* init_engine()
     return engine;
 }
 
+
+// TEMP!
+#include "utils/memory_utils.h"
+
 void start_engine(Engine* engine)
 {
-    
     RenderSettings render_settings = {
         .fov = 60.f,
         .near_plane = 1.f,
@@ -170,25 +173,9 @@ void start_engine(Engine* engine)
         return; // TODO: Status.
     }
 
+    init_models(engine->models);
 
 
-
-    ///// TEMP: TESTING.
-
-    load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
-    printf("mbs_count: %d\n", engine->models->mbs_count);
-    printf("mis_count: %d\n", engine->models->mis_count);
-    printf("max_mb_faces: %d\n", engine->models->max_mb_faces);
-    printf("mbs_total_faces: %d\n", engine->models->mbs_total_faces);
-    printf("mbs_total_positions: %d\n", engine->models->mbs_total_positions);
-    printf("mbs_total_normals: %d\n", engine->models->mbs_total_normals);
-    printf("mbs_total_uvs: %d\n", engine->models->mbs_total_uvs);
-
-
-
-    return;
-
-    /////
 
     engine->point_lights = calloc(1, sizeof(PointLights));
     if (0 == engine->point_lights)
@@ -215,18 +202,83 @@ void start_engine(Engine* engine)
     //load_mesh_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
     //load_mesh_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj", pos1, eulers, plane_scale);
 
+    ///// TEMP: TESTING.
+
+    load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
+    load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj");
+ 
+    int n0 = 20;
+    create_model_instances(engine->models, 1, n0);
+
+    for (int i = 0; i < n0; ++i)
+    {
+        int index_transform = i * STRIDE_MI_TRANSFORM;
+
+        engine->models->mis_transforms[index_transform] = pos[0];
+        engine->models->mis_transforms[++index_transform] = pos[1];
+        engine->models->mis_transforms[++index_transform] = pos[2]-i*3;
+        engine->models->mis_transforms[++index_transform] = eulers1[0];
+        engine->models->mis_transforms[++index_transform] = eulers1[1];
+        engine->models->mis_transforms[++index_transform] = eulers1[2];
+        engine->models->mis_transforms[++index_transform] = scale[0];
+        engine->models->mis_transforms[++index_transform] = scale[1];
+        engine->models->mis_transforms[++index_transform] = scale[2];
+
+        engine->models->mis_transforms_updated_flags[i] = 1;
+    }
+    
+    
+    int n1 = 20;
+    create_model_instances(engine->models, 0, n1);
+    for (int i = n0; i < n0 + n1; ++i)
+    {
+        int index_transform = i * STRIDE_MI_TRANSFORM;
+
+        engine->models->mis_transforms[index_transform] = pos[0] + 3;
+        engine->models->mis_transforms[++index_transform] = pos[1];
+        engine->models->mis_transforms[++index_transform] = pos[2] - i * 3;
+        engine->models->mis_transforms[++index_transform] = eulers1[0];
+        engine->models->mis_transforms[++index_transform] = eulers1[1];
+        engine->models->mis_transforms[++index_transform] = eulers1[2];
+        engine->models->mis_transforms[++index_transform] = scale[0];
+        engine->models->mis_transforms[++index_transform] = scale[1];
+        engine->models->mis_transforms[++index_transform] = scale[2];
+
+        engine->models->mis_transforms_updated_flags[i] = 1;
+    }
+
+    int n2 = 20;
+    create_model_instances(engine->models, 1, n0);
+
+    for (int i = n0 + n1; i < n0 + n1 + n2; ++i)
+    {
+        int index_transform = i * STRIDE_MI_TRANSFORM;
+
+        engine->models->mis_transforms[index_transform] = pos[0];
+        engine->models->mis_transforms[++index_transform] = pos[1];
+        engine->models->mis_transforms[++index_transform] = pos[2] - i * 3;
+        engine->models->mis_transforms[++index_transform] = eulers1[0];
+        engine->models->mis_transforms[++index_transform] = eulers1[1];
+        engine->models->mis_transforms[++index_transform] = eulers1[2];
+        engine->models->mis_transforms[++index_transform] = scale[0];
+        engine->models->mis_transforms[++index_transform] = scale[1];
+        engine->models->mis_transforms[++index_transform] = scale[2];
+
+        engine->models->mis_transforms_updated_flags[i] = 1;
+    }
+    
 
     V3 pos2 = { 5, 5, 0 };
     V3 red = { 1,0,0 };
     create_point_light(engine->point_lights, pos2, red, 3);
 
-    char fps_str[32] = "fps";
+    char fps_str[64] = "fps";
     engine->ui_text[0] = create_text(fps_str, 10, 10, 0x00FF0000, 3);
 
-    char dir_str[32] = "dir";
+    char dir_str[64] = "dir";
     engine->ui_text[1] = create_text(dir_str, 10, 40, 0x0000FF00, 3);
 
-    char pos_str[32] = "pos";
+    char pos_str[64] = "pos";
     engine->ui_text[2] = create_text(pos_str, 10, 70, 0x0000FF00, 3);
 
 
@@ -315,21 +367,8 @@ void start_engine(Engine* engine)
         clear_render_target(engine->render_target, 0x22222222);
 
         // Render scene.
-
-        // TODO: I think for the dynamic models the only different steps
-        //       are that they need a model matrix and model coords stored.
-        //       Also, the bounding sphere will need to be regenerated.
-        //       It would be nice to keep the other arrays the same.
-        //       And just write into them in the first stages.
-
-
-
-
-
-       
-
-        //render(engine->render_target, engine->render_settings, 
-        //    engine->models, engine->point_lights, view_matrix);
+        render(engine->render_target, engine->render_settings, 
+            engine->models, engine->point_lights, view_matrix);
 
         // Draw ui elements.
         draw_ui(engine);
@@ -445,6 +484,8 @@ void create_window(Engine* engine, const char* title)
 
 int process_window_messages()
 {
+    // TODO: Some heap is corrupted so i keep getting an error here......
+
     // Processes all messages and sends them to WindowProc
     MSG msg;
     while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE))

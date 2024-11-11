@@ -3,6 +3,7 @@
 #endif
 
 #include "models.h"
+#include "status.h"
 
 #include "maths/vector3.h"
 #include "maths/matrix4.h"
@@ -144,9 +145,9 @@ void load_mesh_from_obj(Models* models, const char* filename, const V3 position,
 
 	resize_float_buffer(&models->object_space_positions, (models->positions_count + positions_count) * STRIDE_POSITION);
 
-	resize_float_buffer(&models->mesh_transforms, (models->models_count + 1) * STRIDE_MESH_TRANSFORM);
+	resize_float_buffer(&models->mesh_transforms, (models->models_count + 1) * STRIDE_MI_TRANSFORM);
 
-	int index = models->models_count * STRIDE_MESH_TRANSFORM;
+	int index = models->models_count * STRIDE_MI_TRANSFORM;
 	models->mesh_transforms[index] = position[0];
 	models->mesh_transforms[++index] = position[1];
 	models->mesh_transforms[++index] = position[2];
@@ -345,6 +346,19 @@ void load_model_base_from_obj(Models* models, const char* filename)
 	resize_int_buffer(&models->mbs_uvs_counts, new_mbs_count);
 	models->mbs_uvs_counts[mb_index] = uvs_count;
 
+	// Resize the offset buffers.
+	resize_int_buffer(&models->mbs_positions_offsets, new_mbs_count);
+	models->mbs_positions_offsets[mb_index] = models->mbs_total_positions;
+
+	resize_int_buffer(&models->mbs_normals_offsets, new_mbs_count);
+	models->mbs_normals_offsets[mb_index] = models->mbs_total_normals;
+
+	resize_int_buffer(&models->mbs_faces_offsets, new_mbs_count);
+	models->mbs_faces_offsets[mb_index] = models->mbs_total_faces;
+
+	resize_int_buffer(&models->mbs_uvs_offsets, new_mbs_count);
+	models->mbs_uvs_offsets[mb_index] = models->mbs_total_uvs;
+
 	// Resize the indexing buffers.
 	const int new_total_faces = models->mbs_total_faces + face_count;
 	const int new_total_vertices = new_total_faces * STRIDE_FACE_VERTICES;
@@ -368,8 +382,8 @@ void load_model_base_from_obj(Models* models, const char* filename)
 	{
 		models->max_mb_faces = face_count;
 
-		resize_float_buffer(&models->temp_clipped_faces_in, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 5));
-		resize_float_buffer(&models->temp_clipped_faces_out, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 5)); //MAX_FRUSTUM_PLANES);
+		resize_float_buffer(&models->temp_clipped_faces_in, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 1));
+		resize_float_buffer(&models->temp_clipped_faces_out, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 1)); //MAX_FRUSTUM_PLANES);
 	}
 
 	// Move to the start of the file again so we can read it.
@@ -381,8 +395,7 @@ void load_model_base_from_obj(Models* models, const char* filename)
 	int uvs_offset = models->mbs_total_uvs * STRIDE_UV;
 	int faces_positions_offset = models->mbs_total_faces * STRIDE_FACE_VERTICES;
 	int faces_normals_offset = models->mbs_total_faces * STRIDE_FACE_VERTICES;
-	int faces_uvs_offset = models->mbs_total_uvs * STRIDE_FACE_VERTICES;
-
+	int faces_uvs_offset = models->mbs_total_faces * STRIDE_FACE_VERTICES;
 
 	// Fill the buffers from the file.
 	char line[256];
@@ -449,6 +462,7 @@ void load_model_base_from_obj(Models* models, const char* filename)
 				}
 			}
 
+			/*
 			models->mbs_face_position_indices[faces_positions_offset++] = models->mbs_total_positions + face_indices[0];
 			models->mbs_face_position_indices[faces_positions_offset++] = models->mbs_total_positions + face_indices[3];
 			models->mbs_face_position_indices[faces_positions_offset++] = models->mbs_total_positions + face_indices[6];
@@ -460,6 +474,19 @@ void load_model_base_from_obj(Models* models, const char* filename)
 			models->mbs_face_uvs_indices[faces_uvs_offset++] = models->mbs_total_uvs + face_indices[1];
 			models->mbs_face_uvs_indices[faces_uvs_offset++] = models->mbs_total_uvs + face_indices[4];
 			models->mbs_face_uvs_indices[faces_uvs_offset++] = models->mbs_total_uvs + face_indices[7];
+			*/
+
+			models->mbs_face_position_indices[faces_positions_offset++] = face_indices[0];
+			models->mbs_face_position_indices[faces_positions_offset++] = face_indices[3];
+			models->mbs_face_position_indices[faces_positions_offset++] = face_indices[6];
+
+			models->mbs_face_normal_indices[faces_normals_offset++] = face_indices[2];
+			models->mbs_face_normal_indices[faces_normals_offset++] = face_indices[5];
+			models->mbs_face_normal_indices[faces_normals_offset++] = face_indices[8];
+
+			models->mbs_face_uvs_indices[faces_uvs_offset++] = face_indices[1];
+			models->mbs_face_uvs_indices[faces_uvs_offset++] = face_indices[4];
+			models->mbs_face_uvs_indices[faces_uvs_offset++] = face_indices[7];
 		}
 	}
 
@@ -478,7 +505,7 @@ void load_model_base_from_obj(Models* models, const char* filename)
 	models->mbs_total_uvs = new_total_uvs;
 }
 
-void create_model_instance(Models* models, int mb_index, const V3 position, const V3 orientation, const V3 scale)
+void create_model_instances(Models* models, int mb_index, int n)
 {
 	if (mb_index > models->mbs_count - 1)
 	{
@@ -486,34 +513,23 @@ void create_model_instance(Models* models, int mb_index, const V3 position, cons
 		return;
 	}
 
-	const int new_instances_count = models->mis_count + 1;
+	const int new_instances_count = models->mis_count + n;
 
 	// Resize buffers
-
-	// Set the instances model base index.
 	resize_int_buffer(&models->mis_base_ids, new_instances_count);
-	models->mis_base_ids[models->mis_count] = mb_index;
-
 	resize_int_buffer(&models->mis_transforms_updated_flags, new_instances_count);
-	models->mis_transforms_updated_flags[models->mis_count] = 1;
-
 	resize_int_buffer(&models->mis_texture_ids, new_instances_count);
-	// TODO: Textures. Should be a parameter.
-	models->mis_texture_ids[models->mis_count] = -69; 
+	
+	for (int i = models->mis_count; i < new_instances_count; ++i)
+	{
+		models->mis_base_ids[i] = mb_index;
+		models->mis_transforms_updated_flags[i] = 0;
 
-	// Write transform data.
-	resize_float_buffer(&models->mis_transforms, new_instances_count * STRIDE_MESH_TRANSFORM);
-	int index_transform = models->mis_count * STRIDE_MESH_TRANSFORM;
+		// TODO: Textures. Should be a parameter?
+		models->mis_texture_ids[i] = -69;
+	}
 
-	models->mis_transforms[index_transform] = position[0];
-	models->mis_transforms[++index_transform] = position[1];
-	models->mis_transforms[++index_transform] = position[2];
-	models->mis_transforms[++index_transform] = orientation[0];
-	models->mis_transforms[++index_transform] = orientation[1];
-	models->mis_transforms[++index_transform] = orientation[2];
-	models->mis_transforms[++index_transform] = scale[0];
-	models->mis_transforms[++index_transform] = scale[1];
-	models->mis_transforms[++index_transform] = scale[2];
+	resize_float_buffer(&models->mis_transforms, new_instances_count * STRIDE_MI_TRANSFORM);
 	
 	// Make space for the bounding sphere, this will be generated in the next
 	// render call.
@@ -523,12 +539,12 @@ void create_model_instance(Models* models, int mb_index, const V3 position, cons
 	// TODO: HOW DO I GET THE TOTALS?
 
 	// Increase the totals to get the new buffer sizes.
-	const int faces_count = models->mbs_faces_counts[mb_index];
+	const int faces_count = models->mbs_faces_counts[mb_index] * n;
 	const int new_total_vertices = faces_count * STRIDE_FACE_VERTICES;
 
 	models->mis_total_faces += faces_count;
-	models->mis_total_positions += models->mbs_positions_counts[mb_index];
-	models->mbs_total_normals += models->mbs_normals_counts[mb_index];
+	models->mis_total_positions += models->mbs_positions_counts[mb_index] * n;
+	models->mis_total_normals += models->mbs_normals_counts[mb_index] * n;
 
 	// TODO: Initialise these colours to something?
 	//		 Remember, this is actually the diffuse value of the surface?
@@ -547,18 +563,17 @@ void create_model_instance(Models* models, int mb_index, const V3 position, cons
 	resize_float_buffer(&models->front_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE);
 
 	resize_int_buffer(&models->clipped_faces_counts, models->mis_total_faces);
-	resize_float_buffer(&models->clipped_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE * (int)pow(2, 5)); // TODO: * pow(2, MAX_FRUSTUM_PLANES)
+	resize_float_buffer(&models->clipped_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE * (int)pow(2, 1)); // TODO: * pow(2, ENABLED_FRUSTUM_PLANES_COUNT.....)
 
 	// Update the number of instances.
 	// TODO: Record how many instances of a ModelBase there are?
 	models->mis_count = new_instances_count;
-
 }
-
 
 void free_models(Models* models)
 {
 	// Free all mesh buffers.
+	// TODO: Why crash here?????
 	free(models->mbs_positions_counts);
 	free(models->mbs_normals_counts);
 	free(models->mbs_faces_counts);
@@ -567,22 +582,33 @@ void free_models(Models* models)
 	free(models->mbs_object_space_positions);
 	free(models->mbs_object_space_normals);
 	free(models->mbs_uvs);
+
+	free(models->mbs_faces_offsets);
+	free(models->mbs_positions_offsets);
+	free(models->mbs_normals_offsets);
+
 	free(models->mis_base_ids);
 	free(models->mis_transforms_updated_flags);
 	free(models->mis_texture_ids);
 	free(models->mis_vertex_colours);
 	free(models->mis_transforms);
 	free(models->mis_bounding_spheres);
+
 	free(models->world_space_positions);
 	free(models->world_space_normals);
+
 	free(models->view_space_positions);
 	free(models->view_space_normals);
+
 	free(models->front_faces_counts);
 	free(models->front_faces);
+
 	free(models->clipped_faces_counts);
 	free(models->clipped_faces);
+
 	free(models->temp_clipped_faces_in);
 	free(models->temp_clipped_faces_out);
+
 	free(models->projected_clipped_faces);
 	free(models->projected_clipped_faces_temp);
 }
