@@ -462,20 +462,6 @@ void load_model_base_from_obj(Models* models, const char* filename)
 				}
 			}
 
-			/*
-			models->mbs_face_position_indices[faces_positions_offset++] = models->mbs_total_positions + face_indices[0];
-			models->mbs_face_position_indices[faces_positions_offset++] = models->mbs_total_positions + face_indices[3];
-			models->mbs_face_position_indices[faces_positions_offset++] = models->mbs_total_positions + face_indices[6];
-
-			models->mbs_face_normal_indices[faces_normals_offset++] = models->mbs_total_normals + face_indices[2];
-			models->mbs_face_normal_indices[faces_normals_offset++] = models->mbs_total_normals + face_indices[5];
-			models->mbs_face_normal_indices[faces_normals_offset++] = models->mbs_total_normals + face_indices[8];
-
-			models->mbs_face_uvs_indices[faces_uvs_offset++] = models->mbs_total_uvs + face_indices[1];
-			models->mbs_face_uvs_indices[faces_uvs_offset++] = models->mbs_total_uvs + face_indices[4];
-			models->mbs_face_uvs_indices[faces_uvs_offset++] = models->mbs_total_uvs + face_indices[7];
-			*/
-
 			models->mbs_face_position_indices[faces_positions_offset++] = face_indices[0];
 			models->mbs_face_position_indices[faces_positions_offset++] = face_indices[3];
 			models->mbs_face_position_indices[faces_positions_offset++] = face_indices[6];
@@ -509,7 +495,7 @@ void create_model_instances(Models* models, int mb_index, int n)
 {
 	if (mb_index > models->mbs_count - 1)
 	{
-		log_error("base_model_idx out of range.");
+		log_error("mb_index out of range.");
 		return;
 	}
 
@@ -559,10 +545,10 @@ void create_model_instances(Models* models, int mb_index, int n)
 	resize_float_buffer(&models->view_space_normals, models->mis_total_normals * STRIDE_NORMAL);
 
 	// Resize intermediate/temporary rendering buffers.
-	resize_int_buffer(&models->front_faces_counts, models->mis_total_faces);
+	resize_int_buffer(&models->front_faces_counts, new_instances_count);
 	resize_float_buffer(&models->front_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE);
 
-	resize_int_buffer(&models->clipped_faces_counts, models->mis_total_faces);
+	resize_int_buffer(&models->clipped_faces_counts, new_instances_count);
 	resize_float_buffer(&models->clipped_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE * (int)pow(2, 1)); // TODO: * pow(2, ENABLED_FRUSTUM_PLANES_COUNT.....)
 
 	// Update the number of instances.

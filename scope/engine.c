@@ -29,6 +29,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         LPCREATESTRUCT lpcs = (LPCREATESTRUCT)lParam;
         engine = (Engine*)lpcs->lpCreateParams;
 
+        if (!engine)
+        {
+            printf("FAILLLLLL\N");
+        }
+
         // Store the pointer safely for future use.
         SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)engine);
 
@@ -207,8 +212,8 @@ void start_engine(Engine* engine)
     load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
     load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj");
  
-    int n0 = 20;
-    create_model_instances(engine->models, 1, n0);
+    int n0 = 10;
+    create_model_instances(engine->models, 0, n0);
 
     for (int i = 0; i < n0; ++i)
     {
@@ -228,7 +233,8 @@ void start_engine(Engine* engine)
     }
     
     
-    int n1 = 20;
+    /*
+    int n1 = 0;
     create_model_instances(engine->models, 0, n1);
     for (int i = n0; i < n0 + n1; ++i)
     {
@@ -246,8 +252,9 @@ void start_engine(Engine* engine)
 
         engine->models->mis_transforms_updated_flags[i] = 1;
     }
-
-    int n2 = 20;
+    */
+    /*
+    int n2 = 0;
     create_model_instances(engine->models, 1, n0);
 
     for (int i = n0 + n1; i < n0 + n1 + n2; ++i)
@@ -265,7 +272,7 @@ void start_engine(Engine* engine)
         engine->models->mis_transforms[++index_transform] = scale[2];
 
         engine->models->mis_transforms_updated_flags[i] = 1;
-    }
+    }*/
     
 
     V3 pos2 = { 5, 5, 0 };
@@ -322,7 +329,7 @@ void start_engine(Engine* engine)
         handle_input(engine, &camera, dt);
         calculate_view_matrix(&camera, view_matrix);
 
-        /*
+        
         // TEMP, spinning and scaling cause why not
         if (eulers[1] > radians(360))
         {
@@ -350,17 +357,16 @@ void start_engine(Engine* engine)
         M4 model_matrix;
         make_model_m4(pos, eulers, scale, model_matrix);
 
-        engine->models->mesh_transforms[3] = eulers[0];
-        engine->models->mesh_transforms[4] = eulers[1];
-        engine->models->mesh_transforms[5] = eulers[2];
-        engine->models->mesh_transforms[6] = scale[0];
-        engine->models->mesh_transforms[7] = scale[1];
-        engine->models->mesh_transforms[8] = scale[2];
+        engine->models->mis_transforms[3] = eulers[0];
+        engine->models->mis_transforms[4] = eulers[1];
+        engine->models->mis_transforms[5] = eulers[2];
+        //engine->models->mis_transforms[6] = scale[0];
+        //engine->models->mis_transforms[7] = scale[1];
+        //engine->models->mis_transforms[8] = scale[2];
 
 
-        //engine->models->transforms_updated_flags[0] = 1;
-        */
-
+        engine->models->mis_transforms_updated_flags[0] = 1;
+        
 
         // Clear the canvas.
         //fill_canvas(engine->canvas, 0x22222222);
@@ -397,7 +403,7 @@ void start_engine(Engine* engine)
 
     }
 
-    free_models(engine->models);
+    cleanup_engine(engine);
 }
 
 void create_window(Engine* engine, const char* title)
@@ -471,6 +477,10 @@ void create_window(Engine* engine, const char* title)
     // I believe it is fine to keep this handle and not release it.
     engine->hdc = GetDC(engine->hwnd);
 
+    // TODO: Think about this. Can I make it faster.
+    // Look at: https://www.youtube.com/watch?v=hNKU8Jiza2g&list=PLnuhp3Xd9PYTt6svyQPyRO_AAuMWGxPzU&index=16
+    // Handmade Hero 004.
+
     // Get the new size and create the frame bitmap info.
     engine->canvas_bitmap.bmiHeader.biSize = sizeof(engine->canvas_bitmap.bmiHeader);
     engine->canvas_bitmap.bmiHeader.biWidth = engine->render_target->canvas->width;
@@ -485,6 +495,7 @@ void create_window(Engine* engine, const char* title)
 int process_window_messages()
 {
     // TODO: Some heap is corrupted so i keep getting an error here......
+    // TODO: I reckon the error is storing our pointer in the window?
 
     // Processes all messages and sends them to WindowProc
     MSG msg;
@@ -698,4 +709,13 @@ void on_resize(Engine* engine)
     // Update the bitmapinfo.
     engine->canvas_bitmap.bmiHeader.biWidth = engine->render_target->canvas->width;
     engine->canvas_bitmap.bmiHeader.biHeight = -engine->render_target->canvas->height;
+}
+
+void cleanup_engine(Engine* engine)
+{
+    free_models(engine->models);
+
+    free(engine->models);
+    free(engine->point_lights);
+
 }

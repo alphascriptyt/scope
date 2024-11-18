@@ -1,0 +1,5 @@
+TODO: readme for the project
+
+Some goals for the project:
+
+- day/night, where you shoot a button like in fortnite.

@@ -8,6 +8,8 @@
 #include "render_settings.h"
 #include "canvas.h"
 
+#include "frustum_culling.h"
+
 #include "maths/vector3.h"
 #include "maths/vector4.h"
 #include "maths/matrix4.h"
@@ -30,6 +32,11 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o)
 
 void model_to_world_space(Models* models);
 void world_to_view_space(Models* models, PointLights* point_lights, const M4 view_matrix);
+
+void cull_backfaces(Models* models);
+
+void frustum_culling_and_lighting(RenderTarget* rt, M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Models* models, PointLights* point_lights);
+
 
 // Render Pipeline Stages:
 // 

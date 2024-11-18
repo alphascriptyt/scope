@@ -332,6 +332,19 @@ void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V
 void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
 {
 	// TODO: Broad phase for this.
+	int clip =  v0[0] < 0 || v0[0] >= rt->canvas->width	  ||
+				v0[1] < 0 || v0[1] >=  rt->canvas->height ||
+				v1[0] < 0 || v1[0] >=  rt->canvas->width  ||
+				v1[1] < 0 || v1[1] >=  rt->canvas->height ||
+				v2[0] < 0 || v2[0] >=  rt->canvas->width  ||
+				v2[1] < 0 || v2[1] >=  rt->canvas->height;
+
+	
+	if (!clip) 
+	{
+		draw_triangle(rt, v0, v1, v2, c0, c1, c2);
+		return;
+	}
 
 
 	// Clips the given triangle against the 4 screen edges.
@@ -809,12 +822,16 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o)
 
 void model_to_world_space(Models* models)
 {
+	// TODO: When spinning the first instance, after moving past a few,
+	// the last one glitches and spins which suggests something goes wrong here.
+
 	// TODO: Rename some vars.
 
 	// Locally store to avoid dereferencing the pointers constantly.
 	// Not sure if this is a speedup or not. TODO: Time at some point.
 	const int models_count = models->mis_count;
 	const int* mesh_positions_counts = models->mbs_positions_counts;
+	const int* mesh_normals_counts = models->mbs_normals_counts;
 	const int mis_base_ids = models->mis_base_ids;
 	const float* mesh_transforms = models->mis_transforms;
 	const float* object_space_positions = models->mbs_object_space_positions;
@@ -830,9 +847,17 @@ void model_to_world_space(Models* models)
 
 	for (int i = 0; i < models_count; ++i)
 	{
+
+
 		// Only update if the mesh's transform has changed.
 		if (transforms_updated_flags[i] == 0)
+		{
+			// Must offset the out positions by the mesh if we're skipping it.
+			index_world_space_position_out += mesh_positions_counts[i];
+			index_world_space_normal_out += mesh_normals_counts[i];
 			continue;
+		}
+			
 
 		const int mb_index = models->mis_base_ids[i];
 		const int mb_positions_offset = models->mbs_positions_offsets[mb_index];
@@ -918,12 +943,6 @@ void model_to_world_space(Models* models)
 		float radius_squared = 0;
 		for (int j = wsp_start_index; j < index_world_space_position_out; j += STRIDE_POSITION)
 		{
-			/// TOODODODODODO: TODO: All this logic is so scuffed with the new mi and mb.
-			// Need to think about how the iteration should actually work so i can keep it 
-			// consistent and validate the logic in my head first because this is just so 
-			// dumb and not working. It should work, think through....
-			//int index_world_space_position = (j + mb_positions_offset) * STRIDE_POSITION;
-
 			V4 v = {
 				world_space_positions[wsp_start_index],
 				world_space_positions[wsp_start_index + 1],
@@ -944,7 +963,6 @@ void model_to_world_space(Models* models)
 		bounding_spheres[++index_bs] = sqrtf(radius_squared);
 
 		// Calculate the world space normals.
-		const int* mesh_normals_counts = models->mbs_normals_counts;
 		const float* object_space_normals = models->mbs_object_space_normals;
 
 		float* world_space_normals = models->world_space_normals;
@@ -1077,19 +1095,9 @@ void world_to_view_space(Models* models, PointLights* point_lights, const M4 vie
 	}
 }
 
-void render(RenderTarget* rt, const RenderSettings* settings, Models* models, PointLights* point_lights, const M4 view_matrix)
+void cull_backfaces(Models* models)
 {
-	// TODO: Can these transformations ever be combined so we make a model view matrix, then we are doing less matrix multiplications overall?
-	//		 Not sure because we need the world coordinates anyways for physics.
-
-	// TODO: Calculate normal matrix by inverting scale and applying rotation. No translation.
-
-	// TODO: Need to calculate view matrix and model matrix by passing the args in here, then I can just straight take the 
-	// Transform world space positions to view space.
-	model_to_world_space(models);
-	 
-	// Transforms lights as well as models.
-	world_to_view_space(models, point_lights, view_matrix);
+	// TODO: Refactor.
 
 	const int* face_position_indices = models->mbs_face_position_indices;
 	const int* face_normal_indices = models->mbs_face_normal_indices;
@@ -1100,7 +1108,6 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 	float* view_space_positions = models->view_space_positions;
 	float* view_space_normals = models->view_space_normals;
 
-	// Perform backface culling.
 	int face_offset = 0;
 	int front_face_offset = 0;
 
@@ -1113,13 +1120,18 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 	for (int i = 0; i < models->mis_count; ++i)
 	{
 		const int mb_index = models->mis_base_ids[i];
+
+		// Get the offsets for the buffers that are not instance specific.
 		const int mb_faces_offset = models->mbs_faces_offsets[mb_index];
 		const int mb_uvs_offset = models->mbs_uvs_offsets[mb_index];
 
 		int front_face_count = 0;
 
+		// Reset the number of front face counts.
+		models->front_faces_counts[i] = 0;
+
 		//const int mesh_faces_end = face_offset + models->mbs_faces_counts[mb_index];
-		
+
 		//for (int j = face_offset; j < mesh_faces_end; ++j)
 		for (int j = 0; j < models->mbs_faces_counts[mb_index]; ++j)
 		{
@@ -1241,38 +1253,31 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 		models->front_faces_counts[i] = front_face_count;
 
 		// Update the offsets for the next mesh.
-		face_offset += models->mbs_faces_counts[mb_index];
 		positions_offset += models->mbs_positions_counts[mb_index];
 		normals_offset += models->mbs_normals_counts[mb_index];
-		uvs_offset += models->mbs_uvs_counts[mb_index];
 	}
+}
 
-	
-	//TODO: 
-	//Going forward I am going to do broad phase frustum culling,
-	//then if the mesh passes, we must perform the lighting, this
-	//way we won't get inconsistent lighting with clipped vertices
-	//being closer to the light.
-	//After lighting is performed, we do the actual clipping,
-	//this way the colours are lerped so it stays consistent.
-
-
+void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Models* models, PointLights* point_lights)
+{
 	// Frustum culling
 	float* clipped_faces = models->clipped_faces;
 	int* mesh_clipped_faces_counts = models->clipped_faces_counts;
 
 	float* bounding_spheres = models->mis_bounding_spheres;
 
-	ViewFrustum view_frustum; 
-	create_clipping_view_frustum(settings->near_plane, settings->fov, 
-		rt->canvas->width / (float)(rt->canvas->height), &view_frustum);
-
-	int clipped_faces_index = 0; // Store the index to write the clipped faces out to.
 	
-	face_offset = 0;
-	positions_offset = 0;
+	int clipped_faces_index = 0; // Store the index to write the clipped faces out to.
+
+	int face_offset = 0;
+	int positions_offset = 0;
+
+	float* front_faces = models->front_faces;
+
 	for (int i = 0; i < models->mis_count; ++i)
 	{
+		// Reset the number of visible face counts.
+		mesh_clipped_faces_counts[i] = 0;
 		int visible_faces_count = 0;
 
 		// Perform board phase bounding sphere check.
@@ -1299,9 +1304,9 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 
 		// Broad phase test.
 		int mesh_visible = 1;
-		for (int j = 0; j < view_frustum.num_planes; ++j)
+		for (int j = 0; j < view_frustum->num_planes; ++j)
 		{
-			float dist = signed_distance(&view_frustum.planes[j], view_space_center);
+			float dist = signed_distance(&view_frustum->planes[j], view_space_center);
 			if (dist < -radius)
 			{
 				// Completely outside the plane, therefore, no need to check against the others.
@@ -1312,17 +1317,18 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 			{
 				// The mesh intersects with this plane, so the mesh could be partially visible.
 				mesh_visible = 1;
-				 
+
 				// Mark that we need to clip against this plane.
 				clip_against_plane[j] = 1;
 				++num_planes_to_clip_against;
 			}
 		}
-		
+
 		if (0 == mesh_visible)
 		{
 			continue;
 		}
+
 
 		// At this point we know the mesh is partially visible at least.
 		// Apply lighting here so that the if a vertex is clipped closer
@@ -1340,7 +1346,7 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 			// 12 attributes per vertex. TODO: STRIDE for this?
 			for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += 12)
 			{
-				
+
 				const V3 pos = {
 					front_faces[k],
 					front_faces[k + 1],
@@ -1366,7 +1372,7 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 					front_faces[k + 2],
 				};
 
-				
+
 				V3 dir;
 				v3_mul_f_out(normal, 3.f, dir);
 				v3_add_v3(end, dir);
@@ -1383,8 +1389,8 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 
 
 
-				project(rt->canvas, settings->projection_matrix, start, s);
-				project(rt->canvas, settings->projection_matrix, end, e);
+				project(rt->canvas, projection_matrix, start, s);
+				project(rt->canvas, projection_matrix, end, e);
 
 				V3 col = { 1,0,1 };
 
@@ -1396,7 +1402,7 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 				// for this.
 				// TODO: NORMALS NEED TO HAVE MODEL MATRIX APPLIED, AND THEN
 				// VIEW MATRIX AS WELL. WILL NEED TO BE DONE BOTH STEPS.
-				
+
 				// Only need RGB, only need A for combining with texture???
 
 				// This is how much light it absorbs?
@@ -1454,15 +1460,8 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 
 			}
 
-			
+
 		}
-
-
-
-
-
-
-
 
 		if (1 == mesh_visible && 0 == num_planes_to_clip_against)
 		{
@@ -1470,7 +1469,7 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 			for (int j = face_offset; j < face_offset + models->front_faces_counts[i]; ++j)
 			{
 				int index_face = j * STRIDE_ENTIRE_FACE;
-					
+
 				// Simply copy the entire face. TODO: Could unroll. Not sure if it is beneficial, should test this,
 				// in another project.
 				for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; ++k)
@@ -1483,12 +1482,16 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 		}
 		else
 		{
+
+			// TODO: The last mesh added is getting clipped when nowhere near it.
+			// TODO: I think it's actually clipping is overwriting something.
+
 			// Partially inside so must clip the vertices against the planes.
 
 			// Initially read from the front_faces buffer.
 			float* temp_clipped_faces_in = front_faces;
 			float* temp_clipped_faces_out = models->temp_clipped_faces_out;
-			
+
 			// Store the index to write out to, needs to be defined here so we can
 			// update the clipped_faces_index after writing to the clipped_faces buffer.
 			int index_out = 0;
@@ -1504,13 +1507,13 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 			// render against, not the plane index.
 			int num_planes_clipped_against = 0;
 
-			for (int index_plane = 0; index_plane < view_frustum.num_planes; ++index_plane)
+			for (int index_plane = 0; index_plane < view_frustum->num_planes; ++index_plane)
 			{
 				// Only clip against the plane if the broad phase flagged it. 
-				if (clip_against_plane[index_plane] == 0) 
+				if (clip_against_plane[index_plane] == 0)
 					continue;
 
-				const Plane* plane = &view_frustum.planes[index_plane];
+				const Plane* plane = &view_frustum->planes[index_plane];
 
 				// Reset the index to write out to.
 				index_out = 0;
@@ -1851,7 +1854,7 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 						++temp_visible_faces_count;
 					}
 				}
-	
+
 				// Update how many faces are visible after being clipped.
 				num_faces_to_process = temp_visible_faces_count;
 
@@ -1859,10 +1862,10 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 				float* temp = temp_clipped_faces_in;
 				temp_clipped_faces_in = temp_clipped_faces_out;
 				temp_clipped_faces_out = temp;
-				
+
 				// Increment to show we actually clipped a plane.
 				++num_planes_clipped_against;
-				
+
 			}
 
 			// Update the clipped faces index.
@@ -1876,11 +1879,45 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 		// Move to the next mesh.
 		face_offset += models->front_faces_counts[i];
 	}
+}
 
-	// TODO: Lighting
-	// Lighting involves the colour and normal of the vertex
-	// I could do a loop of lighting calculations using this.
 
+void render(RenderTarget* rt, const RenderSettings* settings, Models* models, PointLights* point_lights, const M4 view_matrix)
+{
+	// TODO: Something really odd is going wrong, it'll be something stupid but
+	// oh well, will get it sorted soon. I think some small code refactors are 
+	// important here. For example like 
+	// copy_buffer_stride(float*, start_index, stride_length), might help me fix
+	// stuff and keep it consistent.
+
+	// Yeah would be good to make this more useable actually it's quite a mess 
+	// currently at list split backface culling and clipping into functions.
+
+
+	// Transform world space positions to view space.
+	model_to_world_space(models);
+	 
+	// Transforms lights as well as models.
+	world_to_view_space(models, point_lights, view_matrix);
+
+	// Perform backface culling.
+	cull_backfaces(models);
+
+	// Frustum culling and lighting is done together as we do per vertex
+	// lighting. 
+	// This should solve the issue where if we have a massive plane
+	// and the two triangles are clipped, the clipped triangle could create
+	// a vertex closer to the light, meaning we would get inconsistent lighting.
+	// So light each vertex before clipping.
+	// NOTE: I think this means the lighting will be linear, taking away from
+	//		 the attenuation?
+	ViewFrustum view_frustum;
+	create_clipping_view_frustum(settings->near_plane, settings->fov,
+		rt->canvas->width / (float)(rt->canvas->height), &view_frustum);
+
+
+	frustum_culling_and_lighting(rt, settings->projection_matrix, &view_frustum, view_matrix, models, point_lights);
+	
 
 	// TODO: Drawing only needs the vertex colour and uv. I want the colour to act as a tint on the uv does that mean colour needs an alpha.
 	//		 I would only want the alpha if the vertex had a colour and uv?
@@ -1889,8 +1926,11 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 	//float min_w = 0;
 	//float max_w = 0;
 	
+	const float* clipped_faces = models->clipped_faces;
+	const int* mesh_clipped_faces_counts = models->clipped_faces_counts;
+
 	// This must be done mesh by mesh so we know what texture to use.
-	face_offset = 0;
+	int face_offset = 0;
 	for (int i = 0; i < models->mis_count; ++i)
 	{
 		for (int j = face_offset; j < face_offset + mesh_clipped_faces_counts[i]; ++j)

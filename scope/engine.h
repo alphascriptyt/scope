@@ -69,5 +69,6 @@ void handle_input(Engine* engine, Camera* camera, float dt);
 
 void display_window(Engine* engine);
 
+void cleanup_engine(Engine* engine);
 
 #endif
