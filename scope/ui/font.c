@@ -57,7 +57,11 @@ Font load_font()
 	// Get the pixels.
 	GetDIBits(hdc_mem, h_bitmap, 0, bitmap.bmHeight, font.pixels, &bmi, DIB_RGB_COLORS);
 
-	// TODO: Look into freeing memory.
+	// Clear the bitmap.
+	if (!DeleteObject(h_bitmap))
+	{
+		log_error("Failed to release font bitmap.");
+	}
 
 	return font;
 }

@@ -714,8 +714,9 @@ void on_resize(Engine* engine)
 void cleanup_engine(Engine* engine)
 {
     free_models(engine->models);
+    destroy_render_target(engine->render_target);
 
     free(engine->models);
     free(engine->point_lights);
-
+    free(engine->font.pixels);
 }

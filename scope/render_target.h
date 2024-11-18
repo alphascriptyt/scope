@@ -17,6 +17,7 @@ typedef struct
 // TODO: .c file?
 inline RenderTarget* create_render_target(const int width, const int height)
 {
+    // TODO: Why is this using malloc?
     RenderTarget* rt = malloc(sizeof(RenderTarget));
 
     if (!rt)
