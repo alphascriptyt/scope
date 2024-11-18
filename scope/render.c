@@ -1951,20 +1951,10 @@ void project_and_draw_triangles(RenderTarget* rt, const M4 projection_matrix, Mo
 
 void render(RenderTarget* rt, const RenderSettings* settings, Models* models, PointLights* point_lights, const M4 view_matrix)
 {
-	// TODO: Something really odd is going wrong, it'll be something stupid but
-	// oh well, will get it sorted soon. I think some small code refactors are 
-	// important here. For example like 
-	// copy_buffer_stride(float*, start_index, stride_length), might help me fix
-	// stuff and keep it consistent.
-
-	// Yeah would be good to make this more useable actually it's quite a mess 
-	// currently at list split backface culling and clipping into functions.
-
-
 	// Transform world space positions to view space.
 	model_to_world_space(models);
 	 
-	// Transforms lights as well as models.
+	// Transforms lights as well as models to view space.
 	world_to_view_space(models, point_lights, view_matrix);
 
 	// Perform backface culling.
@@ -1978,16 +1968,16 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 	// So light each vertex before clipping.
 	// NOTE: I think this means the lighting will be linear, taking away from
 	//		 the attenuation?
+
+	// TODO: This could be done by the engine, we only need to redo this on a resize or settings change.
 	ViewFrustum view_frustum;
 	create_clipping_view_frustum(settings->near_plane, settings->fov,
 		rt->canvas->width / (float)(rt->canvas->height), &view_frustum);
-
 
 	frustum_culling_and_lighting(rt, settings->projection_matrix, &view_frustum, view_matrix, models, point_lights);
 	
 
 	// TODO: Drawing only needs the vertex colour and uv. I want the colour to act as a tint on the uv does that mean colour needs an alpha.
 	//		 I would only want the alpha if the vertex had a colour and uv?
-
 	project_and_draw_triangles(rt, settings->projection_matrix, models);
 }
