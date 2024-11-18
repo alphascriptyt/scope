@@ -70,18 +70,6 @@ typedef struct
 	int mbs_total_normals;
 	int mbs_total_uvs;
 
-	/*
-	TODO: I need lists of the offsets to the starts of the buffers.
-	For example,
-
-	mbs_positions_offsets that contains the offsets into the 
-	mbs_face_position_indices, so actually, maybe its not too bad
-	cause its more an offset into the vertices? as those buffers
-	are the same size right?? Removing a mb could get tricky here.
-	But then how often am i gonna remove a mb....
-	
-	*/
-
 	int* mbs_faces_offsets;
 	int* mbs_positions_offsets;
 	int* mbs_normals_offsets;
@@ -156,6 +144,9 @@ void load_model_base_from_obj(Models* models, const char* filename);
 //		 allocating a bigger pool of memory would be nice, then
 //		 we can allocate when we need more capacity. So we would
 //		 have like a capacity for each buffer size.
+
+// TODO: For this, I can look into memory arenas: https://www.rfleury.com/p/untangling-lifetimes-the-arena-allocator
+//		 But we don't need this for now. Essentially just allocate big blocks, store the used and total capacity etc.
 
 // Allocates memory for n instances of the ModelBase at mb_index.
 void create_model_instances(Models* models, int mb_index, int n);

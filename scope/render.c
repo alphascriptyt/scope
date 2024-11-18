@@ -1881,6 +1881,73 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 	}
 }
 
+void project_and_draw_triangles(RenderTarget* rt, const M4 projection_matrix, Models* models)
+{
+	const float* clipped_faces = models->clipped_faces;
+	const int* mesh_clipped_faces_counts = models->clipped_faces_counts;
+
+	// This must be done mesh by mesh so we know what texture to use.
+	int face_offset = 0;
+	for (int i = 0; i < models->mis_count; ++i)
+	{
+		for (int j = face_offset; j < face_offset + mesh_clipped_faces_counts[i]; ++j)
+		{
+			int clipped_face_index = j * STRIDE_ENTIRE_FACE;
+
+			// Project the vertex position.
+			V4 v0 = {
+				clipped_faces[clipped_face_index],
+				clipped_faces[clipped_face_index + 1],
+				clipped_faces[clipped_face_index + 2],
+				1
+			};
+
+			V4 v1 = {
+				clipped_faces[clipped_face_index + 12],
+				clipped_faces[clipped_face_index + 13],
+				clipped_faces[clipped_face_index + 14],
+				1
+			};
+
+			V4 v2 = {
+				clipped_faces[clipped_face_index + 24],
+				clipped_faces[clipped_face_index + 25],
+				clipped_faces[clipped_face_index + 26],
+				1
+			};
+
+			V3 projected_v0, projected_v1, projected_v2;
+			project(rt->canvas, projection_matrix, v0, projected_v0);
+			project(rt->canvas, projection_matrix, v1, projected_v1);
+			project(rt->canvas, projection_matrix, v2, projected_v2);
+
+			V4 colour0 = {
+				clipped_faces[clipped_face_index + 8] * projected_v0[2],
+				clipped_faces[clipped_face_index + 9] * projected_v0[2],
+				clipped_faces[clipped_face_index + 10] * projected_v0[2],
+				clipped_faces[clipped_face_index + 11] * projected_v0[2],
+			};
+
+			V4 colour1 = {
+				clipped_faces[clipped_face_index + 20] * projected_v1[2],
+				clipped_faces[clipped_face_index + 21] * projected_v1[2],
+				clipped_faces[clipped_face_index + 22] * projected_v1[2],
+				clipped_faces[clipped_face_index + 23] * projected_v1[2],
+			};
+
+			V4 colour2 = {
+				clipped_faces[clipped_face_index + 32] * projected_v2[2],
+				clipped_faces[clipped_face_index + 33] * projected_v2[2],
+				clipped_faces[clipped_face_index + 34] * projected_v2[2],
+				clipped_faces[clipped_face_index + 35] * projected_v2[2],
+			};
+
+			clip_and_draw_triangle(rt, models, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
+		}
+
+		face_offset += mesh_clipped_faces_counts[i];
+	}
+}
 
 void render(RenderTarget* rt, const RenderSettings* settings, Models* models, PointLights* point_lights, const M4 view_matrix)
 {
@@ -1922,72 +1989,5 @@ void render(RenderTarget* rt, const RenderSettings* settings, Models* models, Po
 	// TODO: Drawing only needs the vertex colour and uv. I want the colour to act as a tint on the uv does that mean colour needs an alpha.
 	//		 I would only want the alpha if the vertex had a colour and uv?
 
-	// Project the view space vertices.
-	//float min_w = 0;
-	//float max_w = 0;
-	
-	const float* clipped_faces = models->clipped_faces;
-	const int* mesh_clipped_faces_counts = models->clipped_faces_counts;
-
-	// This must be done mesh by mesh so we know what texture to use.
-	int face_offset = 0;
-	for (int i = 0; i < models->mis_count; ++i)
-	{
-		for (int j = face_offset; j < face_offset + mesh_clipped_faces_counts[i]; ++j)
-		{
-			int clipped_face_index = j * STRIDE_ENTIRE_FACE;
-
-			// Project the vertex position.
-			V4 v0 = {
-				clipped_faces[clipped_face_index],
-				clipped_faces[clipped_face_index + 1],
-				clipped_faces[clipped_face_index + 2],
-				1
-			};
-
-			V4 v1 = {
-				clipped_faces[clipped_face_index + 12],
-				clipped_faces[clipped_face_index + 13],
-				clipped_faces[clipped_face_index + 14],
-				1
-			};
-
-			V4 v2 = {
-				clipped_faces[clipped_face_index + 24],
-				clipped_faces[clipped_face_index + 25],
-				clipped_faces[clipped_face_index + 26],
-				1
-			};
-
-			V3 projected_v0, projected_v1, projected_v2;
-			project(rt->canvas, settings->projection_matrix, v0, projected_v0);
-			project(rt->canvas, settings->projection_matrix, v1, projected_v1);
-			project(rt->canvas, settings->projection_matrix, v2, projected_v2);
-
-			V4 colour0 = {
-				clipped_faces[clipped_face_index + 8] * projected_v0[2],
-				clipped_faces[clipped_face_index + 9] * projected_v0[2],
-				clipped_faces[clipped_face_index + 10] * projected_v0[2],
-				clipped_faces[clipped_face_index + 11] * projected_v0[2],
-			};
-
-			V4 colour1 = {
-				clipped_faces[clipped_face_index + 20] * projected_v1[2],
-				clipped_faces[clipped_face_index + 21] * projected_v1[2],
-				clipped_faces[clipped_face_index + 22] * projected_v1[2],
-				clipped_faces[clipped_face_index + 23] * projected_v1[2],
-			};
-
-			V4 colour2 = {
-				clipped_faces[clipped_face_index + 32] * projected_v2[2],
-				clipped_faces[clipped_face_index + 33] * projected_v2[2],
-				clipped_faces[clipped_face_index + 34] * projected_v2[2],
-				clipped_faces[clipped_face_index + 35] * projected_v2[2],
-			};
-
-			clip_and_draw_triangle(rt, models, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
-		}
-
-		face_offset += mesh_clipped_faces_counts[i];
-	}
+	project_and_draw_triangles(rt, settings->projection_matrix, models);
 }

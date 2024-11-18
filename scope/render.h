@@ -37,6 +37,7 @@ void cull_backfaces(Models* models);
 
 void frustum_culling_and_lighting(RenderTarget* rt, M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Models* models, PointLights* point_lights);
 
+void project_and_draw_triangles(RenderTarget* rt, Models* models);
 
 // Render Pipeline Stages:
 // 
