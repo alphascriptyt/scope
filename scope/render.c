@@ -14,6 +14,74 @@
 #include "utils/common.h"
 
 #include <stdio.h>
+#include <string.h>
+
+
+
+
+void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights)
+{
+	// Debug draw point light icons.
+	// TEMP: But this is quite nice and could be a decent feature.
+	for (int i = 0; i < point_lights->count; ++i)
+	{
+		int idx_vsp = i * STRIDE_POSITION;
+		V4 p = {
+			point_lights->view_space_positions[idx_vsp],
+			point_lights->view_space_positions[++idx_vsp],
+			point_lights->view_space_positions[++idx_vsp],
+			1.f
+		};
+
+		V3 projected;
+		project(rt->canvas, settings->projection_matrix, p, projected);
+
+		float z = 1.f / projected[2];
+
+
+		int idx_attr = i * STRIDE_POINT_LIGHT_ATTRIBUTES;
+
+		int colour = float_rgb_to_int(point_lights->attributes[idx_attr], point_lights->attributes[idx_attr + 1], point_lights->attributes[idx_attr + 2]);
+
+		const int radius = 10; // Square radius nice.
+
+		int x0 = projected[0] - radius;
+		int x1 = projected[0] + radius;
+
+		int y0 = projected[1] - radius;
+		int y1 = projected[1] + radius;
+
+		// Only draw if depth is visibile in clip space.
+		if (z < 0 || z > 1)
+		{
+			continue;
+		}
+
+		// TODO: Can optimise.
+		for (int y = y0; y < y1; ++y)
+		{
+			if (y < 0 || y >= rt->canvas->height)
+			{
+				continue;
+			}
+
+			for (int x = x0; x < x1; ++x)
+			{
+
+				if (x < 0 || x >= rt->canvas->width)
+				{
+					continue;
+				}
+
+				int i = y * rt->canvas->width + x;
+				rt->canvas->pixels[i] = colour;
+
+
+
+			}
+		}
+	}
+}
 
 void draw_flat_bottom_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
 {
@@ -270,8 +338,8 @@ void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V
 	int dshort = abs(y1 - y0);
 	int slong = x0 < x1 ? 1 : -1; // x direction
 	int sshort = y0 < y1 ? 1 : -1; // y direction
-	int x = x0;
-	int y = y0;
+	int x = (int)x0;
+	int y = (int)y0;
 
 	int y_longer = 0;
 	if (dlong <= dshort) 
@@ -1972,4 +2040,11 @@ void render(
 	// TODO: Drawing only needs the vertex colour and uv. I want the colour to act as a tint on the uv does that mean colour needs an alpha.
 	//		 I would only want the alpha if the vertex had a colour and uv?
 	project_and_draw_triangles(rt, settings->projection_matrix, models);
+
+
+	draw_debug_point_lights(rt, settings, point_lights);
+	
+	
+
+
 }

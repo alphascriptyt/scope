@@ -230,8 +230,8 @@ void start_engine(Engine* engine)
 
     log_info("Loaded menzter.");
  
-    int n0 = 1000;
-    create_model_instances(engine->models, 0, 1000);
+    int n0 = 10;
+    create_model_instances(engine->models, 0, n0);
 
     log_info("Created model instances.");
 
@@ -519,7 +519,8 @@ void create_window(Engine* engine, const char* title)
 int process_window_messages(Engine* engine)
 {
     // TODO: Some heap is corrupted so i keep getting an error here......
-    // TODO: I reckon the error is storing our pointer in the window?
+    // TODO: The issue comes when we close the window sometimes and sometimes on startup.
+    //       Potentially something to do with storing the window pointer.
     
     // Processes all messages and sends them to WindowProc
     MSG msg;

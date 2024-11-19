@@ -15,7 +15,13 @@
 #include "maths/matrix4.h"
 
 
+// SECTION: Debug tools.
+
+void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights);
+
 // TODO: Not sure where to put this?
+
+// TODO: Split these functions into sections.
 
 float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, const float a, const float b);
 
