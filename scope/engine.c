@@ -19,29 +19,26 @@
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    Engine* engine = 0;
-
     switch (uMsg)
     {
     case WM_NCCREATE:
     {
         // Recover the engine pointer.
         LPCREATESTRUCT lpcs = (LPCREATESTRUCT)lParam;
-        engine = (Engine*)lpcs->lpCreateParams;
+        Engine* engine = (Engine*)lpcs->lpCreateParams;
 
         if (!engine)
         {
-            printf("FAILLLLLL\N");
+            printf("FAILLLLLL\n");
         }
 
         // Store the pointer safely for future use.
-        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)engine);
-
+        SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)engine);
         break;
     }
     case WM_DESTROY:
     {
-        printf("Call destroy event\n");
+        printf("TODO: Call destroy event\n");
         PostQuitMessage(0);
         return S_OK;
 
@@ -49,7 +46,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_EXITSIZEMOVE:
     {
         // Recover the engine pointer.
-        engine = (Engine*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+        Engine* engine = (Engine*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
         if (engine)
         {
             on_resize(engine);
@@ -59,7 +56,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_KEYUP:
     {
         // Recover the engine pointer.
-        engine = (Engine*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+        Engine* engine = (Engine*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+        
         if (engine)
         {
             if (VK_TAB == wParam)
@@ -87,6 +85,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             else if (VK_ESCAPE == wParam)
             {
                 engine->game_running = 0;
+                PostQuitMessage(0);
             }
 
             else if ('1' == wParam)
@@ -117,11 +116,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 Engine* init_engine()
 {
-    Engine* engine = malloc(sizeof(Engine));
+    log_info("Initialising engine...");
+
+    Engine* engine = calloc(1, sizeof(Engine));
 
     if (!engine)
     {
-        printf("Failed to malloc for engine.\n");
+        printf("Failed to calloc for engine.\n");
         return 0;
     }
 
@@ -137,7 +138,11 @@ Engine* init_engine()
     // TODO: I think refactoring the render target could be necessary. Although it makes sense to wrap the canvas and depth buffer so idk.
     engine->render_target = create_render_target((int)(engine->window_width / engine->upscaling_factor), (int)(engine->window_height / engine->upscaling_factor));
 
+    log_info("Created render target.");
+
     engine->font = load_font();
+
+    log_info("Loaded font.");
 
     // Init the input state.
     engine->previous_mouse_x = 0;
@@ -147,6 +152,8 @@ Engine* init_engine()
 
     // TODO: Handle failure
     create_window(engine, "Test");
+
+    log_info("Created window.");
 
     return engine;
 }
@@ -170,6 +177,8 @@ void start_engine(Engine* engine)
     // TODO: How can textures be stored? I think just an array of texture* then the mesh has a texture id.
     Texture* menzter_texture = load_texture_from_bmp("C:\\Users\\olive\\source\\repos\\scope\\scope\\res\\textures\\menzter.bmp");
     
+    log_info("Loaded texture.");
+
     // Use calloc to initialise all members to 0.
     engine->models = calloc(1, sizeof(Models));
     if (0 == engine->models)
@@ -180,7 +189,7 @@ void start_engine(Engine* engine)
 
     init_models(engine->models);
 
-
+    log_info("Initialised models.");
 
     engine->point_lights = calloc(1, sizeof(PointLights));
     if (0 == engine->point_lights)
@@ -188,6 +197,8 @@ void start_engine(Engine* engine)
         log_error("Failed to calloc for point_lights.");
         return; // TODO: Status.
     }
+
+    log_info("Initialised point lights.");
 
     log_info("Engine started!");
 
@@ -201,7 +212,7 @@ void start_engine(Engine* engine)
     // TODO: Rename everything from orientation to eulers as thats what it is
     // TODO: Helper function to convert pitch,yaw,roll to direction and vice versa?
     V3 scale = { 1, 1, 1 };
-    V3 plane_scale = { 10, 0.1, 10 };
+    V3 plane_scale = { 10, 0.1f, 10 };
     V3 scale1 = { 4, 4, 4 };
     
     //load_mesh_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj", pos, eulers1, scale);
@@ -209,11 +220,20 @@ void start_engine(Engine* engine)
 
     ///// TEMP: TESTING.
 
+    
+
     load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
+
+    log_info("Loaded suzanne.");
+
     load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj");
+
+    log_info("Loaded menzter.");
  
     int n0 = 1000;
-    create_model_instances(engine->models, 0, n0);
+    create_model_instances(engine->models, 0, 1000);
+
+    log_info("Created model instances.");
 
     for (int i = 0; i < n0; ++i)
     {
@@ -231,6 +251,8 @@ void start_engine(Engine* engine)
 
         engine->models->mis_transforms_updated_flags[i] = 1;
     }
+
+    log_info("Set model instance transforms.");
     
     
     /*
@@ -316,10 +338,12 @@ void start_engine(Engine* engine)
 
     float dir = 1;
     engine->game_running = 1;
+
+    log_info("Starting loop.");
     while (engine->game_running)
     {
         // Handle window messages.
-        if (!process_window_messages())
+        if (!process_window_messages(engine))
         {
             engine->game_running = 0;
             break;
@@ -492,11 +516,11 @@ void create_window(Engine* engine, const char* title)
     ShowWindow(engine->hwnd, SW_SHOW);
 }
 
-int process_window_messages()
+int process_window_messages(Engine* engine)
 {
     // TODO: Some heap is corrupted so i keep getting an error here......
     // TODO: I reckon the error is storing our pointer in the window?
-
+    
     // Processes all messages and sends them to WindowProc
     MSG msg;
     while (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE))

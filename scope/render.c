@@ -1103,10 +1103,10 @@ void cull_backfaces(Models* models)
 	const int* face_normal_indices = models->mbs_face_normal_indices;
 	const int* face_uvs_indices = models->mbs_face_uvs_indices;
 
-	float* uvs = models->mbs_uvs;
+	const float* uvs = models->mbs_uvs;
 
-	float* view_space_positions = models->view_space_positions;
-	float* view_space_normals = models->view_space_normals;
+	const float* view_space_positions = models->view_space_positions;
+	const float* view_space_normals = models->view_space_normals;
 
 	int face_offset = 0;
 	int front_face_offset = 0;
@@ -1127,12 +1127,9 @@ void cull_backfaces(Models* models)
 
 		int front_face_count = 0;
 
-		// Reset the number of front face counts.
+		// Reset the number of front faces for the instance.
 		models->front_faces_counts[i] = 0;
 
-		//const int mesh_faces_end = face_offset + models->mbs_faces_counts[mb_index];
-
-		//for (int j = face_offset; j < mesh_faces_end; ++j)
 		for (int j = 0; j < models->mbs_faces_counts[mb_index]; ++j)
 		{
 			const int face_index = (mb_faces_offset + j) * STRIDE_FACE_VERTICES;
@@ -1251,14 +1248,20 @@ void cull_backfaces(Models* models)
 		// Update the number of front faces for the current mesh.
 		// This is needed for frustum culling.
 		models->front_faces_counts[i] = front_face_count;
-
-		// Update the offsets for the next mesh.
+		
+		// Update the offsets for per instance data.
 		positions_offset += models->mbs_positions_counts[mb_index];
 		normals_offset += models->mbs_normals_counts[mb_index];
 	}
 }
 
-void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Models* models, PointLights* point_lights)
+void frustum_culling_and_lighting(
+	RenderTarget* rt, 
+	const M4 projection_matrix, 
+	const ViewFrustum* view_frustum, 
+	const M4 view_matrix, 
+	Models* models, 
+	PointLights* point_lights)
 {
 	// Frustum culling
 	float* clipped_faces = models->clipped_faces;
@@ -1271,7 +1274,8 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 	int face_offset = 0;
 	int positions_offset = 0;
 
-	float* front_faces = models->front_faces;
+	float* front_faces = models->front_faces; // TEMP: Not const whilst drawing normals.
+	const int* front_faces_counts = models->front_faces_counts;
 
 	// Perform frustum culling per model instance.
 	for (int i = 0; i < models->mis_count; ++i)
@@ -1327,9 +1331,13 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 		// Skip the mesh if it's not visible at all.
 		if (0 == mesh_visible)
 		{
+			mesh_clipped_faces_counts[i] = 0;
+			face_offset += front_faces_counts[i];
+
 			continue;
 		}
 
+		
 		// At this point we know the mesh is partially visible at least.
 		// Apply lighting here so that the if a vertex is clipped closer
 		// to the light, the lighing doesn't change.
@@ -1448,7 +1456,7 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 				}
 			}
 		}
-
+		
 		if (1 == mesh_visible && 0 == num_planes_to_clip_against)
 		{
 			// Entire mesh is visible so just copy the vertices over.
@@ -1462,7 +1470,6 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 		}
 		else
 		{
-
 			// TODO: The last mesh added is getting clipped when nowhere near it.
 			// TODO: I think it's actually clipping is overwriting something.
 
@@ -1506,9 +1513,8 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 				// After the first plane we want to read from the in buffer.
 				if (num_planes_clipped_against == 1)
 				{
-					// Initially we used the in front faces buffer,
-					// after the first iteration we have wrote to the out
-					// buffer, so that can now be our in buffer.
+					// Initially we used the in front faces buffer, after the first iteration 
+					// we have wrote to the out buffer, so that can now be our in buffer.
 					temp_clipped_faces_out = models->temp_clipped_faces_in;
 
 					// Now we want to read from the start of the in buffer, 
@@ -1585,16 +1591,12 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 
 					if (num_inside_points == 3)
 					{
-						// The whole triangle is inside the plane.
+						// The whole triangle is inside the plane, so copy the face.
 						int index_face = j * STRIDE_ENTIRE_FACE;
 
-						// Simply copy the entire face. TODO: Could unroll. Not sure if it is beneficial, should test this,
-						// in another project.
-						for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; ++k)
-						{
-							temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[k];
-						}
+						memcpy(temp_clipped_faces_out + index_out, temp_clipped_faces_in + index_face, STRIDE_ENTIRE_FACE * sizeof(float));
 
+						index_out += STRIDE_ENTIRE_FACE;
 						++temp_visible_faces_count;
 					}
 					else if (num_inside_points == 1 && num_outside_points == 2)
@@ -1847,7 +1849,6 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 
 				// Increment to show we actually clipped a plane.
 				++num_planes_clipped_against;
-
 			}
 
 			// Update the clipped faces index.
@@ -1856,14 +1857,17 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 		}
 
 		// Store the number of visible faces of the mesh after clipping.
-		models->clipped_faces_counts[i] = visible_faces_count;
+		mesh_clipped_faces_counts[i] = visible_faces_count;
 
 		// Move to the next mesh.
-		face_offset += models->front_faces_counts[i];
+		face_offset += front_faces_counts[i];
 	}
 }
 
-void project_and_draw_triangles(RenderTarget* rt, const M4 projection_matrix, Models* models)
+void project_and_draw_triangles(
+	RenderTarget* rt, 
+	const M4 projection_matrix, 
+	Models* models)
 {
 	const float* clipped_faces = models->clipped_faces;
 	const int* mesh_clipped_faces_counts = models->clipped_faces_counts;
@@ -1932,7 +1936,12 @@ void project_and_draw_triangles(RenderTarget* rt, const M4 projection_matrix, Mo
 	}
 }
 
-void render(RenderTarget* rt, const RenderSettings* settings, Models* models, PointLights* point_lights, const M4 view_matrix)
+void render(
+	RenderTarget* rt, 
+	const RenderSettings* settings, 
+	Models* models, 
+	PointLights* point_lights, 
+	const M4 view_matrix)
 {
 	// Transform world space positions to view space.
 	model_to_world_space(models);

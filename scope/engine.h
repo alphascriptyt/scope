@@ -61,7 +61,7 @@ void create_window(Engine* engine, const char* title);
 
 void on_resize(Engine* engine);
 
-int process_window_messages();
+int process_window_messages(Engine* engine);
 
 void draw_ui(Engine* engine);
 
