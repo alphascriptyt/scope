@@ -1264,9 +1264,8 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 	float* clipped_faces = models->clipped_faces;
 	int* mesh_clipped_faces_counts = models->clipped_faces_counts;
 
-	float* bounding_spheres = models->mis_bounding_spheres;
+	const float* bounding_spheres = models->mis_bounding_spheres;
 
-	
 	int clipped_faces_index = 0; // Store the index to write the clipped faces out to.
 
 	int face_offset = 0;
@@ -1274,13 +1273,14 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 
 	float* front_faces = models->front_faces;
 
+	// Perform frustum culling per model instance.
 	for (int i = 0; i < models->mis_count; ++i)
 	{
 		// Reset the number of visible face counts.
 		mesh_clipped_faces_counts[i] = 0;
 		int visible_faces_count = 0;
 
-		// Perform board phase bounding sphere check.
+		// Perform board phase bounding sphere check against each plane.
 		int index_bounding_sphere = i * STRIDE_SPHERE;
 
 		// We must convert the center to view space
@@ -1302,7 +1302,7 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 		int clip_against_plane[MAX_FRUSTUM_PLANES] = { 0 };
 		int num_planes_to_clip_against = 0;
 
-		// Broad phase test.
+		// Broad phase bounding sphere test.
 		int mesh_visible = 1;
 		for (int j = 0; j < view_frustum->num_planes; ++j)
 		{
@@ -1323,20 +1323,16 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 				++num_planes_to_clip_against;
 			}
 		}
-
+		
+		// Skip the mesh if it's not visible at all.
 		if (0 == mesh_visible)
 		{
 			continue;
 		}
 
-
 		// At this point we know the mesh is partially visible at least.
 		// Apply lighting here so that the if a vertex is clipped closer
 		// to the light, the lighing doesn't change.
-
-		// TODO: COMMENTS.
-
-		// For each face.
 		for (int j = face_offset; j < face_offset + models->front_faces_counts[i]; ++j)
 		{
 			int index_face = j * STRIDE_ENTIRE_FACE;
@@ -1346,7 +1342,6 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 			// 12 attributes per vertex. TODO: STRIDE for this?
 			for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += 12)
 			{
-
 				const V3 pos = {
 					front_faces[k],
 					front_faces[k + 1],
@@ -1386,8 +1381,6 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 				};
 
 				V3 s, e;
-
-
 
 				project(rt->canvas, projection_matrix, start, s);
 				project(rt->canvas, projection_matrix, end, e);
@@ -1452,33 +1445,20 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 					front_faces[k + 8] = df;
 					front_faces[k + 9] = df;
 					front_faces[k + 10] = df;
-
-
 				}
-
-
-
 			}
-
-
 		}
 
 		if (1 == mesh_visible && 0 == num_planes_to_clip_against)
 		{
-			// Just copy the vertices over.
-			for (int j = face_offset; j < face_offset + models->front_faces_counts[i]; ++j)
-			{
-				int index_face = j * STRIDE_ENTIRE_FACE;
+			// Entire mesh is visible so just copy the vertices over.
+			int index_face = face_offset * STRIDE_ENTIRE_FACE;
+			int front_faces_count = models->front_faces_counts[i];
 
-				// Simply copy the entire face. TODO: Could unroll. Not sure if it is beneficial, should test this,
-				// in another project.
-				for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; ++k)
-				{
-					clipped_faces[clipped_faces_index++] = front_faces[k];
-				}
+			memcpy(clipped_faces + clipped_faces_index, front_faces + index_face, (size_t)front_faces_count * STRIDE_ENTIRE_FACE * sizeof(float));
 
-				++visible_faces_count;
-			}
+			clipped_faces_index += front_faces_count * STRIDE_ENTIRE_FACE;
+			visible_faces_count += front_faces_count;
 		}
 		else
 		{
@@ -1509,10 +1489,12 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 
 			for (int index_plane = 0; index_plane < view_frustum->num_planes; ++index_plane)
 			{
-				// Only clip against the plane if the broad phase flagged it. 
+				// Only clip against the plane if the broad phase flagged it.
 				if (clip_against_plane[index_plane] == 0)
+				{
 					continue;
-
+				}
+					
 				const Plane* plane = &view_frustum->planes[index_plane];
 
 				// Reset the index to write out to.
@@ -1646,29 +1628,29 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 						float t = line_intersect_plane(ip0, op0, plane, p0);
 
 						// Lerp for the attributes.
-						float u0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_U], temp_clipped_faces_in[index_op0 + INDEX_U], t);
-						float v0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_V], temp_clipped_faces_in[index_op0 + INDEX_V], t);
-						float nx0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NX], temp_clipped_faces_in[index_op0 + INDEX_NX], t);
-						float ny0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NY], temp_clipped_faces_in[index_op0 + INDEX_NY], t);
-						float nz0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NZ], temp_clipped_faces_in[index_op0 + INDEX_NZ], t);
-						float r0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_R], temp_clipped_faces_in[index_op0 + INDEX_R], t);
-						float g0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_G], temp_clipped_faces_in[index_op0 + INDEX_G], t);
-						float b0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_B], temp_clipped_faces_in[index_op0 + INDEX_B], t);
-						float a0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_A], temp_clipped_faces_in[index_op0 + INDEX_A], t);
+						const float u0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_U], temp_clipped_faces_in[index_op0 + INDEX_U], t);
+						const float v0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_V], temp_clipped_faces_in[index_op0 + INDEX_V], t);
+						const float nx0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NX], temp_clipped_faces_in[index_op0 + INDEX_NX], t);
+						const float ny0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NY], temp_clipped_faces_in[index_op0 + INDEX_NY], t);
+						const float nz0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NZ], temp_clipped_faces_in[index_op0 + INDEX_NZ], t);
+						const float r0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_R], temp_clipped_faces_in[index_op0 + INDEX_R], t);
+						const float g0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_G], temp_clipped_faces_in[index_op0 + INDEX_G], t);
+						const float b0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_B], temp_clipped_faces_in[index_op0 + INDEX_B], t);
+						const float a0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_A], temp_clipped_faces_in[index_op0 + INDEX_A], t);
 
 						V3 p1;
 						t = line_intersect_plane(ip0, op1, plane, p1);
 
 						// Lerp for the attributes.
-						float u1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_U], temp_clipped_faces_in[index_op1 + INDEX_U], t);
-						float v1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_V], temp_clipped_faces_in[index_op1 + INDEX_V], t);
-						float nx1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NX], temp_clipped_faces_in[index_op1 + INDEX_NX], t);
-						float ny1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NY], temp_clipped_faces_in[index_op1 + INDEX_NY], t);
-						float nz1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NZ], temp_clipped_faces_in[index_op1 + INDEX_NZ], t);
-						float r1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_R], temp_clipped_faces_in[index_op1 + INDEX_R], t);
-						float g1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_G], temp_clipped_faces_in[index_op1 + INDEX_G], t);
-						float b1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_B], temp_clipped_faces_in[index_op1 + INDEX_B], t);
-						float a1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_A], temp_clipped_faces_in[index_op1 + INDEX_A], t);
+						const float u1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_U], temp_clipped_faces_in[index_op1 + INDEX_U], t);
+						const float v1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_V], temp_clipped_faces_in[index_op1 + INDEX_V], t);
+						const float nx1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NX], temp_clipped_faces_in[index_op1 + INDEX_NX], t);
+						const float ny1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NY], temp_clipped_faces_in[index_op1 + INDEX_NY], t);
+						const float nz1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NZ], temp_clipped_faces_in[index_op1 + INDEX_NZ], t);
+						const float r1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_R], temp_clipped_faces_in[index_op1 + INDEX_R], t);
+						const float g1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_G], temp_clipped_faces_in[index_op1 + INDEX_G], t);
+						const float b1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_B], temp_clipped_faces_in[index_op1 + INDEX_B], t);
+						const float a1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_A], temp_clipped_faces_in[index_op1 + INDEX_A], t);
 
 						// Copy the attributes into the new face.
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[index_ip0];
@@ -1743,15 +1725,15 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 						float t = line_intersect_plane(ip0, op0, plane, p0);
 
 						// Lerp for the attributes.
-						float u0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_U], temp_clipped_faces_in[index_op0 + INDEX_U], t);
-						float v0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_V], temp_clipped_faces_in[index_op0 + INDEX_V], t);
-						float nx0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NX], temp_clipped_faces_in[index_op0 + INDEX_NX], t);
-						float ny0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NY], temp_clipped_faces_in[index_op0 + INDEX_NY], t);
-						float nz0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NZ], temp_clipped_faces_in[index_op0 + INDEX_NZ], t);
-						float r0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_R], temp_clipped_faces_in[index_op0 + INDEX_R], t);
-						float g0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_G], temp_clipped_faces_in[index_op0 + INDEX_G], t);
-						float b0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_B], temp_clipped_faces_in[index_op0 + INDEX_B], t);
-						float a0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_A], temp_clipped_faces_in[index_op0 + INDEX_A], t);
+						const float u0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_U], temp_clipped_faces_in[index_op0 + INDEX_U], t);
+						const float v0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_V], temp_clipped_faces_in[index_op0 + INDEX_V], t);
+						const float nx0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NX], temp_clipped_faces_in[index_op0 + INDEX_NX], t);
+						const float ny0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NY], temp_clipped_faces_in[index_op0 + INDEX_NY], t);
+						const float nz0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_NZ], temp_clipped_faces_in[index_op0 + INDEX_NZ], t);
+						const float r0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_R], temp_clipped_faces_in[index_op0 + INDEX_R], t);
+						const float g0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_G], temp_clipped_faces_in[index_op0 + INDEX_G], t);
+						const float b0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_B], temp_clipped_faces_in[index_op0 + INDEX_B], t);
+						const float a0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_A], temp_clipped_faces_in[index_op0 + INDEX_A], t);
 
 						// Copy the attributes into the new face.
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[index_ip0];
@@ -1801,15 +1783,15 @@ void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, 
 						t = line_intersect_plane(ip1, op0, plane, p1);
 
 						// Lerp for the attributes.
-						float u1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_U], temp_clipped_faces_in[index_op0 + INDEX_U], t);
-						float v1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_V], temp_clipped_faces_in[index_op0 + INDEX_V], t);
-						float nx1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_NX], temp_clipped_faces_in[index_op0 + INDEX_NX], t);
-						float ny1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_NY], temp_clipped_faces_in[index_op0 + INDEX_NY], t);
-						float nz1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_NZ], temp_clipped_faces_in[index_op0 + INDEX_NZ], t);
-						float r1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_R], temp_clipped_faces_in[index_op0 + INDEX_R], t);
-						float g1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_G], temp_clipped_faces_in[index_op0 + INDEX_G], t);
-						float b1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_B], temp_clipped_faces_in[index_op0 + INDEX_B], t);
-						float a1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_A], temp_clipped_faces_in[index_op0 + INDEX_A], t);
+						const float u1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_U], temp_clipped_faces_in[index_op0 + INDEX_U], t);
+						const float v1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_V], temp_clipped_faces_in[index_op0 + INDEX_V], t);
+						const float nx1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_NX], temp_clipped_faces_in[index_op0 + INDEX_NX], t);
+						const float ny1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_NY], temp_clipped_faces_in[index_op0 + INDEX_NY], t);
+						const float nz1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_NZ], temp_clipped_faces_in[index_op0 + INDEX_NZ], t);
+						const float r1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_R], temp_clipped_faces_in[index_op0 + INDEX_R], t);
+						const float g1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_G], temp_clipped_faces_in[index_op0 + INDEX_G], t);
+						const float b1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_B], temp_clipped_faces_in[index_op0 + INDEX_B], t);
+						const float a1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_A], temp_clipped_faces_in[index_op0 + INDEX_A], t);
 
 						// Copy the attributes into the new face.
 						temp_clipped_faces_out[index_out++] = p0[0];
@@ -1887,6 +1869,7 @@ void project_and_draw_triangles(RenderTarget* rt, const M4 projection_matrix, Mo
 	const int* mesh_clipped_faces_counts = models->clipped_faces_counts;
 
 	// This must be done mesh by mesh so we know what texture to use.
+	// TODO: Textures.
 	int face_offset = 0;
 	for (int i = 0; i < models->mis_count; ++i)
 	{

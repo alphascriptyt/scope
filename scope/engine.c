@@ -212,7 +212,7 @@ void start_engine(Engine* engine)
     load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
     load_model_base_from_obj(engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/menzter.obj");
  
-    int n0 = 10;
+    int n0 = 1000;
     create_model_instances(engine->models, 0, n0);
 
     for (int i = 0; i < n0; ++i)

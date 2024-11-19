@@ -21,7 +21,6 @@ float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, const
 
 void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V3 colour);
 
-
 void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
 void draw_flat_bottom_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
 void draw_flat_top_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2);
@@ -35,20 +34,10 @@ void world_to_view_space(Models* models, PointLights* point_lights, const M4 vie
 
 void cull_backfaces(Models* models);
 
-void frustum_culling_and_lighting(RenderTarget* rt, M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Models* models, PointLights* point_lights);
+void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Models* models, PointLights* point_lights);
 
-void project_and_draw_triangles(RenderTarget* rt, Models* models);
+void project_and_draw_triangles(RenderTarget* rt, const M4 projection_matrix, Models* models);
 
-// Render Pipeline Stages:
-// 
-// Jump around using 'RENDER_STAGE:'
-// 
-// 1. RENDER_STAGE: World Space -> View Space  
-// 2. RENDER_STAGE: Backface Culling
-// 3. RENDER_STAGE: Frustum Culling
-// 4. RENDER_STAGE: Lighting
-// 5. RENDER_STAGE: Projection
-// 6. RENDER_STAGE: Clipping & Drawing Triangles
 void render(RenderTarget* rt, const RenderSettings* settings, Models* models, PointLights* point_lights, const M4 view_matrix);
 
 #endif
