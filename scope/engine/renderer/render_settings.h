@@ -25,19 +25,17 @@ typedef struct
 
 } RenderSettings;
 
-inline void update_projection_m4(RenderSettings* rs, const Canvas* canvas)
+inline void update_projection_m4(RenderSettings* rs, float aspect_ratio)
 {
-	float aspectRatio = canvas->width / (float)(canvas->height);
+	float y_scale = 1.f / tanf(radians(rs->fov) / 2.f);
+	float x_scale = y_scale / aspect_ratio;
 
-	float yScale = 1.f / tanf(radians(rs->fov) / 2.f);
-	float xScale = yScale / aspectRatio;
-
-	rs->projection_matrix[0] = xScale;
+	rs->projection_matrix[0] = y_scale;
 	rs->projection_matrix[1] = 0;
 	rs->projection_matrix[2] = 0;
 	rs->projection_matrix[3] = 0;
 	rs->projection_matrix[4] = 0;
-	rs->projection_matrix[5] = yScale;
+	rs->projection_matrix[5] = y_scale;
 	rs->projection_matrix[6] = 0;
 	rs->projection_matrix[7] = 0;
 	rs->projection_matrix[8] = 0;

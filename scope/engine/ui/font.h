@@ -1,6 +1,8 @@
 #ifndef FONT_H
 #define FONT_H
 
+#include "common/status.h"
+
 typedef struct
 {
 	int char_width;
@@ -14,7 +16,8 @@ typedef struct
 
 } Font;
 
-Font load_font();
+Status font_init(Font* font);
+
 int font_get_char_index(Font* font, char c);
 
 #endif

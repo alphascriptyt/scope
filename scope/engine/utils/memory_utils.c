@@ -10,11 +10,11 @@ Status resize_int_buffer(int** out_buffer, const unsigned int len)
 	if (0 == temp_ptr)
 	{
 		log_error("Failed to resize_int_buffer.");
-		return ALLOC_ERR;
+		return STATUS_ALLOC_FAILURE;
 	}
 
 	*out_buffer = temp_ptr;
-	return OK;
+	return STATUS_OK;
 }
 
 Status resize_float_buffer(float** out_buffer, const unsigned int len)
@@ -23,9 +23,9 @@ Status resize_float_buffer(float** out_buffer, const unsigned int len)
 	if (0 == temp_ptr)
 	{
 		log_error("Failed to resize_float_buffer.");
-		return ALLOC_ERR;
+		return STATUS_ALLOC_FAILURE;
 	}
 
 	*out_buffer = temp_ptr;
-	return OK;
+	return STATUS_OK;
 }

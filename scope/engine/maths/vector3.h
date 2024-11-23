@@ -5,6 +5,8 @@
 
 #include <math.h>
 
+// TODO: Should we just use x,y,z?
+
 // TODO: LOok into chaining these functions, i think if i return a pointer i can.
 // TODO: Also, potentially, we could swap [] for the way we fill for better performance.
 //		 but would have to test the difference it would make not sure.
@@ -104,11 +106,21 @@ inline void v3_sub_v3_out(const V3 v0, const V3 v1, V3 out)
 	out[2] = v0[2] - v1[2];
 }
 
+
+
+inline void v3_init(V3 v, float x, float y, float z)
+{
+	v[0] = x;
+	v[1] = y;
+	v[2] = z;
+}
+
 inline char* v3_to_str(const V3 v)
 {
 	return format_str("%f %f %f", v[0], v[1], v[2]);
 }
 
+// TODO: This shouldn't be in V3 i dont think.
 inline int is_front_face(const V3 v0, const V3 v1, const V3 v2)
 {
 	V3 v1v0, v2v0;
@@ -117,9 +129,8 @@ inline int is_front_face(const V3 v0, const V3 v1, const V3 v2)
 	
 	V3 dir;
 	cross(v1v0, v2v0, dir);
-
-	// TODO: I actually think this is reversed now due to new coordinate system, not sure, must test.
-	// Or its the cross producxt that is reversed. - think i've already done this.....
+	
+	// TODO: Check this is the correct way.
 	return dot(v0, dir) <= 0;
 }
 

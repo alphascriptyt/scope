@@ -1,19 +1,15 @@
 #include "canvas.h"
 
+#include "common/status.h"
+
 #include "utils/logger.h"
 
 #include <stdlib.h>
-#include <stdio.h>
+#include <string.h>
 
-Canvas* create_canvas(int width, int height)
+Status canvas_init(Canvas* canvas, int width, int height)
 {
-	Canvas* canvas = malloc(sizeof(Canvas));
-
-	if (!canvas)
-	{
-		log_error("Failed to allocate memory for canvas.");
-		return 0;
-	}
+	memset(canvas, 0, sizeof(Canvas));
 
 	canvas->width = width;
 	canvas->height = height;
@@ -22,27 +18,18 @@ Canvas* create_canvas(int width, int height)
 	if (!canvas->pixels)
 	{
 		log_error("Failed to allocate memory for canvas pixels.");
-		return 0;
+		return STATUS_ALLOC_FAILURE;
 	}
 
-	return canvas;
+	return STATUS_OK;
 }
 
-void destroy_canvas(Canvas* canvas)
-{
-	free(canvas->pixels);
-	canvas->pixels = 0;
-
-	free(canvas);
-	canvas = 0;
-}
-
-int resize_canvas(Canvas* canvas, int width, int height)
+Status canvas_resize(Canvas* canvas, int width, int height)
 {
 	// Check the size has changed.
 	if (canvas->width == width && canvas->height == height)
 	{
-		return 0;
+		return STATUS_OK;
 	}
 	
 	// Allocate memory for the new array.
@@ -51,9 +38,8 @@ int resize_canvas(Canvas* canvas, int width, int height)
 	// Check the allocation worked.
 	if (!new_pixels)
 	{
-		// We should be able to re-use the old pixels.
-		log_warn("Failed to reallocate memory for canvas pixels on resize.");
-		return 0;
+		log_error("Failed to reallocate memory for canvas pixels on resize.");
+		return STATUS_ALLOC_FAILURE;
 	}
 
 	// Update the canvas.
@@ -61,10 +47,10 @@ int resize_canvas(Canvas* canvas, int width, int height)
 	canvas->width = width;
 	canvas->height = height;
 
-	return 1;
+	return STATUS_OK;
 }
 
-void fill_canvas(Canvas* canvas, const unsigned int colour)
+void canvas_fill(Canvas* canvas, const unsigned int colour)
 {
 	// TODO: Look for some sort of blit or fill function 
 	const int length = canvas->width * canvas->height;	
@@ -78,4 +64,13 @@ void fill_canvas(Canvas* canvas, const unsigned int colour)
 		--i;
 		++ptr;
 	}
+}
+
+void canvas_destroy(Canvas* canvas)
+{
+	free(canvas->pixels);
+	canvas->pixels = 0;
+
+	free(canvas);
+	canvas = 0; // TODO: Do we want to do this?
 }

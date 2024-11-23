@@ -1,6 +1,4 @@
-﻿#include <stdio.h>
-
-#include "engine.h"
+﻿#include "engine/engine.h"
 
 // TODO: Look into switching to an actual c compiler, not sure how to check that its compiled with c or if it even matters.
 
@@ -17,8 +15,13 @@ All win32 stuff should be the same.
 
 int main()
 {
-	Engine* engine = init_engine();	
-	start_engine(engine);
+	Engine engine;
+	if (STATUS_OK == engine_init(&engine, 1600, 900))
+	{
+		engine_run(&engine);
+	}
 	
+	engine_destroy(&engine);
+
 	return 0;
 }

@@ -1,7 +1,7 @@
 #ifndef MODELS_H
 #define MODELS_H
 
-#include "status.h"
+#include "common/status.h"
 #include "maths/vector3.h"
 
 #include <stdio.h>

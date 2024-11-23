@@ -14,7 +14,8 @@ typedef struct
 
 } Text;
 
-Text create_text(char* text, int x, int y, int colour, int scale);
-void draw_text(Canvas* canvas, Text* text, Font* font, float upscaling_factor);
+Text text_create(char* text, int x, int y, int colour, int scale);
+
+void text_draw(Canvas* canvas, Text* text, Font* font, float upscaling_factor);
 
 #endif

@@ -11,9 +11,6 @@ endif()
 
 project ("scope" C)
 
-# Add the 'source' folder as an include directory.
-include_directories("scope")
-
 # Include sub-projects.
 add_subdirectory ("scope")
 

@@ -1,7 +1,7 @@
 #include "render.h"
 
 #include "render_target.h"
-#include "colour.h"
+#include "common/colour.h"
 
 #include "maths/matrix4.h"
 #include "maths/vector4.h"
@@ -38,7 +38,7 @@ void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, P
 		};
 
 		V3 projected;
-		project(rt->canvas, settings->projection_matrix, p, projected);
+		project(&rt->canvas, settings->projection_matrix, p, projected);
 
 		float z = 1.f / projected[2];
 
@@ -49,11 +49,11 @@ void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, P
 
 		const int radius = 10; // Square radius nice.
 
-		int x0 = projected[0] - radius;
-		int x1 = projected[0] + radius;
+		int x0 = (int)(projected[0] - radius);
+		int x1 = (int)(projected[0] + radius);
 
-		int y0 = projected[1] - radius;
-		int y1 = projected[1] + radius;
+		int y0 = (int)(projected[1] - radius);
+		int y1 = (int)(projected[1] + radius);
 
 		// Only draw if depth is visibile in clip space.
 		if (z < 0 || z > 1)
@@ -64,7 +64,7 @@ void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, P
 		// TODO: Can optimise.
 		for (int y = y0; y < y1; ++y)
 		{
-			if (y < 0 || y >= rt->canvas->height)
+			if (y < 0 || y >= rt->canvas.height)
 			{
 				continue;
 			}
@@ -72,13 +72,13 @@ void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, P
 			for (int x = x0; x < x1; ++x)
 			{
 
-				if (x < 0 || x >= rt->canvas->width)
+				if (x < 0 || x >= rt->canvas.width)
 				{
 					continue;
 				}
 
-				int i = y * rt->canvas->width + x;
-				rt->canvas->pixels[i] = colour;
+				int i = y * rt->canvas.width + x;
+				rt->canvas.pixels[i] = colour;
 
 
 
@@ -156,8 +156,8 @@ void draw_flat_bottom_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 
 		v4_mul_f_out(dcdy1, a, tempc1);
 		v4_add_v4(tempc1, start_c);
 
-		int xStart = (int)(ceil(x0 - 0.5f));
-		int xEnd = (int)(ceil(x1 - 0.5f));
+		int xStart = (int)(ceilf(x0 - 0.5f));
+		int xEnd = (int)(ceilf(x1 - 0.5f));
 
 		draw_scanline(rt, xStart, xEnd, y, wStart, wEnd, tempc0, tempc1);
 	}
@@ -338,8 +338,8 @@ void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V
 
 	// Integer Based Bresenham's Algorithm: https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 
-	int dlong = abs(x1 - x0);
-	int dshort = abs(y1 - y0);
+	int dlong = abs((int)(x1 - x0));
+	int dshort = abs((int)(y1 - y0));
 	int slong = x0 < x1 ? 1 : -1; // x direction
 	int sshort = y0 < y1 ? 1 : -1; // y direction
 	int x = (int)x0;
@@ -375,10 +375,10 @@ void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V
 		}
 
 
-		if (x > -1 && x < rt->canvas->width - 1 && y > -1 && y < rt->canvas->height - 1) 
+		if (x > -1 && x < rt->canvas.width - 1 && y > -1 && y < rt->canvas.height - 1) 
 		{
-			int pos = y * rt->canvas->width + x;
-			rt->canvas->pixels[pos] = colour_int;
+			int pos = y * rt->canvas.width + x;
+			rt->canvas.pixels[pos] = colour_int;
 			rt->depth_buffer[pos] = 0;
 		}
 
@@ -404,12 +404,12 @@ void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V
 void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
 {
 	// TODO: Broad phase for this.
-	int clip =  v0[0] < 0 || v0[0] >= rt->canvas->width	  ||
-				v0[1] < 0 || v0[1] >=  rt->canvas->height ||
-				v1[0] < 0 || v1[0] >=  rt->canvas->width  ||
-				v1[1] < 0 || v1[1] >=  rt->canvas->height ||
-				v2[0] < 0 || v2[0] >=  rt->canvas->width  ||
-				v2[1] < 0 || v2[1] >=  rt->canvas->height;
+	int clip =  v0[0] < 0 || v0[0] >= rt->canvas.width	  ||
+				v0[1] < 0 || v0[1] >=  rt->canvas.height ||
+				v1[0] < 0 || v1[0] >=  rt->canvas.width  ||
+				v1[1] < 0 || v1[1] >=  rt->canvas.height ||
+				v2[0] < 0 || v2[0] >=  rt->canvas.width  ||
+				v2[1] < 0 || v2[1] >=  rt->canvas.height;
 
 	
 	if (!clip) 
@@ -426,12 +426,12 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 	};
 
 	Plane right = {
-		.point = {(float)rt->canvas->width, 0, 0},
+		.point = {(float)rt->canvas.width, 0, 0},
 		.normal = {-1, 0, 0}
 	};
 
 	Plane bottom = {
-		.point = {0, (float)rt->canvas->height, 0},
+		.point = {0, (float)rt->canvas.height, 0},
 		.normal = {0, -1, 0}
 	};
 
@@ -755,39 +755,39 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 	{
 		int index = i * STRIDE_PROJECTED_FACE;
 
-		const V3 p0 = {
+		V3 p0 = {
 			projected_clipped_faces_out[index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index]
 		};
 
-		const V4 colour0 = {
+		V4 colour0 = {
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index]
 		};
 
-		const V3 p1 = {
+		V3 p1 = {
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index]
 		};
 
-		const V4 colour1 = {
+		V4 colour1 = {
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index]
 		};
 
-		const V3 p2 = {
+		V3 p2 = {
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index]
 		};
 
-		const V4 colour2 = {
+		V4 colour2 = {
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
@@ -803,8 +803,8 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 	// TODO: Refactor function args.
 
 	// Ignore if the line is offscreen.
-	if (y > rt->canvas->height - 1 || y < 0 ||
-		x0 > rt->canvas->width - 1 || x1 < 0)
+	if (y > rt->canvas.height - 1 || y < 0 ||
+		x0 > rt->canvas.width - 1 || x1 < 0)
 	{
 		return;
 	}
@@ -816,7 +816,7 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 	float wStep = (w1 - w0) * invDx;
 
 	// Offset x by the given y.
-	int row_offset = rt->canvas->width * y;
+	int row_offset = rt->canvas.width * y;
 
 	int start_x = x0 + row_offset;
 	int end_x = x1 + row_offset;
@@ -836,7 +836,7 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 	};
 
 	// Render the scanline
-	unsigned int* pixels = rt->canvas->pixels + start_x;
+	unsigned int* pixels = rt->canvas.pixels + start_x;
 	unsigned int i = end_x - start_x;
 	
 	float* depth_buffer = rt->depth_buffer + start_x;
@@ -906,7 +906,7 @@ void model_to_world_space(Models* models)
 	const int models_count = models->mis_count;
 	const int* mesh_positions_counts = models->mbs_positions_counts;
 	const int* mesh_normals_counts = models->mbs_normals_counts;
-	const int mis_base_ids = models->mis_base_ids;
+	const int* mis_base_ids = models->mis_base_ids;
 	const float* mesh_transforms = models->mis_transforms;
 	const float* object_space_positions = models->mbs_object_space_positions;
 
@@ -1507,8 +1507,8 @@ void frustum_culling_and_lighting(
 
 				V3 s, e;
 
-				project(rt->canvas, projection_matrix, start, s);
-				project(rt->canvas, projection_matrix, end, e);
+				project(&rt->canvas, projection_matrix, start, s);
+				project(&rt->canvas, projection_matrix, end, e);
 
 				V3 col = { 1,0,1 };
 
@@ -2021,9 +2021,9 @@ void project_and_draw_triangles(
 			};
 
 			V3 projected_v0, projected_v1, projected_v2;
-			project(rt->canvas, projection_matrix, v0, projected_v0);
-			project(rt->canvas, projection_matrix, v1, projected_v1);
-			project(rt->canvas, projection_matrix, v2, projected_v2);
+			project(&rt->canvas, projection_matrix, v0, projected_v0);
+			project(&rt->canvas, projection_matrix, v1, projected_v1);
+			project(&rt->canvas, projection_matrix, v2, projected_v2);
 
 			V4 colour0 = {
 				clipped_faces[clipped_face_index + 8] * projected_v0[2],
@@ -2093,7 +2093,7 @@ void render(
 	// TODO: This could be done by the engine, we only need to redo this on a resize or settings change.
 	ViewFrustum view_frustum;
 	create_clipping_view_frustum(settings->near_plane, settings->fov,
-		rt->canvas->width / (float)(rt->canvas->height), &view_frustum);
+		rt->canvas.width / (float)(rt->canvas.height), &view_frustum);
 
 	printf("create_clipping_view_frustum took: %d\n", get_elapsed(&t));
 	restart_timer(&t);

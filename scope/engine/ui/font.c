@@ -4,15 +4,16 @@
 
 #include <Windows.h>
 
-Font load_font()
+Status font_init(Font* font)
 {
+	// Initialise the font struct.
+	memset(font, 0, sizeof(Font));
+
 	// Initialise the character data.
-	Font font = {
-		.defined_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=()[]{}<>/*:#%!?.,'\"@&$",
-		.chars_per_row = 13,
-		.char_width = 5,
-		.char_height = 9
-	};
+	font->defined_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=()[]{}<>/*:#%!?.,'\"@&$";
+	font->chars_per_row = 13;
+	font->char_width = 5;
+	font->char_height = 9;
 
 	// TODO: Make this some sort of load_bitmap function.
 	// Load the bitmap containing the defined characters.
@@ -26,7 +27,7 @@ Font load_font()
 	if (!h_bitmap)
 	{
 		log_error("Failed to load font bitmap.");
-		return font;
+		return STATUS_WIN32_FAILURE;
 	}
 
 	// Get bitmap properties.
@@ -49,13 +50,13 @@ Font load_font()
 	bmi.bmiHeader.biCompression = BI_RGB;
 
 	// Store the bitmap info.
-	font.bitmap_width = bitmap.bmWidth;
+	font->bitmap_width = bitmap.bmWidth;
 
 	// Allocate memory for pixels.
-	font.pixels = malloc((size_t)bitmap.bmWidthBytes * bitmap.bmHeight);
+	font->pixels = malloc((size_t)bitmap.bmWidthBytes * bitmap.bmHeight);
 
 	// Get the pixels.
-	GetDIBits(hdc_mem, h_bitmap, 0, bitmap.bmHeight, font.pixels, &bmi, DIB_RGB_COLORS);
+	GetDIBits(hdc_mem, h_bitmap, 0, bitmap.bmHeight, font->pixels, &bmi, DIB_RGB_COLORS);
 
 	// Clear the bitmap.
 	if (!DeleteObject(h_bitmap))
@@ -63,7 +64,7 @@ Font load_font()
 		log_error("Failed to release font bitmap.");
 	}
 
-	return font;
+	return STATUS_OK;
 }
 
 int font_get_char_index(Font* font, char c)
@@ -83,9 +84,7 @@ int font_get_char_index(Font* font, char c)
 
 	if (!defined)
 	{
-		char error[256];
-		snprintf(error, sizeof(error), "Char not defined: %c", c);
-		log_error(error);
+		log_error("Char not defined: %c", c);
 		return -1;
 	}
 

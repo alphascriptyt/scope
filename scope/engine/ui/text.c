@@ -2,8 +2,12 @@
 
 #include <string.h>
 
-Text create_text(char* str, int x, int y, int colour, int scale)
+#define _USE_MATH_DEFINES
+#include <math.h>
+
+Text text_create(char* str, int x, int y, int colour, int scale)
 {
+	// TODO: text_init instead and modify pointer?
 	Text text = {
 		.text = str,
 		.x = x,
@@ -15,13 +19,13 @@ Text create_text(char* str, int x, int y, int colour, int scale)
 	return text;
 }
 
-void draw_text(Canvas* canvas, Text* text, Font* font, float upscaling_factor)
+void text_draw(Canvas* canvas, Text* text, Font* font, float upscaling_factor)
 {
 	// TODO: All ui should be scaled the same so we can at least keep 
 	// consistency with the ui.
 	// TODO: I want the text to stay as similar as possible when upscaling.
-
-	int scale = max((int)(text->scale / upscaling_factor), 1);
+	
+	int scale = (int)fmaxf(text->scale / upscaling_factor, 1.f);
 
 	int scaled_x = (int)(text->x / upscaling_factor);
 	int scaled_y = (int)(text->y / upscaling_factor);

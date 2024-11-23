@@ -3,7 +3,7 @@
 #endif
 
 #include "models.h"
-#include "status.h"
+#include "common/status.h"
 
 #include "maths/vector3.h"
 #include "maths/matrix4.h"
