@@ -9,11 +9,19 @@
 
 typedef struct
 {
+	// Engine components.
 	Window window;
 	UI ui;
 	Renderer renderer;
 
+	// Engine settings
 	int running;
+
+	// TODO: Move these somewhere?
+	float upscaling_factor;
+
+	int lock_mouse;
+	int previous_mouse_x, previous_mouse_y;
 
 } Engine;
 

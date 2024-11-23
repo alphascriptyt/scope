@@ -39,16 +39,13 @@ Status engine_init(Engine* engine, int window_width, int window_height)
         return status;
     }
 
-    
-
-
     // Set some default settings.
-    //engine->upscaling_factor = 1;
+    engine->upscaling_factor = 1;
 
     // Init the input state.
-    //engine->previous_mouse_x = 0;
-    //engine->previous_mouse_y = 0;
-    //engine->lock_mouse = 0;
+    engine->previous_mouse_x = 0;
+    engine->previous_mouse_y = 0;
+    engine->lock_mouse = 0;
 
     return STATUS_OK;
 }
@@ -97,7 +94,7 @@ void engine_run(Engine* engine)
         */
 
         // Draw ui elements.
-        ui_draw(&engine->ui, 1.f); // TODO: upscaling_factor.
+        ui_draw(&engine->ui, engine->upscaling_factor);
         
         // Update the display.
         window_display(&engine->window);
@@ -142,7 +139,7 @@ void engine_destroy(Engine* engine)
 
 void engine_handle_input(Engine* engine, float dt)
 {
-    /*
+    
     Camera* camera = &engine->renderer.camera;
 
     // TODO: Need to refactor all this input stuff,
@@ -160,20 +157,22 @@ void engine_handle_input(Engine* engine, float dt)
     int rel_x = mouse_position.x - engine->previous_mouse_x;
     int rel_y = mouse_position.y - engine->previous_mouse_y;
 
+    Timer timer = timer_start();
     if (engine->lock_mouse)
     {
         RECT rect = { 0 };
-        GetClientRect(engine->hwnd, &rect);
+        GetClientRect(engine->window.hwnd, &rect);
         POINT center = { 0 };
         center.x = (rect.left + rect.right) / 2;
         center.y = (rect.top + rect.bottom) / 2;
 
-        ClientToScreen(engine->hwnd, &center);
+        ClientToScreen(engine->window.hwnd, &center);
         SetCursorPos(center.x, center.y);
 
         engine->previous_mouse_x = center.x;
         engine->previous_mouse_y = center.y;
     }
+    printf("TOOK: %d\n", timer_get_elapsed(&timer));
 
     // Calculate the camera movement in radians.
     float sens = 0.05f;
@@ -262,7 +261,7 @@ void engine_handle_input(Engine* engine, float dt)
     if (keys[VK_SPACE] & KeyDown)
     {
         camera->position[1] += meters_per_second;
-    }*/
+    }
 }
 
 // Events
@@ -284,8 +283,7 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
     Engine* engine = (Engine*)ctx;
 
     if (VK_TAB == wParam)
-    {
-        /*
+    {   
         ShowCursor(engine->lock_mouse);
         engine->lock_mouse = !engine->lock_mouse;
 
@@ -294,17 +292,18 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
         if (engine->lock_mouse)
         {
             RECT rect = { 0 };
-            GetClientRect(engine->hwnd, &rect);
+            GetClientRect(engine->window.hwnd, &rect);
+
             POINT center = { 0 };
             center.x = (rect.left + rect.right) / 2;
             center.y = (rect.top + rect.bottom) / 2;
 
-            ClientToScreen(engine->hwnd, &center);
+            ClientToScreen(engine->window.hwnd, &center);
             SetCursorPos(center.x, center.y);
 
             engine->previous_mouse_x = center.x;
             engine->previous_mouse_y = center.y;
-        }*/
+        }
     }
     else if (VK_ESCAPE == wParam)
     {

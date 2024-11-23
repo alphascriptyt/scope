@@ -2060,25 +2060,25 @@ void render(
 	PointLights* point_lights, 
 	const M4 view_matrix)
 {
-	Timer t = start_timer();
+	Timer t = timer_start();
 
 	// Transform world space positions to view space.
 	model_to_world_space(models);
 
-	printf("model_to_world_space took: %d\n", get_elapsed(&t));
-	restart_timer(&t);
+	printf("model_to_world_space took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 	 
 	// Transforms lights as well as models to view space.
 	world_to_view_space(models, point_lights, view_matrix);
 
-	printf("world_to_view_space took: %d\n", get_elapsed(&t));
-	restart_timer(&t);
+	printf("world_to_view_space took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 
 	// Perform backface culling.
 	cull_backfaces(models);
 
-	printf("cull_backfaces took: %d\n", get_elapsed(&t));
-	restart_timer(&t);
+	printf("cull_backfaces took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 
 
 	// Frustum culling and lighting is done together as we do per vertex
@@ -2095,25 +2095,25 @@ void render(
 	create_clipping_view_frustum(settings->near_plane, settings->fov,
 		rt->canvas.width / (float)(rt->canvas.height), &view_frustum);
 
-	printf("create_clipping_view_frustum took: %d\n", get_elapsed(&t));
-	restart_timer(&t);
+	printf("create_clipping_view_frustum took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 
 	frustum_culling_and_lighting(rt, settings->projection_matrix, &view_frustum, view_matrix, models, point_lights);
 
-	printf("frustum_culling_and_lighting took: %d\n", get_elapsed(&t));
-	restart_timer(&t);
+	printf("frustum_culling_and_lighting took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 	
 
 	// TODO: Drawing only needs the vertex colour and uv. I want the colour to act as a tint on the uv does that mean colour needs an alpha.
 	//		 I would only want the alpha if the vertex had a colour and uv?
 	project_and_draw_triangles(rt, settings->projection_matrix, models);
 
-	printf("project_and_draw_triangles took: %d\n", get_elapsed(&t));
-	restart_timer(&t);
+	printf("project_and_draw_triangles took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 
 	draw_debug_point_lights(rt, settings, point_lights);
 
-	printf("draw_debug_point_lights took: %d\n", get_elapsed(&t));
-	restart_timer(&t);
+	printf("draw_debug_point_lights took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 
 }

@@ -140,10 +140,6 @@ Status window_init(Window* window, const Canvas* canvas, void* ctx)
         log_error("Failed to CreateWindowExA.");
         return STATUS_WIN32_FAILURE;
     }
-    
-    // TODO: ??????
-    // Store the pointer to the engine, so that the WindowProc can fire callbacks.
-    //SetWindowLongPtr(engine->hwnd, GWLP_USERDATA, engine);
 
     // Get the Device Context, as we are only drawing to it from this class,
     // I believe it is fine to keep this handle and not release it.

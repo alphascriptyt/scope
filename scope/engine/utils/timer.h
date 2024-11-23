@@ -9,7 +9,7 @@ typedef struct
 
 } Timer;
 
-inline Timer start_timer()
+inline Timer timer_start()
 {
 	Timer timer =
 	{
@@ -19,13 +19,13 @@ inline Timer start_timer()
 	return timer;
 }
 
-inline clock_t get_elapsed(Timer* timer)
+inline clock_t timer_get_elapsed(Timer* timer)
 {
 
 	return (clock() - timer->start) * 1000 / CLOCKS_PER_SEC;
 }
 
-inline void restart_timer(Timer* timer)
+inline void timer_restart(Timer* timer)
 {
 	timer->start = clock();
 }
