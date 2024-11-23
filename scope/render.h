@@ -17,7 +17,7 @@
 
 // SECTION: Debug tools.
 
-void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights);
+void debug_draw_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights);
 
 // TODO: Not sure where to put this?
 

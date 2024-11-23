@@ -118,6 +118,7 @@ Engine* init_engine()
 {
     log_info("Initialising engine...");
 
+    // TODO: Allocate on stack instead. No need to do this.
     Engine* engine = calloc(1, sizeof(Engine));
 
     if (!engine)
@@ -164,6 +165,8 @@ Engine* init_engine()
 
 void start_engine(Engine* engine)
 {
+    // TODO: Refactor this function and some engine stuff..
+
     RenderSettings render_settings = {
         .fov = 60.f,
         .near_plane = 1.f,

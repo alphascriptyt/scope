@@ -18,6 +18,10 @@
 
 
 
+/*
+TODO: I think it's time to sort out the file structure at least a little bit.
+
+*/
 
 void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights)
 {
@@ -890,9 +894,11 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o)
 
 void model_to_world_space(Models* models)
 {
-	// TODO: When spinning the first instance, after moving past a few,
-	// the last one glitches and spins which suggests something goes wrong here.
-
+	
+	// TODO: In terms of optimisations, I believe that removing the branch would be beneficial.
+	//		 We would have a memory arena (to reset just reset index to 0) that contains the indices
+	//		 of the model instances that need to have their model matrices recalculated.
+	
 	// TODO: Rename some vars.
 
 	// Locally store to avoid dereferencing the pointers constantly.
@@ -1165,6 +1171,34 @@ void world_to_view_space(Models* models, PointLights* point_lights, const M4 vie
 
 void cull_backfaces(Models* models)
 {
+	// TODO: This takes like 15% CPU time, can I refactor this? Is copying all the data an issue?
+	//		 I have a feeling it could be. Need to thing about DOD for the next stages. I should
+	//		 probably separate the broad phase clipping, lighting and narrow phase clipping
+
+	//		 Takes about 15ms in release which is the whole 60fps frame. If I just store indices to the 
+	//		 front faces, will this make it faster..... for this, use a 'memory arena' a predefined array of
+	//		 indices to faces, to reset this we just set the index to 0 and overwrite previous ones.
+
+	//		 With only incrementing the front face count, the function takes 4ms rather than 15ms. I think
+	//		 indices could be the way to go. But then obviously if this then increase the clipping,
+	//	     that will not be great. HOWEVER. It could improve the broad phase clipping as we could only
+	//		 use the positions until we know the vertex is visible, then get the other necessary data!!! 
+	//		 Time and profile. record how long each thing takes first.
+
+	//		 Remember, 1000 monkeys means 1000 faces which means this loop goes 1000000 times a frame.
+
+	//		 I think a good way of thinking about DOD is to only use the necessary data at one time. So here
+	//		 as we're just copying everything, we only need to test the positions. In this case, I think that
+	//		 accessing the data via indices is not an issue. And we might as well delay it until clipping,
+	//		 because then the broad phase could ignore a LOT of unpacking. Would also simplify this code.
+
+	//		 Will we just need to store the face index? We shall see. How will these work when indexing into
+	//		 the per mesh instance data.
+
+	//		 TODO: All this ^^ twust.
+
+	// TODO: We're copying a lot of data here and unpacking indices. 
+
 	// TODO: Refactor.
 
 	const int* face_position_indices = models->mbs_face_position_indices;
@@ -1194,9 +1228,6 @@ void cull_backfaces(Models* models)
 		const int mb_uvs_offset = models->mbs_uvs_offsets[mb_index];
 
 		int front_face_count = 0;
-
-		// Reset the number of front faces for the instance.
-		models->front_faces_counts[i] = 0;
 
 		for (int j = 0; j < models->mbs_faces_counts[mb_index]; ++j)
 		{
@@ -1233,6 +1264,10 @@ void cull_backfaces(Models* models)
 			// If the face is front facing, we can possibly see it.
 			if (is_front_face(v0, v1, v2))
 			{
+				
+				// TODO: Should we just store indices to the front faces here? Time it.
+				//		
+				
 				// Get the indices to the first component of each vertex normal.
 				const int index_n0 = face_normal_indices[face_index] + normals_offset;
 				const int index_n1 = face_normal_indices[face_index + 1] + normals_offset;
@@ -1241,7 +1276,7 @@ void cull_backfaces(Models* models)
 				int index_parts_n0 = index_n0 * STRIDE_NORMAL;
 				int index_parts_n1 = index_n1 * STRIDE_NORMAL;
 				int index_parts_n2 = index_n2 * STRIDE_NORMAL;
-
+				
 				const int index_uv0 = face_uvs_indices[face_index] + mb_uvs_offset;
 				const int index_uv1 = face_uvs_indices[face_index + 1] + mb_uvs_offset;
 				const int index_uv2 = face_uvs_indices[face_index + 2] + mb_uvs_offset;
@@ -1308,6 +1343,10 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_offset++] = 0;
 				front_faces[front_face_offset++] = 0;
 				front_faces[front_face_offset++] = 1;
+				
+
+
+
 
 				++front_face_count;
 			}
@@ -1331,6 +1370,15 @@ void frustum_culling_and_lighting(
 	Models* models, 
 	PointLights* point_lights)
 {
+	// TODO: With 1000 monkeys takes about 160ms.
+	/*
+	The lighting takes about half of this which is way too long. A lot of that is temporary code though.
+	But I should consider doing a test with the strength and distance first.
+
+	In terms of DOD. I think that maybe fully doing the broad phase first would be beneficial? But then we wouldn't know what planes....
+	
+	*/
+
 	// Frustum culling
 	float* clipped_faces = models->clipped_faces;
 	int* mesh_clipped_faces_counts = models->clipped_faces_counts;
@@ -1354,7 +1402,8 @@ void frustum_culling_and_lighting(
 
 		// Perform board phase bounding sphere check against each plane.
 		int index_bounding_sphere = i * STRIDE_SPHERE;
-
+		
+		
 		// We must convert the center to view space
 		V4 center =
 		{
@@ -1366,7 +1415,7 @@ void frustum_culling_and_lighting(
 
 		V4 view_space_center;
 		m4_mul_v4(view_matrix, center, view_space_center);
-
+		
 		// Radius stays the same as the view matrix does not scale.
 		float radius = bounding_spheres[index_bounding_sphere];
 
@@ -1404,11 +1453,11 @@ void frustum_culling_and_lighting(
 
 			continue;
 		}
-
 		
 		// At this point we know the mesh is partially visible at least.
 		// Apply lighting here so that the if a vertex is clipped closer
 		// to the light, the lighing doesn't change.
+#if 1
 		for (int j = face_offset; j < face_offset + models->front_faces_counts[i]; ++j)
 		{
 			int index_face = j * STRIDE_ENTIRE_FACE;
@@ -1524,7 +1573,7 @@ void frustum_culling_and_lighting(
 				}
 			}
 		}
-		
+#endif
 		if (1 == mesh_visible && 0 == num_planes_to_clip_against)
 		{
 			// Entire mesh is visible so just copy the vertices over.
@@ -2011,14 +2060,26 @@ void render(
 	PointLights* point_lights, 
 	const M4 view_matrix)
 {
+	Timer t = start_timer();
+
 	// Transform world space positions to view space.
 	model_to_world_space(models);
+
+	printf("model_to_world_space took: %d\n", get_elapsed(&t));
+	restart_timer(&t);
 	 
 	// Transforms lights as well as models to view space.
 	world_to_view_space(models, point_lights, view_matrix);
 
+	printf("world_to_view_space took: %d\n", get_elapsed(&t));
+	restart_timer(&t);
+
 	// Perform backface culling.
 	cull_backfaces(models);
+
+	printf("cull_backfaces took: %d\n", get_elapsed(&t));
+	restart_timer(&t);
+
 
 	// Frustum culling and lighting is done together as we do per vertex
 	// lighting. 
@@ -2034,17 +2095,25 @@ void render(
 	create_clipping_view_frustum(settings->near_plane, settings->fov,
 		rt->canvas->width / (float)(rt->canvas->height), &view_frustum);
 
+	printf("create_clipping_view_frustum took: %d\n", get_elapsed(&t));
+	restart_timer(&t);
+
 	frustum_culling_and_lighting(rt, settings->projection_matrix, &view_frustum, view_matrix, models, point_lights);
+
+	printf("frustum_culling_and_lighting took: %d\n", get_elapsed(&t));
+	restart_timer(&t);
 	
 
 	// TODO: Drawing only needs the vertex colour and uv. I want the colour to act as a tint on the uv does that mean colour needs an alpha.
 	//		 I would only want the alpha if the vertex had a colour and uv?
 	project_and_draw_triangles(rt, settings->projection_matrix, models);
 
+	printf("project_and_draw_triangles took: %d\n", get_elapsed(&t));
+	restart_timer(&t);
 
 	draw_debug_point_lights(rt, settings, point_lights);
-	
-	
 
+	printf("draw_debug_point_lights took: %d\n", get_elapsed(&t));
+	restart_timer(&t);
 
 }
