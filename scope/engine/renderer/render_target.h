@@ -74,7 +74,6 @@ inline void render_target_destroy(RenderTarget* rt)
     // TODO: Do i need to do rt = 0; here?? Not sure.
 }
 
-#include "utils/timer.h"
 inline void render_target_clear(RenderTarget* rt, const unsigned int bg_colour)
 {
     // TODO: Look for some sort of blit or fill function 

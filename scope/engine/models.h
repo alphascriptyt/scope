@@ -57,10 +57,6 @@ physics system, to avoid recomputation of world space positions etc.
 */
 typedef struct
 {	
-	// TEMP:
-	int passed_broad_phase[1000];
-
-
 	// TODO: Comments and naming. Currently mb = model base, mi = model instance
 
 	// Buffer sizes.

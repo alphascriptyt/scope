@@ -30,7 +30,7 @@ inline void update_projection_m4(RenderSettings* rs, float aspect_ratio)
 	float y_scale = 1.f / tanf(radians(rs->fov) / 2.f);
 	float x_scale = y_scale / aspect_ratio;
 
-	rs->projection_matrix[0] = y_scale;
+	rs->projection_matrix[0] = x_scale;
 	rs->projection_matrix[1] = 0;
 	rs->projection_matrix[2] = 0;
 	rs->projection_matrix[3] = 0;

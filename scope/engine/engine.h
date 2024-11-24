@@ -5,7 +5,12 @@
 #include "ui/ui.h"
 #include "renderer/renderer.h"
 
+#include "renderer/render.h"
+
 #include "common/status.h"
+
+#include "models.h"
+#include "lights.h"
 
 typedef struct
 {
@@ -14,14 +19,16 @@ typedef struct
 	UI ui;
 	Renderer renderer;
 
+	// TEMP: TODO: Scenes.
+	Models models;
+	PointLights lights;
+
 	// Engine settings
 	int running;
 
 	// TODO: Move these somewhere?
-	float upscaling_factor;
-
 	int lock_mouse;
-	int previous_mouse_x, previous_mouse_y;
+	float upscaling_factor;
 
 } Engine;
 

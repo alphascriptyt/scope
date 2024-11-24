@@ -12,7 +12,6 @@
 
 // TODO: Top of file comments.
 
-
 // Window message handling.
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -34,7 +33,9 @@ typedef struct
 	void* ctx; // Set to Engine* so we can use it in the callbacks.
 	void (*on_resize)(void*);
 	void (*on_keyup)(void*, WPARAM);
-	void (*on_quit)(void*);
+	
+	// Relative mouse movement from raw input.
+	int dx, dy;
 	
 } Window;
 

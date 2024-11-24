@@ -3,6 +3,8 @@
 #include "common/status.h"
 #include "utils/logger.h"
 
+#include "utils/timer.h"
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -60,6 +62,41 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         Window* window = (Window*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
         window->on_keyup(window->ctx, wParam);
 
+        break;
+    }
+    case WM_INPUT:
+    {
+        // TODO:
+        
+        // Use raw input for the mouse, so that we don't have to 
+        // reset the mouse position every frame as this consistently
+        // took about 1ms, wayyyy too long.
+        Window* window = (Window*)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+
+        UINT dwSize = 0;
+        
+        // Not sure why this has to be called twice, but doesn't work 
+        // without it.
+        GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize, 
+            sizeof(RAWINPUTHEADER));
+
+        char buffer[sizeof(RAWINPUT)] = { 0 };
+
+        if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer, &dwSize, 
+            sizeof(RAWINPUTHEADER)) != dwSize)
+        {
+            log_error("GetRawInputData did not return the correct size.");
+        }
+            
+        RAWINPUT* raw = (RAWINPUT*)buffer;
+        if (raw)
+        {
+            if (RIM_TYPEMOUSE == raw->header.dwType)
+            {
+                window->dx += raw->data.mouse.lLastX;
+                window->dy += raw->data.mouse.lLastY;
+            }
+        }
         break;
     }
     }
@@ -156,6 +193,18 @@ Status window_init(Window* window, const Canvas* canvas, void* ctx)
     window->bitmap.bmiHeader.biPlanes = 1;
     window->bitmap.bmiHeader.biBitCount = 32;
     window->bitmap.bmiHeader.biCompression = BI_RGB; // Uncompressed.
+
+    // Subscribe to mouse raw input.
+    RAWINPUTDEVICE raw_input_devices[1] = { 0 };
+    raw_input_devices[0].usUsagePage = 0x01; // HID_USAGE_PAGE_GENERIC
+    raw_input_devices[0].usUsage = 0x02;     // HID_USAGE_GENERIC_MOUSE
+    raw_input_devices[0].dwFlags = 0;
+    raw_input_devices[0].hwndTarget = window->hwnd;
+    
+    if (RegisterRawInputDevices(raw_input_devices, 1, sizeof(RAWINPUTDEVICE)) == FALSE)
+    {
+        log_error("Failed to register mouse for raw input.\n");
+    }
 
     ShowWindow(window->hwnd, SW_SHOW);
 
