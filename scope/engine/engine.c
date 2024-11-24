@@ -15,6 +15,7 @@ Status engine_init(Engine* engine, int window_width, int window_height)
     memset(engine, 0, sizeof(Engine));
 
     // Set some default settings.
+    engine->current_scene_id = -1;
     engine->upscaling_factor = 1;
     engine->lock_mouse = 0;
 
@@ -45,53 +46,10 @@ Status engine_init(Engine* engine, int window_width, int window_height)
         log_error("Failed to ui_init because of %s", status_to_str(status));
         return status;
     }
-
-    // TODO: Scene, just testing stuff atm.
     
-    Scene* scene = &engine->scenes[0];
-    status = scene_init(scene);
-    if (STATUS_OK != status)
-    {
-        log_error("Failed to scene_init because of %s", status_to_str(status));
-        return status;
-    }
-    ++engine->scenes_count;
-    
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
-    int n0 = 100;
-    create_model_instances(&scene->models, 0, n0);
+    log_info("Fired engine_on_init event.");
+    engine_on_init(engine);
 
-    log_info("Created model instances.");
-    V3 pos = { 0, 0, -3 };
-    V3 pos1 = { 0, 0, -10 };
-
-    // TODO: this is currently PITCH, YAW, ROLL. This doesn't make much sense calling this eulers.
-    V3 eulers = { 0, 0,  0 }; // I think I'd rather have the option to set pitch,yaw,roll. 
-    V3 eulers1 = { 0.5, 0,  0 }; // I think I'd rather have the option to set pitch,yaw,roll. 
-
-    // TODO: Rename everything from orientation to eulers as thats what it is
-    // TODO: Helper function to convert pitch,yaw,roll to direction and vice versa?
-    V3 scale = { 1, 1, 1 };
-    V3 plane_scale = { 10, 0.1f, 10 };
-    V3 scale1 = { 4, 4, 4 };
-
-    for (int i = 0; i < n0; ++i)
-    {
-        int index_transform = i * STRIDE_MI_TRANSFORM;
-
-        scene->models.mis_transforms[index_transform] = pos[0];
-        scene->models.mis_transforms[++index_transform] = pos[1];
-        scene->models.mis_transforms[++index_transform] = pos[2] - i * 3;
-        scene->models.mis_transforms[++index_transform] = eulers1[0];
-        scene->models.mis_transforms[++index_transform] = eulers1[1];
-        scene->models.mis_transforms[++index_transform] = eulers1[2];
-        scene->models.mis_transforms[++index_transform] = scale[0];
-        scene->models.mis_transforms[++index_transform] = scale[1];
-        scene->models.mis_transforms[++index_transform] = scale[2];
-
-        scene->models.mis_transforms_updated_flags[i] = 1;
-    }
-    
     log_info("Engine successfully initialised.");
     return STATUS_OK;
 }
@@ -126,6 +84,7 @@ void engine_run(Engine* engine)
     char render_str[64] = "";
     char ui_draw_str[64] = "";
     char display_str[64] = "";
+    char update_str[64] = "";
 
     int y = 10;
     int h = 30;
@@ -138,6 +97,7 @@ void engine_run(Engine* engine)
     engine->ui.text[engine->ui.text_count++] = text_create(render_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
     engine->ui.text[engine->ui.text_count++] = text_create(ui_draw_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
     engine->ui.text[engine->ui.text_count++] = text_create(display_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
+    engine->ui.text[engine->ui.text_count++] = text_create(update_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
 
     engine->running = 1;
     while (engine->running)
@@ -157,6 +117,11 @@ void engine_run(Engine* engine)
         engine_handle_input(engine, dt);
         snprintf(handle_input_str, sizeof(handle_input_str), "HandleInput: %d", timer_get_elapsed(&t));
         
+        // Fire the egine update event.
+        timer_restart(&t);
+        engine_on_update(engine, dt);
+        snprintf(update_str, sizeof(update_str), "UpdateEvent: %d", timer_get_elapsed(&t));
+
         M4 view_matrix;
         calculate_view_matrix(&engine->renderer.camera, view_matrix);
         
@@ -167,8 +132,11 @@ void engine_run(Engine* engine)
 
         // Render scene.
         timer_restart(&t);
-        render(&engine->renderer.target, &engine->renderer.settings,
-            &engine->scenes[engine->current_scene_id], view_matrix);
+        if (engine->current_scene_id > -1 && engine->current_scene_id < engine->scenes_count)
+        {
+            render(&engine->renderer.target, &engine->renderer.settings,
+                &engine->scenes[engine->current_scene_id], view_matrix);
+        }
         snprintf(render_str, sizeof(render_str), "Render: %d", timer_get_elapsed(&t));
 
         // Draw ui elements.
@@ -331,7 +299,7 @@ void engine_handle_input(Engine* engine, float dt)
     }
 }
 
-// Events
+// Window events
 void engine_on_resize(void* ctx)
 {
     Engine* engine = (Engine*)ctx;

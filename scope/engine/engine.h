@@ -49,4 +49,9 @@ void engine_on_resize(void* ctx);
 
 void engine_on_keyup(void* ctx, WPARAM wParam);
 
+// Engine events that the game should define.
+void engine_on_init(Engine* engine);
+
+void engine_on_update(Engine* engine, float dt);
+
 #endif
