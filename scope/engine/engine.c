@@ -11,8 +11,12 @@ Status engine_init(Engine* engine, int window_width, int window_height)
     log_info("Initialising the engine.");
     memset(engine, 0, sizeof(Engine));
 
+    // Set some default settings.
+    engine->upscaling_factor = 1;
+    engine->lock_mouse = 0;
+
     // Initialise the renderer.
-    Status status = renderer_init(&engine->renderer, window_width, window_height);
+    Status status = renderer_init(&engine->renderer, (int)(window_width / engine->upscaling_factor), (int)(window_height / engine->upscaling_factor));
     if (STATUS_OK != status)
     {
         log_error("Failed to renderer_init because of %s", status_to_str(status));
@@ -20,7 +24,7 @@ Status engine_init(Engine* engine, int window_width, int window_height)
     }
 
     // Initialise the window.
-    status = window_init(&engine->window, &engine->renderer.target.canvas, (void*)engine);
+    status = window_init(&engine->window, &engine->renderer.target.canvas, (void*)engine, window_width, window_height);
     if (STATUS_OK != status)
     {
         log_error("Failed to window_init because of %s", status_to_str(status));
@@ -39,11 +43,6 @@ Status engine_init(Engine* engine, int window_width, int window_height)
         return status;
     }
 
-    // Set some default settings.
-    engine->upscaling_factor = 1;
-    engine->lock_mouse = 0;
-
-
     // TODO: Scene, just testing stuff atm.
     memset(&engine->models, 0, sizeof(Models));
     memset(&engine->lights, 0, sizeof(PointLights));
@@ -52,7 +51,7 @@ Status engine_init(Engine* engine, int window_width, int window_height)
 
 
     load_model_base_from_obj(&engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
-    int n0 = 10;
+    int n0 = 100;
     create_model_instances(&engine->models, 0, n0);
 
     log_info("Created model instances.");
@@ -86,6 +85,7 @@ Status engine_init(Engine* engine, int window_width, int window_height)
         engine->models.mis_transforms_updated_flags[i] = 1;
     }
 
+    log_info("Engine successfully initialised.");
     return STATUS_OK;
 }
 
@@ -136,10 +136,9 @@ void engine_run(Engine* engine)
         render_target_clear(&engine->renderer.target, 0x22222222);
 
         // Render scene.
-        //render(&engine->renderer.target, &engine->renderer.settings,
-        //    &engine->models, &engine->lights, view_matrix);
+        render(&engine->renderer.target, &engine->renderer.settings,
+            &engine->models, &engine->lights, view_matrix);
         
-
         // Draw ui elements.
         ui_draw(&engine->ui, engine->upscaling_factor);
         
@@ -163,8 +162,8 @@ void engine_run(Engine* engine)
             dt_counter = 0;
         }
 
-        //snprintf(dir_str, sizeof(dir_str), "DIR: %.2f %.2f %.2f", camera.direction[0], camera.direction[1], camera.direction[2]);
-        //snprintf(pos_str, sizeof(pos_str), "POS: %.2f %.2f %.2f", camera.position[0], camera.position[1], camera.position[2]);
+        snprintf(dir_str, sizeof(dir_str), "DIR: %.2f %.2f %.2f", engine->renderer.camera.direction[0], engine->renderer.camera.direction[1], engine->renderer.camera.direction[2]);
+        snprintf(pos_str, sizeof(pos_str), "POS: %.2f %.2f %.2f", engine->renderer.camera.position[0], engine->renderer.camera.position[1], engine->renderer.camera.position[2]);
     }
 
 }
@@ -199,12 +198,12 @@ void engine_handle_input(Engine* engine, float dt)
     POINT mouse_position;
     GetCursorPos(&mouse_position);
 
-    int rel_x = engine->window.dx;
-    int rel_y = engine->window.dy;
+    int rel_x = engine->window.mouse_dx;
+    int rel_y = engine->window.mouse_dy;
 
     // Reset the delta mouse position as we're now responding to it.
-    engine->window.dx = 0;
-    engine->window.dy = 0;
+    engine->window.mouse_dx = 0;
+    engine->window.mouse_dy = 0;
 
     // Calculate the camera movement in radians.
     float sens = 0.05f;
@@ -316,7 +315,7 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
 
     if (VK_TAB == wParam)
     {   
-        //ShowCursor(engine->lock_mouse);
+        ShowCursor(engine->lock_mouse);
         engine->lock_mouse = !engine->lock_mouse;
         
         if (engine->lock_mouse)
@@ -331,6 +330,10 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
             // Reset the cursor to the center of the screen.
             ClientToScreen(engine->window.hwnd, &center);
             SetCursorPos(center.x, center.y);
+
+            // Reset the delta mouse movement.
+            engine->window.mouse_dx = 0;
+            engine->window.mouse_dy = 0;
 
             // Restrict the cursor to the center of the screen.
             RECT cursor_area = { 0 };

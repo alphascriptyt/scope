@@ -27,7 +27,6 @@ typedef struct
 
 	int width;
 	int height;
-	int upscaling_factor;
 
 	// Event callbacks
 	void* ctx; // Set to Engine* so we can use it in the callbacks.
@@ -35,11 +34,11 @@ typedef struct
 	void (*on_keyup)(void*, WPARAM);
 	
 	// Relative mouse movement from raw input.
-	int dx, dy;
+	int mouse_dx, mouse_dy;
 	
 } Window;
 
-Status window_init(Window* window, const Canvas* canvas, void* ctx);
+Status window_init(Window* window, const Canvas* canvas, void* ctx, int width, int height);
 
 void window_display(Window* window);
 

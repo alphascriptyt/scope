@@ -66,7 +66,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     case WM_INPUT:
     {
-        // TODO:
+        // TODO: I'm not sure if this is causing lag because we're doing it multiple
+        //       times a frame. The only reason I'm doing this is to improve performance
+        //       but if it's not working, there is no point.
         
         // Use raw input for the mouse, so that we don't have to 
         // reset the mouse position every frame as this consistently
@@ -93,8 +95,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if (RIM_TYPEMOUSE == raw->header.dwType)
             {
-                window->dx += raw->data.mouse.lLastX;
-                window->dy += raw->data.mouse.lLastY;
+                window->mouse_dx += raw->data.mouse.lLastX;
+                window->mouse_dy += raw->data.mouse.lLastY;
             }
         }
         break;
@@ -104,17 +106,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-Status window_init(Window* window, const Canvas* canvas, void* ctx)
+Status window_init(Window* window, const Canvas* canvas, void* ctx, int width, int height)
 {
 	log_info("Initialising the window.");
 	memset(window, 0, sizeof(Window));
 
     window->canvas = canvas;
     window->ctx = ctx;
-
-    // Initialise the window size to the canvas size?
-    window->width = canvas->width;
-    window->height = canvas->height;
+    window->width = width;
+    window->height = height;
 
     DWORD window_style = WS_OVERLAPPEDWINDOW;
 
@@ -240,7 +240,8 @@ void window_display(Window* window)
     //       not sure it's really possible, unless there is some 
     //       issue with the width/height needing to be multiples 
     //       of something..
-    if (window->upscaling_factor > 1)
+
+    if (window->canvas->width != window->width || window->canvas->height != window->height)
     {
         StretchDIBits(
             window->hdc,

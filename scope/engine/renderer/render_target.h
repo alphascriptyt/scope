@@ -76,32 +76,23 @@ inline void render_target_destroy(RenderTarget* rt)
 
 inline void render_target_clear(RenderTarget* rt, const unsigned int bg_colour)
 {
-    // TODO: Look for some sort of blit or fill function 
     const int length = rt->canvas.width * rt->canvas.height;
-    const float max_depth = 1.f; // The projection should map z to a max of 1.
+    const float max_depth = 1.f; // Projection should map z to a max of 1.
 
     unsigned int* canvas_ptr = rt->canvas.pixels;
     float* depth_buffer_ptr = rt->depth_buffer;
 
-    unsigned int i = length;
-
-
     // Splitting these loops is much faster, guessing because of cache.
-    // TODO: Try unrolling?
-    while (i)
+    // After extensive testing of how to fill these, can't figure out a better
+    // way than this.
+    for (int i = 0; i < length; ++i)
     {
-        *canvas_ptr = bg_colour;
-        --i;
-        ++canvas_ptr;
+        canvas_ptr[i] = bg_colour;
     }
 
-    i = length;
-
-    while (i)
+    for (int i = 0; i < length; ++i)
     {
-        *depth_buffer_ptr = max_depth;
-        --i;
-        ++depth_buffer_ptr;
+        depth_buffer_ptr[i] = max_depth;
     }
 }
 
