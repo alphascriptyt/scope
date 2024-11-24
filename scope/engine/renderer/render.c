@@ -1367,8 +1367,7 @@ void frustum_culling_and_lighting(
 	const M4 projection_matrix, 
 	const ViewFrustum* view_frustum, 
 	const M4 view_matrix, 
-	Models* models, 
-	PointLights* point_lights)
+	Scene* scene)
 {
 	// TODO: With 1000 monkeys takes about 160ms.
 	/*
@@ -1380,21 +1379,21 @@ void frustum_culling_and_lighting(
 	*/
 
 	// Frustum culling
-	float* clipped_faces = models->clipped_faces;
-	int* mesh_clipped_faces_counts = models->clipped_faces_counts;
+	float* clipped_faces = scene->models.clipped_faces;
+	int* mesh_clipped_faces_counts = scene->models.clipped_faces_counts;
 
-	const float* bounding_spheres = models->mis_bounding_spheres;
+	const float* bounding_spheres = scene->models.mis_bounding_spheres;
 
 	int clipped_faces_index = 0; // Store the index to write the clipped faces out to.
 
 	int face_offset = 0;
 	int positions_offset = 0;
 
-	float* front_faces = models->front_faces; // TEMP: Not const whilst drawing normals.
-	const int* front_faces_counts = models->front_faces_counts;
+	float* front_faces = scene->models.front_faces; // TEMP: Not const whilst drawing normals.
+	const int* front_faces_counts = scene->models.front_faces_counts;
 
 	// Perform frustum culling per model instance.
-	for (int i = 0; i < models->mis_count; ++i)
+	for (int i = 0; i < scene->models.mis_count; ++i)
 	{
 		// Reset the number of visible face counts.
 		mesh_clipped_faces_counts[i] = 0;
@@ -1458,7 +1457,7 @@ void frustum_culling_and_lighting(
 		// Apply lighting here so that the if a vertex is clipped closer
 		// to the light, the lighing doesn't change.
 #if 1
-		for (int j = face_offset; j < face_offset + models->front_faces_counts[i]; ++j)
+		for (int j = face_offset; j < face_offset + scene->models.front_faces_counts[i]; ++j)
 		{
 			int index_face = j * STRIDE_ENTIRE_FACE;
 
@@ -1535,26 +1534,26 @@ void frustum_culling_and_lighting(
 				// TODO: I'm pretty sure the per pixel interpolation is broken or maybe that's just the lighting.
 
 				// For each light
-				for (int i_light = 0; i_light < point_lights->count; ++i_light)
+				for (int i_light = 0; i_light < scene->point_lights.count; ++i_light)
 				{
 					int i_light_pos = i_light * 3;
 					int i_light_attr = i_light * STRIDE_POINT_LIGHT_ATTRIBUTES;
 
 					const V3 light_pos =
 					{
-						point_lights->view_space_positions[i_light_pos],
-						point_lights->view_space_positions[i_light_pos + 1],
-						point_lights->view_space_positions[i_light_pos + 2]
+						scene->point_lights.view_space_positions[i_light_pos],
+						scene->point_lights.view_space_positions[i_light_pos + 1],
+						scene->point_lights.view_space_positions[i_light_pos + 2]
 					};
 
 					const V3 light_colour =
 					{
-						point_lights->attributes[i_light_attr],
-						point_lights->attributes[i_light_attr + 1],
-						point_lights->attributes[i_light_attr + 2]
+						scene->point_lights.attributes[i_light_attr],
+						scene->point_lights.attributes[i_light_attr + 1],
+						scene->point_lights.attributes[i_light_attr + 2]
 					};
 
-					float strength = point_lights->attributes[3];
+					float strength = scene->point_lights.attributes[3];
 
 					// TODO: Could cache this? Then the user can also set
 					//		 the attenuation?
@@ -1578,7 +1577,7 @@ void frustum_culling_and_lighting(
 		{
 			// Entire mesh is visible so just copy the vertices over.
 			int index_face = face_offset * STRIDE_ENTIRE_FACE;
-			int front_faces_count = models->front_faces_counts[i];
+			int front_faces_count = scene->models.front_faces_counts[i];
 
 			memcpy(clipped_faces + clipped_faces_index, front_faces + index_face, (size_t)front_faces_count * STRIDE_ENTIRE_FACE * sizeof(float));
 
@@ -1594,7 +1593,7 @@ void frustum_culling_and_lighting(
 
 			// Initially read from the front_faces buffer.
 			float* temp_clipped_faces_in = front_faces;
-			float* temp_clipped_faces_out = models->temp_clipped_faces_out;
+			float* temp_clipped_faces_out = scene->models.temp_clipped_faces_out;
 
 			// Store the index to write out to, needs to be defined here so we can
 			// update the clipped_faces_index after writing to the clipped_faces buffer.
@@ -1602,7 +1601,7 @@ void frustum_culling_and_lighting(
 
 			// After each plane, we will have a different number of faces to clip again.
 			// Initially set this to the number of front faces.
-			int num_faces_to_process = models->front_faces_counts[i];
+			int num_faces_to_process = scene->models.front_faces_counts[i];
 
 			// This is needed as an offset into the front_faces buffer for the first plane.
 			int clipped_faces_offset = face_offset;
@@ -1632,7 +1631,7 @@ void frustum_culling_and_lighting(
 				{
 					// Initially we used the in front faces buffer, after the first iteration 
 					// we have wrote to the out buffer, so that can now be our in buffer.
-					temp_clipped_faces_out = models->temp_clipped_faces_in;
+					temp_clipped_faces_out = scene->models.temp_clipped_faces_in;
 
 					// Now we want to read from the start of the in buffer, 
 					// not the offset into the front faces buffer.
@@ -1643,7 +1642,7 @@ void frustum_culling_and_lighting(
 				if (num_planes_clipped_against == num_planes_to_clip_against - 1)
 				{
 					// On the last plane, we want to write out to the clipped faces.
-					temp_clipped_faces_out = models->clipped_faces;
+					temp_clipped_faces_out = scene->models.clipped_faces;
 					index_out = clipped_faces_index;
 				}
 
@@ -2056,26 +2055,25 @@ void project_and_draw_triangles(
 void render(
 	RenderTarget* rt, 
 	const RenderSettings* settings, 
-	Models* models, 
-	PointLights* point_lights, 
+	Scene* scene,
 	const M4 view_matrix)
 {
 	Timer t = timer_start();
 
 	// Transform world space positions to view space.
-	model_to_world_space(models);
+	model_to_world_space(&scene->models);
 
 	//printf("model_to_world_space took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 	 
 	// Transforms lights as well as models to view space.
-	world_to_view_space(models, point_lights, view_matrix);
+	world_to_view_space(&scene->models, &scene->point_lights, view_matrix);
 
 	//printf("world_to_view_space took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
 	// Perform backface culling.
-	cull_backfaces(models);
+	cull_backfaces(&scene->models);
 
 	//printf("cull_backfaces took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
@@ -2098,7 +2096,7 @@ void render(
 	//printf("create_clipping_view_frustum took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
-	frustum_culling_and_lighting(rt, settings->projection_matrix, &view_frustum, view_matrix, models, point_lights);
+	frustum_culling_and_lighting(rt, settings->projection_matrix, &view_frustum, view_matrix, scene);
 
 	//printf("frustum_culling_and_lighting took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
@@ -2106,12 +2104,12 @@ void render(
 
 	// TODO: Drawing only needs the vertex colour and uv. I want the colour to act as a tint on the uv does that mean colour needs an alpha.
 	//		 I would only want the alpha if the vertex had a colour and uv?
-	project_and_draw_triangles(rt, settings->projection_matrix, models);
+	project_and_draw_triangles(rt, settings->projection_matrix, &scene->models);
 
 	//printf("project_and_draw_triangles took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
-	draw_debug_point_lights(rt, settings, point_lights);
+	draw_debug_point_lights(rt, settings, &scene->point_lights);
 
 	//printf("draw_debug_point_lights took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);

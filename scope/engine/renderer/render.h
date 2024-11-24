@@ -1,6 +1,7 @@
 #ifndef RENDER_H
 #define RENDER_H
 
+#include "scene.h"
 #include "models.h"
 #include "lights.h"
 
@@ -14,10 +15,8 @@
 #include "maths/vector4.h"
 #include "maths/matrix4.h"
 
-
 // SECTION: Debug tools.
-
-void debug_draw_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights);
+void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights);
 
 // TODO: Not sure where to put this?
 
@@ -40,10 +39,10 @@ void world_to_view_space(Models* models, PointLights* point_lights, const M4 vie
 
 void cull_backfaces(Models* models);
 
-void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Models* models, PointLights* point_lights);
+void frustum_culling_and_lighting(RenderTarget* rt, const M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Scene* scene);
 
 void project_and_draw_triangles(RenderTarget* rt, const M4 projection_matrix, Models* models);
 
-void render(RenderTarget* rt, const RenderSettings* settings, Models* models, PointLights* point_lights, const M4 view_matrix);
+void render(RenderTarget* rt, const RenderSettings* settings, Scene* scene, const M4 view_matrix);
 
 #endif

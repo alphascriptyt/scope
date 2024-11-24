@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include "models.h"
 
-void init_models(Models* models)
+void models_init(Models* models)
 {
 	// TODO: Comments
 

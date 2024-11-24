@@ -1,6 +1,10 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
+#define MAX_SCENES 3
+
+#include "scene.h"
+
 #include "window.h"
 #include "ui/ui.h"
 #include "renderer/renderer.h"
@@ -9,9 +13,6 @@
 
 #include "common/status.h"
 
-#include "models.h"
-#include "lights.h"
-
 typedef struct
 {
 	// Engine components.
@@ -19,9 +20,10 @@ typedef struct
 	UI ui;
 	Renderer renderer;
 
-	// TEMP: TODO: Scenes.
-	Models models;
-	PointLights lights;
+	// Scene data.
+	Scene scenes[MAX_SCENES];
+	int scenes_count;
+	int current_scene_id;
 
 	// Engine settings
 	int running;

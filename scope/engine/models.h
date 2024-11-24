@@ -128,7 +128,7 @@ typedef struct
 
 
 // Initialises the models struct.
-void init_models(Models* models);
+void models_init(Models* models);
 
 // Parses the obj file for the number of each component.
 void parse_obj_counts(FILE* file, int* num_vertices, int* num_uvs, int* num_normals, int* num_faces);

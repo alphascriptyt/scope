@@ -1,6 +1,9 @@
 #include "engine.h"
 
 #include "utils/logger.h"
+#include "utils/timer.h"
+
+#include "common/colour.h"
 
 #include <Windows.h>
 
@@ -44,15 +47,19 @@ Status engine_init(Engine* engine, int window_width, int window_height)
     }
 
     // TODO: Scene, just testing stuff atm.
-    memset(&engine->models, 0, sizeof(Models));
-    memset(&engine->lights, 0, sizeof(PointLights));
-
-    init_models(&engine->models);
-
-
-    load_model_base_from_obj(&engine->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
+    
+    Scene* scene = &engine->scenes[0];
+    status = scene_init(scene);
+    if (STATUS_OK != status)
+    {
+        log_error("Failed to scene_init because of %s", status_to_str(status));
+        return status;
+    }
+    ++engine->scenes_count;
+    
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
     int n0 = 100;
-    create_model_instances(&engine->models, 0, n0);
+    create_model_instances(&scene->models, 0, n0);
 
     log_info("Created model instances.");
     V3 pos = { 0, 0, -3 };
@@ -72,19 +79,19 @@ Status engine_init(Engine* engine, int window_width, int window_height)
     {
         int index_transform = i * STRIDE_MI_TRANSFORM;
 
-        engine->models.mis_transforms[index_transform] = pos[0];
-        engine->models.mis_transforms[++index_transform] = pos[1];
-        engine->models.mis_transforms[++index_transform] = pos[2] - i * 3;
-        engine->models.mis_transforms[++index_transform] = eulers1[0];
-        engine->models.mis_transforms[++index_transform] = eulers1[1];
-        engine->models.mis_transforms[++index_transform] = eulers1[2];
-        engine->models.mis_transforms[++index_transform] = scale[0];
-        engine->models.mis_transforms[++index_transform] = scale[1];
-        engine->models.mis_transforms[++index_transform] = scale[2];
+        scene->models.mis_transforms[index_transform] = pos[0];
+        scene->models.mis_transforms[++index_transform] = pos[1];
+        scene->models.mis_transforms[++index_transform] = pos[2] - i * 3;
+        scene->models.mis_transforms[++index_transform] = eulers1[0];
+        scene->models.mis_transforms[++index_transform] = eulers1[1];
+        scene->models.mis_transforms[++index_transform] = eulers1[2];
+        scene->models.mis_transforms[++index_transform] = scale[0];
+        scene->models.mis_transforms[++index_transform] = scale[1];
+        scene->models.mis_transforms[++index_transform] = scale[2];
 
-        engine->models.mis_transforms_updated_flags[i] = 1;
+        scene->models.mis_transforms_updated_flags[i] = 1;
     }
-
+    
     log_info("Engine successfully initialised.");
     return STATUS_OK;
 }
@@ -101,49 +108,79 @@ void engine_run(Engine* engine)
     // TODO: Struct of perf data?
     int fps = 0;
     float dt = 0;
+    int draw_ui_ms = 0;
 
     // Start the timers.
     QueryPerformanceCounter(&startTime);
 
     float dt_counter = 0;
 
-    char fps_str[64] = "fps";
-    char dir_str[64] = "dir";
-    char pos_str[64] = "pos";
-    engine->ui.text_count = 3;
+    char fps_str[64] = "";
+    char dir_str[64] = "";
+    char pos_str[64] = "";
 
-    engine->ui.text[0] = text_create(fps_str, 10, 10, 0x00FF0000, 3);
-    engine->ui.text[1] = text_create(dir_str, 10, 40, 0x0000FF00, 3);
-    engine->ui.text[2] = text_create(pos_str, 10, 70, 0x0000FF00, 3);
+    
+    char process_messages_str[64] = "";
+    char handle_input_str[64] = "";
+    char rt_clear_str[64] = "";
+    char render_str[64] = "";
+    char ui_draw_str[64] = "";
+    char display_str[64] = "";
+
+    int y = 10;
+    int h = 30;
+    engine->ui.text[engine->ui.text_count++] = text_create(fps_str, 10, engine->ui.text_count * h + 10, COLOUR_LIME, 3);
+    engine->ui.text[engine->ui.text_count++] = text_create(dir_str, 10, engine->ui.text_count * h + 10, COLOUR_RED, 3);
+    engine->ui.text[engine->ui.text_count++] = text_create(pos_str, 10, engine->ui.text_count * h + 10, COLOUR_RED, 3);
+    engine->ui.text[engine->ui.text_count++] = text_create(process_messages_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
+    engine->ui.text[engine->ui.text_count++] = text_create(handle_input_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
+    engine->ui.text[engine->ui.text_count++] = text_create(rt_clear_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
+    engine->ui.text[engine->ui.text_count++] = text_create(render_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
+    engine->ui.text[engine->ui.text_count++] = text_create(ui_draw_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
+    engine->ui.text[engine->ui.text_count++] = text_create(display_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
 
     engine->running = 1;
     while (engine->running)
     {
+        Timer t = timer_start();
+
         // Process the application window messages.
         if (!window_process_messages())
         {
             break;
         }
 
-        // TODO: Set mouse clip position to 1x1 center of window.
-        engine_handle_input(engine, dt);
+        snprintf(process_messages_str, sizeof(process_messages_str), "ProcMsgs: %d", timer_get_elapsed(&t));
 
+        // Handle any keyboard/mouse input.
+        timer_restart(&t);
+        engine_handle_input(engine, dt);
+        snprintf(handle_input_str, sizeof(handle_input_str), "HandleInput: %d", timer_get_elapsed(&t));
+        
         M4 view_matrix;
         calculate_view_matrix(&engine->renderer.camera, view_matrix);
-
+        
         // Clear the canvas.
-        //fill_canvas(engine->canvas, 0x22222222);
+        timer_restart(&t);
         render_target_clear(&engine->renderer.target, 0x22222222);
+        snprintf(rt_clear_str, sizeof(rt_clear_str), "RTClear: %d", timer_get_elapsed(&t));
 
         // Render scene.
+        timer_restart(&t);
         render(&engine->renderer.target, &engine->renderer.settings,
-            &engine->models, &engine->lights, view_matrix);
-        
+            &engine->scenes[engine->current_scene_id], view_matrix);
+        snprintf(render_str, sizeof(render_str), "Render: %d", timer_get_elapsed(&t));
+
         // Draw ui elements.
+        timer_restart(&t);
         ui_draw(&engine->ui, engine->upscaling_factor);
+        snprintf(ui_draw_str, sizeof(render_str), "DrawUI: %d", draw_ui_ms);
+        draw_ui_ms = timer_get_elapsed(&t); // Must be done a frame late.
         
         // Update the display.
+        timer_restart(&t);
         window_display(&engine->window);
+        snprintf(display_str, sizeof(display_str), "Display: %d", timer_get_elapsed(&t));
 
         // Calculate performance.
         QueryPerformanceCounter(&endTime);
@@ -158,7 +195,6 @@ void engine_run(Engine* engine)
         if (dt_counter > 2)
         {
             snprintf(fps_str, sizeof(fps_str), "FPS: %d", fps);
-            printf("%s\n", fps_str);
             dt_counter = 0;
         }
 

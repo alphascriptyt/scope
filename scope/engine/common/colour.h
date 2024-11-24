@@ -1,8 +1,15 @@
 #ifndef COLOUR_H
 #define COLOUR_H
 
-// TODO: Rename colour helpers or something?
+// Define some standard colours.
+// TODO: More
+#define COLOUR_WHITE 0x00FFFFFF
+#define COLOUR_BLACK 0x00000000
+#define COLOUR_RED 0x00FF0000
+#define COLOUR_LIME 0x0000FF00
+#define COLOUR_BLUE 0x000000FF
 
+// TODO: Rename colour helpers or something?
 inline int float_rgb_to_int(float r, float g, float b)
 {
 	return ((int)(r * 255) << 16

@@ -4,7 +4,7 @@
 #include "maths/vector3.h"
 
 #define STRIDE_POINT_LIGHT_ATTRIBUTES 4 // r,g,b,n
-// TODO: I would like to also have STRIDE_POSITION here.
+// TODO: I would like to also have STRIDE_POSITION here. Should strides be defined in a separate header to model.h?
 
 /*
 A point light can be defined by a:
@@ -41,7 +41,10 @@ typedef struct
 
 } PointLights;
 
-void create_point_light(PointLights* lights, const V3 position, const V3 colour, float strength);
+
+void point_lights_init(PointLights* point_lights);
+
+void point_lights_create(PointLights* point_lights, const V3 position, const V3 colour, float strength);
 
 
 

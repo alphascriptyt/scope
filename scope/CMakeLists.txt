@@ -13,6 +13,7 @@ add_executable (scope "main.c"
 "engine/models.h" "engine/models.c"
 "engine/texture.h" "engine/texture.c"
 "engine/window.h" "engine/window.c"
+"engine/scene.h" "engine/scene.c"
 
 "engine/common/colour.h"
 "engine/common/status.h"
@@ -39,7 +40,7 @@ add_executable (scope "main.c"
 "engine/utils/memory_utils.h" "engine/utils/memory_utils.c"
 "engine/utils/str_utils.h" "engine/utils/str_utils.c"
 "engine/utils/timer.h"
- )
+)
 
 include_directories ("engine")
 include_directories ("engine/common")
