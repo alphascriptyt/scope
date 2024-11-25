@@ -2178,44 +2178,16 @@ void render(
 
 	//printf("draw_debug_point_lights took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
-
-	// Testing draw_line.
-
-	V3 c = { 1,1,1 };
-
-	float cx = 800;
-	float cy = 450;
-
 	
-	
-
-	//.normal = { -0.5, 0, -0.5 }
-
-	
-	V4 s = { 0,0,-1,1 };
-	Plane right = settings->view_frustum.planes[1];
-
-
-
-
-	V3 end = { s[0],s[1],s[2]};
-
-
-	V3 normal = { 0,1,-1 };
-	normalise(normal);
-
-	V3 dir;
-	v3_mul_f_out(right.normal, 1, dir);
-	//v3_mul_f_out(normal, 5, dir);
-	v3_add_v3(end, dir);
-	
-	V4 e = { end[0], end[1], end[2], 1 };
-
-	V4 p0,p1;
-	project(&rt->canvas, &settings->projection_matrix, s, p0);
-	project(&rt->canvas, &settings->projection_matrix, e, p1);
-
-
-
-	draw_line(rt, p0[0], p0[1], p1[0], p1[1], c);
+	// Draw crosshair temporarily cause looks cool.
+	int half_length = 2;
+	int cx = (int)(rt->canvas.width / 2.f);
+	int cy = (int)(rt->canvas.height / 2.f);
+	for (int y = cy - half_length; y < cy + half_length; ++y)
+	{
+		for (int x = cx - half_length; x < cx + half_length; ++x)
+		{
+			rt->canvas.pixels[y * rt->canvas.width + x] = COLOUR_WHITE;
+		}
+	}
 }

@@ -373,18 +373,24 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
     {
         Scene* scene = &engine->scenes[engine->current_scene_id];
         V3 n;
-        v3_copy(engine->renderer.settings.view_frustum.planes[1].normal, n);
+        //v3_copy(engine->renderer.settings.view_frustum.planes[1].normal, n);
     
-        // TODO: Why aren't my rotations working here.....
-        //       depth is backwards
         n[0] = 0;
-        n[1] = 0;
-        n[2] = 1;
+        n[1] = -1;
+        n[2] = 0;
         normalise(n);
         
-        float yaw = atan2f(n[0], n[2]);
+        float yaw = 0;
 
-        scene->models.mis_transforms[3] = 0;
+        // atan2f doesn't work with 2 0 values.
+        if (n[0] != 0 || n[2] != 0)
+        {
+            yaw = atan2f(-n[0], -n[2]);
+        }
+        
+        float pitch = asinf(n[1]);
+
+        scene->models.mis_transforms[3] = pitch;
         scene->models.mis_transforms[4] = yaw;
         scene->models.mis_transforms[5] = 0;
 

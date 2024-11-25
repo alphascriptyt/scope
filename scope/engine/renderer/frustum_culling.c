@@ -226,7 +226,7 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 
 	
 	view_frustum->planes[view_frustum->num_planes++] = near;
-	//view_frustum->planes[view_frustum->num_planes++] = right;
+	view_frustum->planes[view_frustum->num_planes++] = right;
 	//view_frustum->planes[view_frustum->num_planes++] = left;
 	//view_frustum->planes[view_frustum->num_planes++] = top;
 	//view_frustum->planes[view_frustum->num_planes++] = bottom;

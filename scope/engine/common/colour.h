@@ -2,6 +2,7 @@
 #define COLOUR_H
 
 // Define some standard colours.
+// TODO: Rename these to show they're ints.
 // TODO: More
 #define COLOUR_WHITE 0x00FFFFFF
 #define COLOUR_BLACK 0x00000000
