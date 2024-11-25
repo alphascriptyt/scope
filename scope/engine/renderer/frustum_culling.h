@@ -12,7 +12,7 @@ typedef struct
 
 } ViewFrustum;
 
-void create_clipping_view_frustum(float near_plane_dist, float fov, float aspect_ratio, ViewFrustum* view_frustum);
+void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dist, float fov, float aspect_ratio);
 
 
 #endif

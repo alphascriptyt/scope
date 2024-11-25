@@ -11,6 +11,8 @@
 // TODO: Also, potentially, we could swap [] for the way we fill for better performance.
 //		 but would have to test the difference it would make not sure.
 
+// TODO: Is the order of in/out okay?
+
 typedef float V3[3];
 
 inline void cross(const V3 v0, const V3 v1, V3 out)
@@ -48,6 +50,13 @@ inline void v3_mul_v3(V3 v0, const V3 v1)
 	v0[0] *= v1[0];
 	v0[1] *= v1[1];
 	v0[2] *= v1[2];
+}
+
+inline void v3_mul_v3_out(const V3 v0, const V3 v1, V3 out)
+{
+	out[0] = v0[0] * v1[0];
+	out[1] = v0[1] * v1[1];
+	out[2] = v0[2] * v1[2];
 }
 
 inline void v3_mul_f(V3 v, const float f)
@@ -113,6 +122,15 @@ inline void v3_init(V3 v, float x, float y, float z)
 	v[0] = x;
 	v[1] = y;
 	v[2] = z;
+}
+
+// TODO: Better name for this. out being the second param here feels wrong.
+//		 Should make this like v3_sub_v3.
+inline void v3_copy(const V3 in, V3 out)
+{
+	out[0] = in[0];
+	out[1] = in[1];
+	out[2] = in[2];
 }
 
 inline char* v3_to_str(const V3 v)

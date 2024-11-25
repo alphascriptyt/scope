@@ -12,7 +12,7 @@ typedef struct
 	RenderTarget target;
 	RenderSettings settings;
 	Camera camera;
-
+	
 } Renderer;
 
 Status renderer_init(Renderer* renderer, int width, int height);

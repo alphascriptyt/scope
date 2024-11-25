@@ -7,6 +7,9 @@
 
 char* format_str(const char* format, ...)
 {
+    // TODO: Surelyyyy i dont need to use malloc here. Just define some buffer
+    //       and return if requested string is too long.
+
     // Initialize the variable argument list.
     va_list args;
     va_start(args, format);

@@ -110,6 +110,15 @@ void engine_run(Engine* engine)
             break;
         }
 
+        // TEMP:
+        POINT p;
+        GetCursorPos(&p);
+        ScreenToClient(engine->window.hwnd, &p);
+
+        engine->renderer.settings.mx = p.x;
+        engine->renderer.settings.my = p.y;
+
+
         snprintf(process_messages_str, sizeof(process_messages_str), "ProcMsgs: %d", timer_get_elapsed(&t));
 
         // Handle any keyboard/mouse input.
@@ -317,6 +326,7 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
 {
     Engine* engine = (Engine*)ctx;
 
+    // TODO: Switch.
     if (VK_TAB == wParam)
     {   
         ShowCursor(engine->lock_mouse);
@@ -359,4 +369,33 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
         engine->running = 0;
         PostQuitMessage(0);
     }
+    else if (VK_F1 == wParam)
+    {
+        Scene* scene = &engine->scenes[engine->current_scene_id];
+        V3 n;
+        v3_copy(engine->renderer.settings.view_frustum.planes[1].normal, n);
+    
+        // TODO: Why aren't my rotations working here.....
+        //       depth is backwards
+        n[0] = 0;
+        n[1] = 0;
+        n[2] = 1;
+        normalise(n);
+        
+        float yaw = atan2f(n[0], n[2]);
+
+        scene->models.mis_transforms[3] = 0;
+        scene->models.mis_transforms[4] = yaw;
+        scene->models.mis_transforms[5] = 0;
+
+
+
+
+        scene->models.mis_transforms_updated_flags[0] = 1;
+
+
+
+
+    }
+    
 }

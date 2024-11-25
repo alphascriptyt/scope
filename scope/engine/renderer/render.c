@@ -16,13 +16,6 @@
 #include <stdio.h>
 #include <string.h>
 
-
-
-/*
-TODO: I think it's time to sort out the file structure at least a little bit.
-
-*/
-
 void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights)
 {
 	// Debug draw point light icons.
@@ -87,7 +80,7 @@ void draw_debug_point_lights(RenderTarget* rt, const RenderSettings* settings, P
 	}
 }
 
-void draw_flat_bottom_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
+void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
 {
 	// Sort the flat vertices left to right.
 	float* pv1 = v1;
@@ -107,8 +100,11 @@ void draw_flat_bottom_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 
 	float dxdy0 = (pv1[0] - v0[0]) * invDy;
 	float dxdy1 = (pv2[0] - v0[0]) * invDy;
 
-	float dwdy0 = (pv1[2] - v0[2]) * invDy;
-	float dwdy1 = (pv2[2] - v0[2]) * invDy;
+	float dzdy0 = (pv1[2] - v0[2]) * invDy;
+	float dzdy1 = (pv2[2] - v0[2]) * invDy;
+
+	float dwdy0 = (pv1[3] - v0[3]) * invDy;
+	float dwdy1 = (pv2[3] - v0[3]) * invDy;
 
 	V4 dcdy0;
 	v4_sub_v4_out(pc1, c0, dcdy0);
@@ -145,8 +141,11 @@ void draw_flat_bottom_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 
 		float x0 = v0[0] + dxdy0 * a;
 		float x1 = v0[0] + dxdy1 * a;
 
-		float wStart = v0[2] + dwdy0 * a;
-		float wEnd = v0[2] + dwdy1 * a;
+		float z0 = v0[2] + dzdy0 * a;
+		float z1 = v0[2] + dzdy1 * a;
+
+		float wStart = v0[3] + dwdy0 * a;
+		float wEnd = v0[3] + dwdy1 * a;
 
 		V4 tempc0;
 		v4_mul_f_out(dcdy0, a, tempc0);
@@ -159,11 +158,11 @@ void draw_flat_bottom_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 
 		int xStart = (int)(ceilf(x0 - 0.5f));
 		int xEnd = (int)(ceilf(x1 - 0.5f));
 
-		draw_scanline(rt, xStart, xEnd, y, wStart, wEnd, tempc0, tempc1);
+		draw_scanline(rt, xStart, xEnd, y, z0, z1, wStart, wEnd, tempc0, tempc1);
 	}
 }
 
-void draw_flat_top_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
+void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
 {
 	// Sort the flat vertices left to right.
 	float* pv0 = v0;
@@ -182,8 +181,11 @@ void draw_flat_top_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1,
 	float dxdy0 = (v2[0] - pv0[0]) * invDy;
 	float dxdy1 = (v2[0] - pv1[0]) * invDy;
 
-	float dwdy0 = (v2[2] - pv0[2]) * invDy;
-	float dwdy1 = (v2[2] - pv1[2]) * invDy;
+	float dzdy0 = (v2[2] - pv0[2]) * invDy;
+	float dzdy1 = (v2[2] - pv1[2]) * invDy;
+
+	float dwdy0 = (v2[3] - pv0[3]) * invDy;
+	float dwdy1 = (v2[3] - pv1[3]) * invDy;
 
 	V4 dcdy0;
 	v4_sub_v4_out(c2, pc0, dcdy0);
@@ -218,8 +220,11 @@ void draw_flat_top_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1,
 		float x0 = pv0[0] + dxdy0 * a;
 		float x1 = pv1[0] + dxdy1 * a;
 
-		float wStart = pv0[2] + dwdy0 * a;
-		float wEnd = pv1[2] + dwdy1 * a;
+		float z0 = pv0[2] + dzdy0 * a;
+		float z1 = pv1[2] + dzdy1 * a;
+
+		float wStart = pv0[3] + dwdy0 * a;
+		float wEnd = pv1[3] + dwdy1 * a;
 
 		V4 tempc0;
 		v4_mul_f_out(dcdy0, a, tempc0);
@@ -231,11 +236,11 @@ void draw_flat_top_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1,
 
 		int xStart = (int)(ceil(x0 - 0.5f));
 		int xEnd = (int)(ceil(x1 - 0.5f));
-		draw_scanline(rt, xStart, xEnd, y, wStart, wEnd, tempc0, tempc1);
+		draw_scanline(rt, xStart, xEnd, y, z0, z1, wStart, wEnd, tempc0, tempc1);
 	}
 }
 
-void draw_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
+void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
 {
 	// Sort vertices in ascending order.
 	float* pv0 = v0;
@@ -279,10 +284,11 @@ void draw_triangle(RenderTarget* rt, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
 	// Linear interpolate for v3.
 	float t = (pv1[1] - pv0[1]) / (pv2[1] - pv0[1]); 
 
-	V3 pv3 = {
+	V4 pv3 = {
 		pv0[0] + (pv2[0] - pv0[0]) * t,
 		pv1[1],
-		pv0[2] + (pv2[2] - pv0[2]) * t
+		pv0[2] + (pv2[2] - pv0[2]) * t,
+		pv0[3] + (pv2[3] - pv0[3]) * t
 	};
 
 	// Lerp for the new colour of the vertex.
@@ -320,8 +326,42 @@ float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, const
 	return dp;
 }
 
-void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V3 colour)
+void draw_line(RenderTarget* rt, int x0, int y0, int x1, int y1, const V3 colour)
 {
+	int dx = abs(x1 - x0);
+	int sx = x0 < x1 ? 1 : -1;
+	int dy = -abs(y1 - y0);
+	int sy = y0 < y1 ? 1 : -1;
+	int error = dx + dy;
+
+	int colour_int = float_rgb_to_int(colour[0], colour[1], colour[2]);
+
+	while (1)
+	{
+		if (x0 > -1 && x0 < rt->canvas.width - 1 && y0 > -1 && y0 < rt->canvas.height - 1)
+		{
+			int pos = y0 * rt->canvas.width + x0;
+			rt->canvas.pixels[pos] = colour_int;
+			rt->depth_buffer[pos] = 0;
+		}
+
+		if (x0 == x1 && y0 == y1) break;
+		
+		int e2 = 2 * error;
+		if (e2 >= dy)
+		{
+			error = error + dy;
+			x0 = x0 + sx;
+		}
+		
+		if (e2 <= dx)
+		{
+			error = error + dx;
+			y0 = y0 + sy;
+		}
+	}
+
+	/*
 	if (x0 > x1)
 	{
 		float temp = x1;
@@ -382,8 +422,6 @@ void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V
 			rt->depth_buffer[pos] = 0;
 		}
 
-
-
 		if (D >= 0) {
 			if (y_longer) {
 				x += sshort;
@@ -397,11 +435,11 @@ void draw_line(RenderTarget* rt, float x0, float y0, float x1, float y1, const V
 		else {
 			D += 2 * dshort;
 		}
-	}
+	}*/
 
 }
 
-void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v2, V4 c0, V4 c1, V4 c2)
+void clip_and_draw_triangle(RenderTarget* rt, Models* models, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
 {
 	// TODO: Broad phase for this.
 	int clip =  v0[0] < 0 || v0[0] >= rt->canvas.width	  ||
@@ -451,26 +489,29 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 	projected_clipped_faces_in[0] = v0[0];
 	projected_clipped_faces_in[1] = v0[1];
 	projected_clipped_faces_in[2] = v0[2];
-	projected_clipped_faces_in[3] = c0[0];
-	projected_clipped_faces_in[4] = c0[1];
-	projected_clipped_faces_in[5] = c0[2];
-	projected_clipped_faces_in[6] = c0[3];
+	projected_clipped_faces_in[3] = v0[3];
+	projected_clipped_faces_in[4] = c0[0];
+	projected_clipped_faces_in[5] = c0[1];
+	projected_clipped_faces_in[6] = c0[2];
+	projected_clipped_faces_in[7] = c0[3];
 
-	projected_clipped_faces_in[7] = v1[0];
-	projected_clipped_faces_in[8] = v1[1];
-	projected_clipped_faces_in[9] = v1[2];
-	projected_clipped_faces_in[10] = c1[0];
-	projected_clipped_faces_in[11] = c1[1];
-	projected_clipped_faces_in[12] = c1[2];
-	projected_clipped_faces_in[13] = c1[3];
+	projected_clipped_faces_in[8] = v1[0];
+	projected_clipped_faces_in[9] = v1[1];
+	projected_clipped_faces_in[10] = v1[2];
+	projected_clipped_faces_in[11] = v1[3];
+	projected_clipped_faces_in[12] = c1[0];
+	projected_clipped_faces_in[13] = c1[1];
+	projected_clipped_faces_in[14] = c1[2];
+	projected_clipped_faces_in[15] = c1[3];
 
-	projected_clipped_faces_in[14] = v2[0];
-	projected_clipped_faces_in[15] = v2[1];
-	projected_clipped_faces_in[16] = v2[2];
-	projected_clipped_faces_in[17] = c2[0];
-	projected_clipped_faces_in[18] = c2[1];
-	projected_clipped_faces_in[19] = c2[2];
-	projected_clipped_faces_in[20] = c2[3];
+	projected_clipped_faces_in[16] = v2[0];
+	projected_clipped_faces_in[17] = v2[1];
+	projected_clipped_faces_in[18] = v2[2];
+	projected_clipped_faces_in[19] = v2[3];
+	projected_clipped_faces_in[20] = c2[0];
+	projected_clipped_faces_in[21] = c2[1];
+	projected_clipped_faces_in[22] = c2[2];
+	projected_clipped_faces_in[23] = c2[3];
 
 	// Store the number of triangles after clipping for a plane.
 	int num_faces_to_process = 1;
@@ -491,6 +532,9 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 
 			int index_face = j * STRIDE_PROJECTED_FACE;
 
+			// TODO: ?
+			const int STRIDE_PROJECTED_VERTEX = STRIDE_PROJECTED_FACE / STRIDE_FACE_VERTICES;
+
 			int num_inside_points = 0;
 			int num_outside_points = 0;
 
@@ -504,14 +548,14 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 			};
 
 			V3 v1 = {
-				projected_clipped_faces_in[index_face + 7],
 				projected_clipped_faces_in[index_face + 8],
+				projected_clipped_faces_in[index_face + 9],
 				0
 			};
 
 			V3 v2 = {
-				projected_clipped_faces_in[index_face + 14],
-				projected_clipped_faces_in[index_face + 15],
+				projected_clipped_faces_in[index_face + 16],
+				projected_clipped_faces_in[index_face + 17],
 				0
 			};
 
@@ -530,19 +574,19 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 			}
 			if (d1 >= 0)
 			{
-				inside_points_indices[num_inside_points++] = index_face + 7; // index_v1
+				inside_points_indices[num_inside_points++] = index_face + STRIDE_PROJECTED_VERTEX; // index_v1
 			}
 			else
 			{
-				outside_points_indices[num_outside_points++] = index_face + 7; // index_v1
+				outside_points_indices[num_outside_points++] = index_face + STRIDE_PROJECTED_VERTEX; // index_v1
 			}
 			if (d2 >= 0)
 			{
-				inside_points_indices[num_inside_points++] = index_face + 14; // index_v2
+				inside_points_indices[num_inside_points++] = index_face + STRIDE_PROJECTED_VERTEX * 2; // index_v2
 			}
 			else
 			{
-				outside_points_indices[num_outside_points++] = index_face + 14; // index_v2
+				outside_points_indices[num_outside_points++] = index_face + STRIDE_PROJECTED_VERTEX * 2; // index_v2
 			}
 
 			// The whole triangle is inside the plane.
@@ -552,6 +596,7 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 
 				// Simply copy the entire face. TODO: Could unroll. Not sure if it is beneficial, should test this,
 				// in another project.
+				// TODO: memcpy here.
 				for (int k = index_face; k < index_face + STRIDE_PROJECTED_FACE; ++k)
 				{
 					projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[k];
@@ -590,33 +635,37 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 				float t = line_intersect_plane(ip0, op0, plane, p0);
 
 				// Lerp for the attributes.
-				float w0 = lerp(projected_clipped_faces_in[index_ip0 + 2], projected_clipped_faces_in[index_op0 + 2], t);
-				float r0 = lerp(projected_clipped_faces_in[index_ip0 + 3], projected_clipped_faces_in[index_op0 + 3], t);
-				float g0 = lerp(projected_clipped_faces_in[index_ip0 + 4], projected_clipped_faces_in[index_op0 + 4], t);
-				float b0 = lerp(projected_clipped_faces_in[index_ip0 + 5], projected_clipped_faces_in[index_op0 + 5], t);
-				float a0 = lerp(projected_clipped_faces_in[index_ip0 + 6], projected_clipped_faces_in[index_op0 + 6], t);
+				float z0 = lerp(projected_clipped_faces_in[index_ip0 + 2], projected_clipped_faces_in[index_op0 + 2], t);
+				float w0 = lerp(projected_clipped_faces_in[index_ip0 + 3], projected_clipped_faces_in[index_op0 + 3], t);
+				float r0 = lerp(projected_clipped_faces_in[index_ip0 + 4], projected_clipped_faces_in[index_op0 + 4], t);
+				float g0 = lerp(projected_clipped_faces_in[index_ip0 + 5], projected_clipped_faces_in[index_op0 + 5], t);
+				float b0 = lerp(projected_clipped_faces_in[index_ip0 + 6], projected_clipped_faces_in[index_op0 + 6], t);
+				float a0 = lerp(projected_clipped_faces_in[index_ip0 + 7], projected_clipped_faces_in[index_op0 + 7], t);
 
 				V3 p1;
 				t = line_intersect_plane(ip0, op1, plane, p1);
 
 				// Lerp for the attributes.
-				float w1 = lerp(projected_clipped_faces_in[index_ip0 + 2], projected_clipped_faces_in[index_op1 + 2], t);
-				float r1 = lerp(projected_clipped_faces_in[index_ip0 + 3], projected_clipped_faces_in[index_op1 + 3], t);
-				float g1 = lerp(projected_clipped_faces_in[index_ip0 + 4], projected_clipped_faces_in[index_op1 + 4], t);
-				float b1 = lerp(projected_clipped_faces_in[index_ip0 + 5], projected_clipped_faces_in[index_op1 + 5], t);
-				float a1 = lerp(projected_clipped_faces_in[index_ip0 + 6], projected_clipped_faces_in[index_op1 + 6], t);
+				float z1 = lerp(projected_clipped_faces_in[index_ip0 + 2], projected_clipped_faces_in[index_op1 + 2], t);
+				float w1 = lerp(projected_clipped_faces_in[index_ip0 + 3], projected_clipped_faces_in[index_op1 + 3], t);
+				float r1 = lerp(projected_clipped_faces_in[index_ip0 + 4], projected_clipped_faces_in[index_op1 + 4], t);
+				float g1 = lerp(projected_clipped_faces_in[index_ip0 + 5], projected_clipped_faces_in[index_op1 + 5], t);
+				float b1 = lerp(projected_clipped_faces_in[index_ip0 + 6], projected_clipped_faces_in[index_op1 + 6], t);
+				float a1 = lerp(projected_clipped_faces_in[index_ip0 + 7], projected_clipped_faces_in[index_op1 + 7], t);
 
 				// Copy the attributes into the new face.
-				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[index_ip0];
-				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
-				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
-				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
-				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
-				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
-				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[index_ip0];	// x
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];	// y
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];	// z
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0]; // w
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0]; // r
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0]; // g
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0]; // b
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0]; // a
 
 				projected_clipped_faces_out[index_out++] = p0[0];
 				projected_clipped_faces_out[index_out++] = p0[1];
+				projected_clipped_faces_out[index_out++] = z0;
 				projected_clipped_faces_out[index_out++] = w0;
 				projected_clipped_faces_out[index_out++] = r0;
 				projected_clipped_faces_out[index_out++] = g0;
@@ -625,6 +674,7 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 
 				projected_clipped_faces_out[index_out++] = p1[0];
 				projected_clipped_faces_out[index_out++] = p1[1];
+				projected_clipped_faces_out[index_out++] = z1;
 				projected_clipped_faces_out[index_out++] = w1;
 				projected_clipped_faces_out[index_out++] = r1;
 				projected_clipped_faces_out[index_out++] = g1;
@@ -664,14 +714,16 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 				float t = line_intersect_plane(ip0, op0, plane, p0);
 
 				// Lerp for the attributes.
-				float w0 = lerp(projected_clipped_faces_in[index_ip0 + 2], projected_clipped_faces_in[index_op0 + 2], t);
-				float r0 = lerp(projected_clipped_faces_in[index_ip0 + 3], projected_clipped_faces_in[index_op0 + 3], t);
-				float g0 = lerp(projected_clipped_faces_in[index_ip0 + 4], projected_clipped_faces_in[index_op0 + 4], t);
-				float b0 = lerp(projected_clipped_faces_in[index_ip0 + 5], projected_clipped_faces_in[index_op0 + 5], t);
-				float a0 = lerp(projected_clipped_faces_in[index_ip0 + 6], projected_clipped_faces_in[index_op0 + 6], t);
+				float z0 = lerp(projected_clipped_faces_in[index_ip0 + 2], projected_clipped_faces_in[index_op0 + 2], t);
+				float w0 = lerp(projected_clipped_faces_in[index_ip0 + 3], projected_clipped_faces_in[index_op0 + 3], t);
+				float r0 = lerp(projected_clipped_faces_in[index_ip0 + 4], projected_clipped_faces_in[index_op0 + 4], t);
+				float g0 = lerp(projected_clipped_faces_in[index_ip0 + 5], projected_clipped_faces_in[index_op0 + 5], t);
+				float b0 = lerp(projected_clipped_faces_in[index_ip0 + 6], projected_clipped_faces_in[index_op0 + 6], t);
+				float a0 = lerp(projected_clipped_faces_in[index_ip0 + 7], projected_clipped_faces_in[index_op0 + 7], t);
 
 				// Copy the attributes into the new face.
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[index_ip0];
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip0];
@@ -688,9 +740,11 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip1];
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip1];
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip1];
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip1];
 
 				projected_clipped_faces_out[index_out++] = p0[0];
 				projected_clipped_faces_out[index_out++] = p0[1];
+				projected_clipped_faces_out[index_out++] = z0;
 				projected_clipped_faces_out[index_out++] = w0;
 				projected_clipped_faces_out[index_out++] = r0;
 				projected_clipped_faces_out[index_out++] = g0;
@@ -703,15 +757,17 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 				t = line_intersect_plane(ip1, op0, plane, p1);
 
 				// Lerp for the attributes.
-				float w1 = lerp(projected_clipped_faces_in[index_ip1_copy + 2], projected_clipped_faces_in[index_op0 + 2], t);
-				float r1 = lerp(projected_clipped_faces_in[index_ip1_copy + 3], projected_clipped_faces_in[index_op0 + 3], t);
-				float g1 = lerp(projected_clipped_faces_in[index_ip1_copy + 4], projected_clipped_faces_in[index_op0 + 4], t);
-				float b1 = lerp(projected_clipped_faces_in[index_ip1_copy + 5], projected_clipped_faces_in[index_op0 + 5], t);
-				float a1 = lerp(projected_clipped_faces_in[index_ip1_copy + 6], projected_clipped_faces_in[index_op0 + 6], t);
+				float z1 = lerp(projected_clipped_faces_in[index_ip1_copy + 2], projected_clipped_faces_in[index_op0 + 2], t);
+				float w1 = lerp(projected_clipped_faces_in[index_ip1_copy + 3], projected_clipped_faces_in[index_op0 + 3], t);
+				float r1 = lerp(projected_clipped_faces_in[index_ip1_copy + 4], projected_clipped_faces_in[index_op0 + 4], t);
+				float g1 = lerp(projected_clipped_faces_in[index_ip1_copy + 5], projected_clipped_faces_in[index_op0 + 5], t);
+				float b1 = lerp(projected_clipped_faces_in[index_ip1_copy + 6], projected_clipped_faces_in[index_op0 + 6], t);
+				float a1 = lerp(projected_clipped_faces_in[index_ip1_copy + 7], projected_clipped_faces_in[index_op0 + 7], t);
 
 				// Copy the attributes into the new face.
 				projected_clipped_faces_out[index_out++] = p0[0];
 				projected_clipped_faces_out[index_out++] = p0[1];
+				projected_clipped_faces_out[index_out++] = z0;
 				projected_clipped_faces_out[index_out++] = w0;
 				projected_clipped_faces_out[index_out++] = r0;
 				projected_clipped_faces_out[index_out++] = g0;
@@ -720,6 +776,7 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 				
 				projected_clipped_faces_out[index_out++] = p1[0];
 				projected_clipped_faces_out[index_out++] = p1[1];
+				projected_clipped_faces_out[index_out++] = z1;
 				projected_clipped_faces_out[index_out++] = w1;
 				projected_clipped_faces_out[index_out++] = r1;
 				projected_clipped_faces_out[index_out++] = g1;
@@ -727,6 +784,7 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 				projected_clipped_faces_out[index_out++] = a1;
 				
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[index_ip1_copy];
+				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip1_copy];
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip1_copy];
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip1_copy];
 				projected_clipped_faces_out[index_out++] = projected_clipped_faces_in[++index_ip1_copy];
@@ -755,8 +813,9 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 	{
 		int index = i * STRIDE_PROJECTED_FACE;
 
-		V3 p0 = {
+		V4 p0 = {
 			projected_clipped_faces_out[index],
+			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index]
 		};
@@ -768,7 +827,8 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 			projected_clipped_faces_out[++index]
 		};
 
-		V3 p1 = {
+		V4 p1 = {
+			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index]
@@ -781,7 +841,8 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 			projected_clipped_faces_out[++index]
 		};
 
-		V3 p2 = {
+		V4 p2 = {
+			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index],
 			projected_clipped_faces_out[++index]
@@ -798,7 +859,7 @@ void clip_and_draw_triangle(RenderTarget* rt, Models* models, V3 v0, V3 v1, V3 v
 	}
 }
 
-void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, const float w0, const float w1, const V4 c0, const V4 c1)
+void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, const float z0, const float z1, const float w0, const float w1, const V4 c0, const V4 c1)
 {
 	// TODO: Refactor function args.
 
@@ -821,9 +882,6 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 	int start_x = x0 + row_offset;
 	int end_x = x1 + row_offset;
 
-	// TODO: Converting to int every frame ruins fps.
-	//colourStep = (Colour::Red() - Colour::Lime()) * invDx;
-
 	V4 c_step;
 	v4_sub_v4_out(c1, c0, c_step);
 	v4_mul_f(c_step, invDx);
@@ -843,7 +901,38 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 	V3 white = { 1,1,1 };
 
 	float w = w0;
+	float z = z0;
+	float z_step = (z1 - z0) * invDx;
 	
+	while (i)
+	{
+
+		// Recover clip space depth. - TODO: Understand this a bit more, when are we in clip space? That's x,y,z after perspective projection?
+		// TODO: Call this something better.
+		
+		// Depth test, only draw closer values.
+		if (*depth_buffer > z)
+		{
+			float actualw = 1.0f / w;
+
+			float r = (c[0] * actualw);
+			float g = (c[1] * actualw);
+			float b = (c[2] * actualw);
+
+			*pixels = float_rgb_to_int(r, g, b);
+			*depth_buffer = z;
+		}
+
+		--i;
+		++pixels;
+		++depth_buffer;
+		z += z_step;
+		w += wStep;
+		v4_add_v4(c, c_step);
+	}
+
+	/*
+	// TODO: Pretty sure it's quicker to just do a for loop.
 	while (i)
 	{
 		// Get the actual depth value.
@@ -865,31 +954,47 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 		++depth_buffer;
 		w += wStep;
 		v4_add_v4(c, c_step);
-	}
+	}*/
 }
 
-void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V3 o)
+void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 {
+
+	//https://www.reddit.com/r/opengl/comments/2ooeo3/would_someone_mind_explaining_the_w_coordinate_to/#:~:text=It's%20essentially%20a%20scaling%20factor,to%20as%20the%20perspective%20divide.
+	// Opengl uses a right handed coordinate system, camera looks down the -z axis,
+	// however, NDC space is from -1 to 1. Therefore, the perspective projection
+	// matrix copies and inverts the initial depth z, to w' in v_projected.
+	
+	// Apply the perspective projection matrix to project
+	// the 3D coordinates into 2D whilst retaining depth information.
+	// The perspective projection matrix copies v[2] to 
+	//printf("%s\n", v4_to_str(v));
 	V4 v_projected;
 	m4_mul_v4(projection_matrix, v, v_projected);
 
-	// Precalculate the perspective divide.
-	// The depth is between 0 - 1.
-	float invW = 1.0f / v_projected[3];
-
 	// Perform perspective divide to bring to NDC space.
-	// NDC space is -1 to 1 in all axis.
+	// NDC space is a left handed coordinate system from -1 to 1 in all axis.
+	float invW = 1.0f / v_projected[3]; // Precalculate the perspective divide.
+
 	v_projected[0] *= invW;
 	v_projected[1] *= invW;
-	v_projected[2] *= invW;
+	v_projected[2] *= invW; 
 
-	// Convert to screen space.
+	// Convert from NDC space to screen space.
+	// Convert from [-1:1] to [0:1], then scale to the screen dimensions.
 	o[0] = (v_projected[0] + 1) * 0.5f * canvas->width;
 	o[1] = (-v_projected[1] + 1) * 0.5f * canvas->height;
 
-	// TODO: Opengl perspective projection matrix NDC z is -1 to 1,
-	//		 do we want it 0 to 1? Not sure.
-	o[2] = v_projected[2]; // Z/W
+	// Projecting depth z results in z' which encodes a nonlinear transformation
+	// of the depth, just like with x' and y'. So use this to depth test for 
+	// more accurate results closer to the camera. Also, this means we only need
+	// to recover the depth from w' if the depth test passes, saving a divison
+	// per pixel.
+	o[2] = (v_projected[2] + 1) * 0.5f; // Offset from [-1:1] to [0:1].
+
+	// Save w' for perspective correct interpolation. This allows us to lerp
+	// between vertex components. 
+	o[3] = v_projected[3];
 }
 
 void model_to_world_space(Models* models)
@@ -921,8 +1026,6 @@ void model_to_world_space(Models* models)
 
 	for (int i = 0; i < models_count; ++i)
 	{
-
-
 		// Only update if the mesh's transform has changed.
 		if (transforms_updated_flags[i] == 0)
 		{
@@ -947,7 +1050,7 @@ void model_to_world_space(Models* models)
 			mesh_transforms[++index_mesh_transform]
 		};
 
-		const V3 direction = {
+		const V3 eulers = {
 			mesh_transforms[++index_mesh_transform],
 			mesh_transforms[++index_mesh_transform],
 			mesh_transforms[++index_mesh_transform]
@@ -959,15 +1062,16 @@ void model_to_world_space(Models* models)
 			mesh_transforms[++index_mesh_transform]
 		};
 
+		
 		M4 model_matrix;
-		make_model_m4(position, direction, scale, model_matrix);
-
-
+		make_model_m4(position, eulers, scale, model_matrix);
+		
+		// TODO: Make a function for this.
 		// Define the model's normal matrix.
 		// Essentially no translation, keep the rotation, and inverse scale.
 		M4 model_normal_matrix;
 		M4 rotation_m4;
-		make_rotation_m4(direction[0], direction[1], direction[2], rotation_m4);
+		make_rotation_m4(eulers[0], eulers[1], eulers[2], rotation_m4);
 
 		M4 scale_m4;
 		identity(scale_m4);
@@ -1091,6 +1195,7 @@ void world_to_view_space(Models* models, PointLights* point_lights, const M4 vie
 			1
 		};
 
+		
 		V4 v_view_space;
 		m4_mul_v4(view_matrix, v, v_view_space);
 
@@ -1135,10 +1240,7 @@ void world_to_view_space(Models* models, PointLights* point_lights, const M4 vie
 	// View matrix has no scale, so just get the top left 3x3 containing,
 	// the rotation.
 	M4 view_normal_matrix;
-	m4_copy_m3(view_matrix, view_normal_matrix);
-
-	//printf("vm\n%s\n\n\n", m4_to_str(view_matrix));
-	//printf("vnm\n%s", m4_to_str(view_normal_matrix));
+	m4_copy_m3(view_matrix, view_normal_matrix); // TODO: Function name is misleading.
 
 	for (int i = 0; i < num_normal_components; i += STRIDE_NORMAL)
 	{
@@ -1369,6 +1471,9 @@ void frustum_culling_and_lighting(
 	const M4 view_matrix, 
 	Scene* scene)
 {
+	// TODO: Look into this: https://zeux.io/2009/01/31/view-frustum-culling-optimization-introduction/
+
+
 	// TODO: With 1000 monkeys takes about 160ms.
 	/*
 	The lighting takes about half of this which is way too long. A lot of that is temporary code though.
@@ -1396,12 +1501,10 @@ void frustum_culling_and_lighting(
 	for (int i = 0; i < scene->models.mis_count; ++i)
 	{
 		// Reset the number of visible face counts.
-		mesh_clipped_faces_counts[i] = 0;
 		int visible_faces_count = 0;
 
 		// Perform board phase bounding sphere check against each plane.
 		int index_bounding_sphere = i * STRIDE_SPHERE;
-		
 		
 		// We must convert the center to view space
 		V4 center =
@@ -1478,47 +1581,7 @@ void frustum_culling_and_lighting(
 					front_faces[k + 7],
 				};
 
-				const V4 start = {
-					front_faces[k],
-					front_faces[k + 1],
-					front_faces[k + 2],
-					1
-				};
-
-				V3 end = {
-					front_faces[k],
-					front_faces[k + 1],
-					front_faces[k + 2],
-				};
-
-
-				V3 dir;
-				v3_mul_f_out(normal, 3.f, dir);
-				v3_add_v3(end, dir);
-
-
-				V4 end4 = {
-					end[0],
-					end[1],
-					end[2],
-					1
-				};
-
-				V3 s, e;
-
-				project(&rt->canvas, projection_matrix, start, s);
-				project(&rt->canvas, projection_matrix, end, e);
-
 				V3 col = { 1,0,1 };
-
-				// TODO: THIs is awful haha
-				//draw_line(rt, s[0], s[1], e[0], e[1], col);
-
-				// TODO: Normals must also be rotated. This should be done in 
-				// the view space step. I believe there was an actual matrix
-				// for this.
-				// TODO: NORMALS NEED TO HAVE MODEL MATRIX APPLIED, AND THEN
-				// VIEW MATRIX AS WELL. WILL NEED TO BE DONE BOTH STEPS.
 
 				// Only need RGB, only need A for combining with texture???
 
@@ -1744,7 +1807,7 @@ void frustum_culling_and_lighting(
 						// Lerp for the new points.
 						V3 p0;
 						float t = line_intersect_plane(ip0, op0, plane, p0);
-
+						
 						// Lerp for the attributes.
 						const float u0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_U], temp_clipped_faces_in[index_op0 + INDEX_U], t);
 						const float v0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_V], temp_clipped_faces_in[index_op0 + INDEX_V], t);
@@ -1758,7 +1821,7 @@ void frustum_culling_and_lighting(
 
 						V3 p1;
 						t = line_intersect_plane(ip0, op1, plane, p1);
-
+						
 						// Lerp for the attributes.
 						const float u1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_U], temp_clipped_faces_in[index_op1 + INDEX_U], t);
 						const float v1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_V], temp_clipped_faces_in[index_op1 + INDEX_V], t);
@@ -1841,7 +1904,7 @@ void frustum_culling_and_lighting(
 						// Lerp for the new points.
 						V3 p0;
 						float t = line_intersect_plane(ip0, op0, plane, p0);
-
+						
 						// Lerp for the attributes.
 						const float u0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_U], temp_clipped_faces_in[index_op0 + INDEX_U], t);
 						const float v0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_V], temp_clipped_faces_in[index_op0 + INDEX_V], t);
@@ -1899,7 +1962,7 @@ void frustum_culling_and_lighting(
 
 						V3 p1;
 						t = line_intersect_plane(ip1, op0, plane, p1);
-
+						
 						// Lerp for the attributes.
 						const float u1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_U], temp_clipped_faces_in[index_op0 + INDEX_U], t);
 						const float v1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_V], temp_clipped_faces_in[index_op0 + INDEX_V], t);
@@ -2019,30 +2082,31 @@ void project_and_draw_triangles(
 				1
 			};
 
-			V3 projected_v0, projected_v1, projected_v2;
+			V4 projected_v0, projected_v1, projected_v2;
+			
 			project(&rt->canvas, projection_matrix, v0, projected_v0);
 			project(&rt->canvas, projection_matrix, v1, projected_v1);
 			project(&rt->canvas, projection_matrix, v2, projected_v2);
 
 			V4 colour0 = {
-				clipped_faces[clipped_face_index + 8] * projected_v0[2],
-				clipped_faces[clipped_face_index + 9] * projected_v0[2],
-				clipped_faces[clipped_face_index + 10] * projected_v0[2],
-				clipped_faces[clipped_face_index + 11] * projected_v0[2],
+				clipped_faces[clipped_face_index + 8] * projected_v0[3],
+				clipped_faces[clipped_face_index + 9] * projected_v0[3],
+				clipped_faces[clipped_face_index + 10] * projected_v0[3],
+				clipped_faces[clipped_face_index + 11] * projected_v0[3],
 			};
 
 			V4 colour1 = {
-				clipped_faces[clipped_face_index + 20] * projected_v1[2],
-				clipped_faces[clipped_face_index + 21] * projected_v1[2],
-				clipped_faces[clipped_face_index + 22] * projected_v1[2],
-				clipped_faces[clipped_face_index + 23] * projected_v1[2],
+				clipped_faces[clipped_face_index + 20] * projected_v1[3],
+				clipped_faces[clipped_face_index + 21] * projected_v1[3],
+				clipped_faces[clipped_face_index + 22] * projected_v1[3],
+				clipped_faces[clipped_face_index + 23] * projected_v1[3],
 			};
 
 			V4 colour2 = {
-				clipped_faces[clipped_face_index + 32] * projected_v2[2],
-				clipped_faces[clipped_face_index + 33] * projected_v2[2],
-				clipped_faces[clipped_face_index + 34] * projected_v2[2],
-				clipped_faces[clipped_face_index + 35] * projected_v2[2],
+				clipped_faces[clipped_face_index + 32] * projected_v2[3],
+				clipped_faces[clipped_face_index + 33] * projected_v2[3],
+				clipped_faces[clipped_face_index + 34] * projected_v2[3],
+				clipped_faces[clipped_face_index + 35] * projected_v2[3],
 			};
 
 			clip_and_draw_triangle(rt, models, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
@@ -2058,6 +2122,13 @@ void render(
 	Scene* scene,
 	const M4 view_matrix)
 {
+	/*
+	TODO: Time to make all this perfect.
+	Would be nice to frustum cull against all planes, not sure how much this will hurt fps.
+	Remember the plane generation code was wrong for some reason.
+	*/
+
+
 	Timer t = timer_start();
 
 	// Transform world space positions to view space.
@@ -2087,16 +2158,10 @@ void render(
 	// So light each vertex before clipping.
 	// NOTE: I think this means the lighting will be linear, taking away from
 	//		 the attenuation?
-
-	// TODO: This could be done by the engine, we only need to redo this on a resize or settings change.
-	ViewFrustum view_frustum;
-	create_clipping_view_frustum(settings->near_plane, settings->fov,
-		rt->canvas.width / (float)(rt->canvas.height), &view_frustum);
-
 	//printf("create_clipping_view_frustum took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
-	frustum_culling_and_lighting(rt, settings->projection_matrix, &view_frustum, view_matrix, scene);
+	frustum_culling_and_lighting(rt, settings->projection_matrix, &settings->view_frustum, view_matrix, scene);
 
 	//printf("frustum_culling_and_lighting took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
@@ -2114,4 +2179,43 @@ void render(
 	//printf("draw_debug_point_lights took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
+	// Testing draw_line.
+
+	V3 c = { 1,1,1 };
+
+	float cx = 800;
+	float cy = 450;
+
+	
+	
+
+	//.normal = { -0.5, 0, -0.5 }
+
+	
+	V4 s = { 0,0,-1,1 };
+	Plane right = settings->view_frustum.planes[1];
+
+
+
+
+	V3 end = { s[0],s[1],s[2]};
+
+
+	V3 normal = { 0,1,-1 };
+	normalise(normal);
+
+	V3 dir;
+	v3_mul_f_out(right.normal, 1, dir);
+	//v3_mul_f_out(normal, 5, dir);
+	v3_add_v3(end, dir);
+	
+	V4 e = { end[0], end[1], end[2], 1 };
+
+	V4 p0,p1;
+	project(&rt->canvas, &settings->projection_matrix, s, p0);
+	project(&rt->canvas, &settings->projection_matrix, e, p1);
+
+
+
+	draw_line(rt, p0[0], p0[1], p1[0], p1[1], c);
 }

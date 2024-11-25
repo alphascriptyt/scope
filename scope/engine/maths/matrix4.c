@@ -1,7 +1,23 @@
 #include "matrix4.h"
 
+#include "utils.h"
+
 void m4_mul_m4(const M4 m0, const M4 m1, M4 out)
 {
+	// Post-multiplication, this means the combined out 
+	// matrix will first apply m1, then m0.
+	
+	// For example, if m0 was a scale matrix, and m1 a 
+	// translation matrix. m4_mul_m4(translation, scale, out)
+	// would result in a combined transform matrix that
+	// scales and then translates the point.
+
+	// We use post-multiplication because we are using 
+	// column major vectors/matrices and this is the 
+	// industry standard as far as I know. Also, using
+	// post-multiplication here aligns with the M * v
+	// that we use for m4_mul_v4.
+
 	for (int c = 0; c < 4; ++c)
 	{
 		for (int r = 0; r < 4; ++r)
@@ -9,9 +25,9 @@ void m4_mul_m4(const M4 m0, const M4 m1, M4 out)
 			int rowOffset = r * 4;
 
 			out[rowOffset + c] = m1[rowOffset] * m0[c] +
-				m1[rowOffset + 1] * m0[c + 4] +
-				m1[rowOffset + 2] * m0[c + 8] +
-				m1[rowOffset + 3] * m0[c + 12];
+								 m1[rowOffset + 1] * m0[c + 4] +
+								 m1[rowOffset + 2] * m0[c + 8] +
+								 m1[rowOffset + 3] * m0[c + 12];
 		}
 	}
 }
@@ -54,66 +70,69 @@ void make_translation_m4(const V3 position, M4 out)
 
 void make_rotation_m4(const float pitch, const float yaw, const float roll, M4 out)
 {
-	
-	float sinPitch = sinf(pitch);
-	float sinYaw = sinf(yaw);
-	float sinRoll = sinf(roll);
+	// TODO: Look into quarternions. https://en.wikipedia.org/wiki/Quaternion
 
-	float cosPitch = cosf(pitch);
-	float cosYaw = cosf(yaw);
-	float cosRoll = cosf(roll);
+	// In a right handed coordinate system, the rotations are counter clockwise 
+	// around the axis when looking at the axis. So for example, a positive yaw
+	// would make whatever we rotate turn left.
+	const float sinPitch = sinf(pitch);
+	const float sinYaw = sinf(yaw);
+	const float sinRoll = sinf(roll);
 
+	const float cosPitch = cosf(pitch);
+	const float cosYaw = cosf(yaw);
+	const float cosRoll = cosf(roll);
+
+	// TODO: I think labelling these as rotations around axis would make more sense tbf.
+
+	// Rotation around the x axis.
 	M4 pitch_rot;
 	identity(pitch_rot);
-	/*
+
 	pitch_rot[5] = cosPitch;
 	pitch_rot[6] = sinPitch;
 	pitch_rot[9] = -sinPitch;
 	pitch_rot[10] = cosPitch;
-	*/
 
-	pitch_rot[5] = cosPitch;
-	pitch_rot[9] = sinPitch;
-	pitch_rot[6] = -sinPitch;
-	pitch_rot[10] = cosPitch;
-
+	// Rotation around the y axis.
 	M4 yaw_rot;
 	identity(yaw_rot);
-	/*
+	
 	yaw_rot[0] = cosYaw;
-	yaw_rot[2] = sinYaw;
-	yaw_rot[8] = -sinYaw;
-	yaw_rot[10] = cosYaw;*/
-
-	yaw_rot[0] = cosYaw;
-	yaw_rot[8] = sinYaw;
 	yaw_rot[2] = -sinYaw;
+	yaw_rot[8] = sinYaw;
 	yaw_rot[10] = cosYaw;
 
+	// Rotation around the z axis.
 	M4 roll_rot;
 	identity(roll_rot);
-	/*
-	roll_rot[0] = cosRoll;
-	roll_rot[1] = -sinRoll;
-	roll_rot[4] = sinRoll;
-	roll_rot[5] = cosRoll;
-	*/
 
 	roll_rot[0] = cosRoll;
-	roll_rot[4] = -sinRoll;
 	roll_rot[1] = sinRoll;
+	roll_rot[4] = -sinRoll;
 	roll_rot[5] = cosRoll;
 
+	// Combine the rotations.
+	m4_mul_m4(yaw_rot, pitch_rot, out); 
+	// Seems to be the correct order, however, I believe when we come to use
+	// quarternions, we won't be using pitch/yaw anymore. Which will be nice.
 
-	// TODO: Multiply by roll. Will this give us the euler lock thing?
-	m4_mul_m4(pitch_rot, yaw_rot, out);
+	// TODO: We want to obviously apply roll, however, we will get gimbal lock.
+	//		 Switch to quaternions for this I believe. Also, gotta understand
+	//		 order of matrix multplications a bit better.
 }
 
 void look_at(const V3 position, const V3 direction, M4 out)
 {
+	// TODO: This isn't quite right, most look_at matrices take to and from positions,
+	//		 then the camera would get set to the from position. 
+	//		 This is slightly misleading because we're really just making a rotation/translation
+	//		 matrix from a position and direction.
+
+
 	V3 world_up = { 0, 1, 0 };
 
-	// Calculate the axis from the direction being the z axis.
+	// Calculate the other axis by using the z axis as the direction.
 	V3 x_axis;
 	cross(world_up, direction, x_axis);
 	normalise(x_axis);
@@ -128,21 +147,26 @@ void look_at(const V3 position, const V3 direction, M4 out)
 	out[4] = x_axis[1]; out[5] = y_axis[1]; out[6] = direction[1];
 	out[8] = x_axis[2]; out[9] = y_axis[2]; out[10] = direction[2];
 
-	out[12] = -dot(x_axis, position);
-	out[13] = -dot(y_axis, position);
-	out[14] = -dot(direction, position);
+	out[12] = dot(x_axis, position);
+	out[13] = dot(y_axis, position);
+	out[14] = dot(direction, position);
 }
 
-void make_model_m4(const V3 position, const V3 orientation, const V3 scale, M4 out)
+void make_model_m4(const V3 position, const V3 eulers, const V3 scale, M4 out)
 {
+	// TODO: Gotta think about this, if we ever want to set roll, this function must accept
+	//		 eulers because we cannot get roll from a direction? It's not so nice to pass
+	//		 eulers, however, we have a direction helper so maybe okay.
+
 	// TODO: Look into avoiding the matrix multiplications? Can I set translation without multiplying?
 	//		 Pretty sure I can.
+	
 	M4 translation_m4;
 	make_translation_m4(position, translation_m4);
 
 	M4 rotation_m4;
-	make_rotation_m4(orientation[0], orientation[1], orientation[2], rotation_m4);
-
+	make_rotation_m4(eulers[0], eulers[1], eulers[2], rotation_m4);
+	
 	M4 scale_m4;
 	identity(scale_m4);
 	scale_m4[0] = scale[0];
@@ -153,7 +177,35 @@ void make_model_m4(const V3 position, const V3 orientation, const V3 scale, M4 o
 	// We have to define an output matrix each time.
 	// Although in my opinion this is fine it makes it more clear.
 	M4 translation_rotation_m4;
+
+	// TODO: Why doesn't using the look_at matrix work for direction (0,1,0)
+
+	// TODO: Also the rotation is backwards for z, have i not transposed the matrix or something.
+
+	// TODO: Need to think about this properly, basically, I want to be able to set a models direction
+	//		 and get the expected values.
+
+	// TODO: I think it's fine here to use eulers, maybe that's normal, however, how can I set a direction....
+	//		 that is the goal. I want to make a model look at something. I did this in range a while ago.
+
+	/*
+	
+	Entity* subscribe = currentScene->getEntity("subscribe");
+
+		V3 direction = subscribe->physics->position - player->physics->position;
+		direction.normalize();
+
+		subscribe->physics->yaw = atan2(direction.x, direction.z);
+		//subscribe->physics->position -= direction * dt * 5;
+	
+	*/
+
+	// We use post-matrix multiplication, so here, we end up
+	// scaling, then rotating, then translating.
 	m4_mul_m4(translation_m4, rotation_m4, translation_rotation_m4);
+	//printf("pos: %s, dir: %s\n", v3_to_str(position), v3_to_str(eulers));
+	//look_at(position, eulers, translation_rotation_m4);
+
 	m4_mul_m4(translation_rotation_m4, scale_m4, out);
 }
 
