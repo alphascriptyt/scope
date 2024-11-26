@@ -139,8 +139,8 @@ void load_model_base_from_obj(Models* models, const char* filename)
 	{
 		models->max_mb_faces = face_count;
 
-		resize_float_buffer(&models->temp_clipped_faces_in, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 5));
-		resize_float_buffer(&models->temp_clipped_faces_out, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 5)); //MAX_FRUSTUM_PLANES);
+		resize_float_buffer(&models->temp_clipped_faces_in, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 6));
+		resize_float_buffer(&models->temp_clipped_faces_out, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 6)); //MAX_FRUSTUM_PLANES);
 	}
 
 	// Move to the start of the file again so we can read it.

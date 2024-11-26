@@ -913,12 +913,19 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 		// Depth test, only draw closer values.
 		if (*depth_buffer > z)
 		{
+			// TODO: Better name for this, it is actually w here. So rename the other w's?
 			float actualw = 1.0f / w;
 
+			// Render as depth buffer, testing depth values.
+			float r = (white[0] * (1.f - z));
+			float g = (white[1] * (1.f - z));
+			float b = (white[2] * (1.f - z));
+
+			/*
 			float r = (c[0] * actualw);
 			float g = (c[1] * actualw);
 			float b = (c[2] * actualw);
-
+			*/
 			*pixels = float_rgb_to_int(r, g, b);
 			*depth_buffer = z;
 		}
@@ -930,45 +937,24 @@ void draw_scanline(RenderTarget* rt, const int x0, const int x1, const int y, co
 		w += wStep;
 		v4_add_v4(c, c_step);
 	}
-
-	/*
-	// TODO: Pretty sure it's quicker to just do a for loop.
-	while (i)
-	{
-		// Get the actual depth value.
-		float z = 1.0f / w;
-
-		// Depth test, only draw closer values. -1 (near plane) to 1 (far plane).
-		if (*depth_buffer > z)
-		{
-			float r = (c[0] * z);
-			float g = (c[1] * z);
-			float b = (c[2] * z);
-
-			*pixels = float_rgb_to_int(r, g ,b);
-			*depth_buffer = z;
-		}
-		
-		--i;
-		++pixels;
-		++depth_buffer;
-		w += wStep;
-		v4_add_v4(c, c_step);
-	}*/
 }
 
 void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 {
+	if (v[2] > -1)
+	{
+		//printf("v[2] %f\n", v[2]);
+	}
 
-	//https://www.reddit.com/r/opengl/comments/2ooeo3/would_someone_mind_explaining_the_w_coordinate_to/#:~:text=It's%20essentially%20a%20scaling%20factor,to%20as%20the%20perspective%20divide.
+
+
 	// Opengl uses a right handed coordinate system, camera looks down the -z axis,
-	// however, NDC space is from -1 to 1. Therefore, the perspective projection
-	// matrix copies and inverts the initial depth z, to w' in v_projected.
+	// however, NDC space is left handed, from -1 to 1 in all axis. 
+	// Therefore, the perspective projection matrix copies and inverts the 
+	// initial depth z, to w' in v_projected.
 	
 	// Apply the perspective projection matrix to project
-	// the 3D coordinates into 2D whilst retaining depth information.
-	// The perspective projection matrix copies v[2] to 
-	//printf("%s\n", v4_to_str(v));
+	// the 3D coordinates into 2D.
 	V4 v_projected;
 	m4_mul_v4(projection_matrix, v, v_projected);
 
@@ -995,6 +981,24 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 	// Save w' for perspective correct interpolation. This allows us to lerp
 	// between vertex components. 
 	o[3] = v_projected[3];
+
+	
+	if (v_projected[2] < -1 || v_projected[2] > 1)
+	{
+		//printf("%f\n", v_projected[2]);
+
+	}
+
+
+	/*
+	if (o[2] < -1)
+	{
+		printf("%f\n", o[2]);
+	}
+	else if (o[2] > 1)
+	{
+		printf(">1\n");
+	}*/
 }
 
 void model_to_world_space(Models* models)
@@ -1545,6 +1549,16 @@ void frustum_culling_and_lighting(
 				clip_against_plane[j] = 1;
 				++num_planes_to_clip_against;
 			}
+		}
+
+		// TODO: For some reason the broad phase seems to be failing and even thought we need to clip,
+		//		 we are not. This means we get depth values outside of the range.
+		if (num_planes_to_clip_against == 0 && mesh_visible == 1)
+		{
+			//printf("no clipping\n");
+			clip_against_plane[0] = 1;
+
+			num_planes_to_clip_against = 1;
 		}
 		
 		// Skip the mesh if it's not visible at all.

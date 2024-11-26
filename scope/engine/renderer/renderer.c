@@ -14,7 +14,7 @@ Status renderer_init(Renderer* renderer, int width, int height)
 
 	renderer->settings.fov = 90.f;
 	renderer->settings.near_plane = 1.f;
-	renderer->settings.far_plane = 1000.f;
+	renderer->settings.far_plane = 100.f;
 
 	update_projection_m4(&renderer->settings, width / (float)height);
 

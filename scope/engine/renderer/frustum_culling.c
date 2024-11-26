@@ -179,23 +179,47 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 
 
 
+	// TODO: Cleanup all this code and add the rest of the planes to clip against, again, if this 
+	//		 is going to be a slowdown, we can comment them out. But I should at least get them working.
+	//		 left right and near working.
+
+	// TODO: Actually, clipping still seems to break with 120 fov. Not sure why. look into how normals
+	//		 are calculated agian.
+
 	Plane near =
 	{
 		.point = { near_centre[0], near_centre[1], near_centre[2] },
 		.normal = { 0, 0, -1.f}
 	};
 
+	Plane far =
+	{
+		.point = { far_centre[0], far_centre[1], far_centre[2] },
+		.normal = { 0, 0, 1.f}
+	};
+
 
 	// TODO: YOU IDIOT. THE PLANE POINTS ARE NOT THE NEAR CENTRE ARGHHHHHHHH THE NEAR PLANE IS A SQUARE............
 	// Although there is still something going wrong with the normals. and directions in the program, must fix 
 	// the model directions first i think.
-	Plane right = {
-		.normal = { -1, 0, -0.5 }
-	};
+	//Plane right = {
+		//.normal = { -0.707, 0, -0.707 }
+	//};
+	Plane right = { 0 };
 	v3_copy(near_top_right, right.point);
+	v3_copy(nr, right.normal);
+	normalise(right.normal);
 
+
+	v3_sub_v3_out(far_top_left, near_bottom_left, e0);
+	v3_sub_v3_out(near_top_left, near_bottom_left, e1);
+	V3 left_normal;
+	cross(e0, e1, left_normal);
 	
-
+	Plane left = { 0 };
+	v3_copy(near_top_left, left.point);
+	v3_copy(left_normal, left.normal);
+	normalise(left.normal);
 
 	/*
 	{
@@ -204,13 +228,13 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 		
 	};*/
 
-	normalise(right.normal);
-
+	
+	/*
 	Plane left =
 	{
 		.point = { near_centre[0], near_centre[1], near_centre[2] },
 		.normal = { -0.707, 0, -0.707 }
-	};
+	};*/
 
 	Plane top =
 	{
@@ -226,7 +250,8 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 
 	
 	view_frustum->planes[view_frustum->num_planes++] = near;
-	view_frustum->planes[view_frustum->num_planes++] = right;
+	//view_frustum->planes[view_frustum->num_planes++] = far;
+	//view_frustum->planes[view_frustum->num_planes++] = right;
 	//view_frustum->planes[view_frustum->num_planes++] = left;
 	//view_frustum->planes[view_frustum->num_planes++] = top;
 	//view_frustum->planes[view_frustum->num_planes++] = bottom;

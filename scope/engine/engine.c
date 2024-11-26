@@ -373,13 +373,8 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
     {
         Scene* scene = &engine->scenes[engine->current_scene_id];
         V3 n;
-        //v3_copy(engine->renderer.settings.view_frustum.planes[1].normal, n);
-    
-        n[0] = 0;
-        n[1] = -1;
-        n[2] = 0;
-        normalise(n);
-        
+        v3_copy(engine->renderer.settings.view_frustum.planes[1].normal, n);
+   
         float yaw = 0;
 
         // atan2f doesn't work with 2 0 values.
@@ -390,14 +385,16 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
         
         float pitch = asinf(n[1]);
 
+
+        scene->models.mis_transforms[0] = engine->renderer.camera.position[0];
+        scene->models.mis_transforms[1] = engine->renderer.camera.position[1];
+        scene->models.mis_transforms[2] = engine->renderer.camera.position[2];
+
         scene->models.mis_transforms[3] = pitch;
         scene->models.mis_transforms[4] = yaw;
         scene->models.mis_transforms[5] = 0;
-
-
-
-
         scene->models.mis_transforms_updated_flags[0] = 1;
+
 
 
 
