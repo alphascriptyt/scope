@@ -132,6 +132,7 @@ void load_model_base_from_obj(Models* models, const char* filename)
 	resize_float_buffer(&models->mbs_object_space_positions, new_total_positions * STRIDE_POSITION);
 	resize_float_buffer(&models->mbs_object_space_normals, new_total_normals * STRIDE_NORMAL);
 	resize_float_buffer(&models->mbs_uvs, new_total_uvs * STRIDE_UV);
+	resize_float_buffer(&models->mbs_object_space_centres, new_mbs_count * STRIDE_POSITION);
 
 	// Recreate the in/out buffers for clipping if this model base has the most
 	// faces yet.
@@ -233,6 +234,33 @@ void load_model_base_from_obj(Models* models, const char* filename)
 		}
 	}
 
+	// Calculate the centre of the model base by taking the average of all the vertices.
+	// After testing using indexed rendering for this, we got the wrong centre, works 
+	// correctly with just averaging all the vertices, no matter how many times they're
+	// used.
+	V3 centre = { 0, 0, 0 };
+
+	// Iterate through each vertex of each face in one go.
+	int offset = models->mbs_positions_offsets[models->mbs_count];
+	for (int i = 0; i < positions_count; ++i)
+	{
+		int index = (offset + i) * STRIDE_POSITION;
+
+		V3 position = {
+			models->mbs_object_space_positions[index],
+			models->mbs_object_space_positions[++index],
+			models->mbs_object_space_positions[++index]
+		};
+		v3_add_v3(centre, position);
+	}
+
+	v3_mul_f(centre, 1.0f / positions_count);
+
+	int index_centre = models->mbs_count * STRIDE_POSITION;
+	models->mbs_object_space_centres[index_centre] = centre[0];
+	models->mbs_object_space_centres[++index_centre] = centre[1];
+	models->mbs_object_space_centres[++index_centre] = centre[2];
+
 	// Close the file.
 	if (fclose(file) != 0)
 	{
@@ -250,23 +278,27 @@ void load_model_base_from_obj(Models* models, const char* filename)
 
 void create_model_instances(Models* models, int mb_index, int n)
 {
+	// TEMP:
+	resize_float_buffer(&models->temp_far, (models->mis_count + n) * STRIDE_POSITION);
+
+
+
 	if (mb_index > models->mbs_count - 1)
 	{
 		log_error("mb_index out of range.");
-		return;
+		return; // TODO: return status.
 	}
 
 	const int new_instances_count = models->mis_count + n;
 
 	// Resize buffers
 	resize_int_buffer(&models->mis_base_ids, new_instances_count);
-	resize_int_buffer(&models->mis_transforms_updated_flags, new_instances_count);
+	resize_int_buffer(&models->mis_dirty_ids, new_instances_count);
 	resize_int_buffer(&models->mis_texture_ids, new_instances_count);
 	
 	for (int i = models->mis_count; i < new_instances_count; ++i)
 	{
 		models->mis_base_ids[i] = mb_index;
-		models->mis_transforms_updated_flags[i] = 0;
 
 		// TODO: Textures. Should be a parameter?
 		models->mis_texture_ids[i] = -69;
@@ -277,9 +309,6 @@ void create_model_instances(Models* models, int mb_index, int n)
 	// Make space for the bounding sphere, this will be generated in the next
 	// render call.
 	resize_float_buffer(&models->mis_bounding_spheres, new_instances_count * STRIDE_SPHERE);
-
-	// Get some of the model base data sizes.
-	// TODO: HOW DO I GET THE TOTALS?
 
 	// Increase the totals to get the new buffer sizes.
 	const int faces_count = models->mbs_faces_counts[mb_index] * n;
@@ -301,15 +330,46 @@ void create_model_instances(Models* models, int mb_index, int n)
 	resize_float_buffer(&models->view_space_positions, models->mis_total_positions * STRIDE_POSITION);
 	resize_float_buffer(&models->view_space_normals, models->mis_total_normals * STRIDE_NORMAL);
 
+	// Resize buffers containing offsets to the world/view space per instance data.
+	resize_int_buffer(&models->mis_positions_offsets, new_instances_count);
+	resize_int_buffer(&models->mis_normals_offsets, new_instances_count);
+
+	
+	// Set the positions offsets.
+	for (int i = 0; i < n; ++i)
+	{
+		int positions_in_last_mi = 0;
+		int last_positions_offset = 0;
+		if (models->mis_count + i > 0)
+		{
+			positions_in_last_mi = models->mbs_positions_counts[models->mis_base_ids[models->mis_count + i - 1]];
+			last_positions_offset = models->mis_positions_offsets[models->mis_count + i - 1];
+		}
+		
+		models->mis_positions_offsets[models->mis_count + i] = last_positions_offset + positions_in_last_mi * STRIDE_POSITION;
+	}
+
+	// Set the normals offsets.
+	for (int i = 0; i < n; ++i)
+	{
+		int normals_in_last_mi = 0;
+		int last_normals_offset = 0;
+		if (models->mis_count + i > 0)
+		{
+			normals_in_last_mi = models->mbs_normals_counts[models->mis_base_ids[models->mis_count + i - 1]];
+			last_normals_offset = models->mis_normals_offsets[models->mis_count + i - 1];
+		}
+		models->mis_normals_offsets[models->mis_count + i] = last_normals_offset + normals_in_last_mi * STRIDE_NORMAL;
+	}
+
 	// Resize intermediate/temporary rendering buffers.
 	resize_int_buffer(&models->front_faces_counts, new_instances_count);
 	resize_float_buffer(&models->front_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE);
 
 	resize_int_buffer(&models->clipped_faces_counts, new_instances_count);
-	resize_float_buffer(&models->clipped_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE * (int)pow(2, 1)); // TODO: * pow(2, ENABLED_FRUSTUM_PLANES_COUNT.....)
+	resize_float_buffer(&models->clipped_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE * (int)pow(2, 6)); // TODO: * pow(2, ENABLED_FRUSTUM_PLANES_COUNT.....)
 
 	// Update the number of instances.
-	// TODO: Record how many instances of a ModelBase there are?
 	models->mis_count = new_instances_count;
 }
 
@@ -330,7 +390,7 @@ void free_models(Models* models)
 	free(models->mbs_normals_offsets);
 
 	free(models->mis_base_ids);
-	free(models->mis_transforms_updated_flags);
+	free(models->mis_dirty_ids);
 	free(models->mis_texture_ids);
 	free(models->mis_vertex_colours);
 	free(models->mis_transforms);

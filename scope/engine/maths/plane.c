@@ -39,7 +39,3 @@ float line_intersect_plane(const V3 v0, const V3 v1, const Plane* plane, V3 out)
 
 	return t;
 }
-
-void plane_from_points(Plane* plane, const V3 v0, const V3 v1, const V3 v2)
-{
-}

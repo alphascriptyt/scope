@@ -55,8 +55,13 @@ computations. Also, these can be used by other engine components, like the
 physics system, to avoid recomputation of world space positions etc.
 
 */
+
 typedef struct
 {	
+	//V3 temp_far;
+	float* temp_far;
+
+
 	// TODO: Comments and naming. Currently mb = model base, mi = model instance
 
 	// Buffer sizes.
@@ -88,22 +93,30 @@ typedef struct
 	float* mbs_object_space_positions;	// Original vertex positions without any transforms applied.
 	float* mbs_object_space_normals;
 	float* mbs_uvs;
+	float* mbs_object_space_centres;
 
 	// Instance data
 	// TODO: Naming.
 	int mis_total_faces;				// Total number of faces from all mis, keeps track of the size of the buffers.
 	int mis_total_positions;
 	int mis_total_normals;
+	int mis_total_dirty;				// The number of dirty mi transforms.
 
 	int* mis_base_ids;					// The id of the model base.
-	int* mis_transforms_updated_flags;	// Flags to signal recalculating the world space data.
+	int* mis_dirty_ids;					// The ids of dirty mi transforms signal recalculating the world space data.
 	int* mis_texture_ids;				// The id of the texture.
 
 	float* mis_vertex_colours;			// Per vertex colours for the instances.
 	float* mis_transforms;				// The instance world space transforms: [ Position, Direction, Scale ]
 	float* mis_bounding_spheres;		// The bounding sphere for each instance in world space.
 
-	// Indexing results buffers.
+	// Offsets into the world/view space buffers for accessing per mi data. 
+	// These offsets are pre-multiplied by their strides.
+	int* mis_positions_offsets;		
+	int* mis_normals_offsets;			
+
+	// Transform results buffers.
+	// TODO: These are specific to mis, should prefix.
 	float* world_space_positions;
 	float* world_space_normals;
 
@@ -115,7 +128,7 @@ typedef struct
 	float* front_faces;				// An invertleaved buffer of {x, y, z, u, v, x, y, z, r, g, b, a} for each vertex of each front face after backface culling.
 
 	// Buffers used for frustum culling.
-	int* clipped_faces_counts;	// Number of faces that are visible to the camera after clipping.
+	int* clipped_faces_counts;		// Number of faces that are visible to the camera after clipping.
 	float* clipped_faces;			// An invertleaved buffer of {x, y, z, u, v, x, y, z, r, g, b, a} for each vertex of each face after frustum culling.
 	float* temp_clipped_faces_in;	// Used for temporarily storing the faces whilst clipping against multiple planes.
 	float* temp_clipped_faces_out;	// Used for temporarily storing the faces whilst clipping against multiple planes.
@@ -123,9 +136,8 @@ typedef struct
 	// Buffers used for screen space clipping.
 	float* projected_clipped_faces;	// x,y,w,r,g,b,a per vertex, TODO: UVs.
 	float* projected_clipped_faces_temp;
-	
-} Models;
 
+} Models;
 
 // Initialises the models struct.
 void models_init(Models* models);
@@ -133,11 +145,7 @@ void models_init(Models* models);
 // Parses the obj file for the number of each component.
 void parse_obj_counts(FILE* file, int* num_vertices, int* num_uvs, int* num_normals, int* num_faces);
 
-// Load a static mesh from a .obj file, the transforms will be applied to the vertices and will be unchangeable.
-//void load_mesh_from_obj(Models* models, const char* filename, const V3 position, const V3 orientation, const V3 scale);
-
 void load_model_base_from_obj(Models* models, const char* filename);
-
 
 // TODO: It would be nice to be able to create different model
 //		 instances without memory allocating each time. I think
@@ -152,6 +160,5 @@ void load_model_base_from_obj(Models* models, const char* filename);
 void create_model_instances(Models* models, int mb_index, int n);
 
 void free_models(Models* models);
-
 
 #endif

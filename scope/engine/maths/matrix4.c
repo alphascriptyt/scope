@@ -40,7 +40,7 @@ void m4_mul_v4(const M4 m, const V4 v, V4 out)
 	out[3] = m[3] * v[0] + m[7] * v[1] + m[11] * v[2] + m[15] * v[3];
 }
 
-void identity(M4 out)
+void m4_identity(M4 out)
 {
 	out[0] = 1;
 	out[1] = 0;
@@ -60,15 +60,15 @@ void identity(M4 out)
 	out[15] = 1;
 }
 
-void make_translation_m4(const V3 position, M4 out)
+void m4_translation(const V3 position, M4 out)
 {
-	identity(out);
+	m4_identity(out);
 	out[12] = position[0];
 	out[13] = position[1];
 	out[14] = position[2];
 }
 
-void make_rotation_m4(const float pitch, const float yaw, const float roll, M4 out)
+void m4_rotation(const float pitch, const float yaw, const float roll, M4 out)
 {
 	// TODO: Look into quarternions. https://en.wikipedia.org/wiki/Quaternion
 
@@ -87,7 +87,7 @@ void make_rotation_m4(const float pitch, const float yaw, const float roll, M4 o
 
 	// Rotation around the x axis.
 	M4 pitch_rot;
-	identity(pitch_rot);
+	m4_identity(pitch_rot);
 
 	pitch_rot[5] = cosPitch;
 	pitch_rot[6] = sinPitch;
@@ -96,7 +96,7 @@ void make_rotation_m4(const float pitch, const float yaw, const float roll, M4 o
 
 	// Rotation around the y axis.
 	M4 yaw_rot;
-	identity(yaw_rot);
+	m4_identity(yaw_rot);
 	
 	yaw_rot[0] = cosYaw;
 	yaw_rot[2] = -sinYaw;
@@ -105,7 +105,7 @@ void make_rotation_m4(const float pitch, const float yaw, const float roll, M4 o
 
 	// Rotation around the z axis.
 	M4 roll_rot;
-	identity(roll_rot);
+	m4_identity(roll_rot);
 
 	roll_rot[0] = cosRoll;
 	roll_rot[1] = sinRoll;
@@ -141,7 +141,7 @@ void look_at(const V3 position, const V3 direction, M4 out)
 	cross(direction, x_axis, y_axis);
 
 	// Set the out matrix to the combined translation and rotation matrix.
-	identity(out);
+	m4_identity(out);
 
 	out[0] = x_axis[0]; out[1] = y_axis[0]; out[2] = direction[0];
 	out[4] = x_axis[1]; out[5] = y_axis[1]; out[6] = direction[1];
@@ -152,23 +152,21 @@ void look_at(const V3 position, const V3 direction, M4 out)
 	out[14] = dot(direction, position);
 }
 
-void make_model_m4(const V3 position, const V3 eulers, const V3 scale, M4 out)
+void m4_model_matrix(const V3 position, const V3 eulers, const V3 scale, M4 out)
 {
-	// TODO: Gotta think about this, if we ever want to set roll, this function must accept
-	//		 eulers because we cannot get roll from a direction? It's not so nice to pass
-	//		 eulers, however, we have a direction helper so maybe okay.
+	// TODO: Eventually gonna switch to quarternions for rotations.
 
 	// TODO: Look into avoiding the matrix multiplications? Can I set translation without multiplying?
 	//		 Pretty sure I can.
 	
 	M4 translation_m4;
-	make_translation_m4(position, translation_m4);
+	m4_translation(position, translation_m4);
 
 	M4 rotation_m4;
-	make_rotation_m4(eulers[0], eulers[1], eulers[2], rotation_m4);
+	m4_rotation(eulers[0], eulers[1], eulers[2], rotation_m4);
 	
 	M4 scale_m4;
-	identity(scale_m4);
+	m4_identity(scale_m4);
 	scale_m4[0] = scale[0];
 	scale_m4[5] = scale[1];
 	scale_m4[10] = scale[2];
@@ -178,38 +176,30 @@ void make_model_m4(const V3 position, const V3 eulers, const V3 scale, M4 out)
 	// Although in my opinion this is fine it makes it more clear.
 	M4 translation_rotation_m4;
 
-	// TODO: Why doesn't using the look_at matrix work for direction (0,1,0)
-
-	// TODO: Also the rotation is backwards for z, have i not transposed the matrix or something.
-
-	// TODO: Need to think about this properly, basically, I want to be able to set a models direction
-	//		 and get the expected values.
-
-	// TODO: I think it's fine here to use eulers, maybe that's normal, however, how can I set a direction....
-	//		 that is the goal. I want to make a model look at something. I did this in range a while ago.
-
-	/*
-	
-	Entity* subscribe = currentScene->getEntity("subscribe");
-
-		V3 direction = subscribe->physics->position - player->physics->position;
-		direction.normalize();
-
-		subscribe->physics->yaw = atan2(direction.x, direction.z);
-		//subscribe->physics->position -= direction * dt * 5;
-	
-	*/
-
 	// We use post-matrix multiplication, so here, we end up
 	// scaling, then rotating, then translating.
 	m4_mul_m4(translation_m4, rotation_m4, translation_rotation_m4);
-	//printf("pos: %s, dir: %s\n", v3_to_str(position), v3_to_str(eulers));
-	//look_at(position, eulers, translation_rotation_m4);
-
 	m4_mul_m4(translation_rotation_m4, scale_m4, out);
 }
 
-void transpose_m4(const M4 in, M4 out)
+void m4_normal_matrix(const V3 eulers, const V3 scale, M4 out)
+{
+	// Create a normal matrix from the given eulers and scale.
+	// Essentially no translation, keep the rotation, and inverse scale.
+	M4 rotation_m4;
+	m4_rotation(eulers[0], eulers[1], eulers[2], rotation_m4);
+
+	M4 scale_m4;
+	m4_identity(scale_m4);
+	scale_m4[0] = 1.f / scale[0];
+	scale_m4[5] = 1.f / scale[1];
+	scale_m4[10] = 1.f / scale[2];
+
+	m4_mul_m4(rotation_m4, scale_m4, out);
+}
+
+
+void m4_transposed(const M4 in, M4 out)
 {
 	// Flip the matrix along the diagonal. Essentially column major to row major.
 	out[0] = in[0];

@@ -393,12 +393,12 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
         scene->models.mis_transforms[3] = pitch;
         scene->models.mis_transforms[4] = yaw;
         scene->models.mis_transforms[5] = 0;
-        scene->models.mis_transforms_updated_flags[0] = 1;
-
-
-
-
-
+        //scene->models.mis_transforms_updated_flags[0] = 1;
     }
-    
+    else if (VK_F2 == wParam)
+    {
+        engine->renderer.camera.position[0] = 0;
+        engine->renderer.camera.position[1] = 5;
+        engine->renderer.camera.position[2] = 0;
+    }
 }
