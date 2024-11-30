@@ -992,19 +992,6 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 
 void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 {
-	if (v[2] > -1)
-	{
-		o[0] = 0;
-		o[1] = 0;
-		o[2] = 0;
-		o[3] = 0;
-		
-		printf("%s\n", v4_to_str(v));
-		return;
-		//printf("v[2] %f\n", v[2]);
-	}
-	
-
 	// Opengl uses a right handed coordinate system, camera looks down the -z axis,
 	// however, NDC space is left handed, from -1 to 1 in all axis. 
 	// Therefore, the perspective projection matrix copies and inverts the 
@@ -1038,24 +1025,6 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 	// Save w' for perspective correct interpolation. This allows us to lerp
 	// between vertex components. 
 	o[3] = v_projected[3];
-
-	
-	if (v_projected[2] < -1 || v_projected[2] > 1)
-	{
-		//printf("%f\n", v_projected[2]);
-
-	}
-
-
-	/*
-	if (o[2] < -1)
-	{
-		printf("%f\n", o[2]);
-	}
-	else if (o[2] > 1)
-	{
-		printf(">1\n");
-	}*/
 }
 
 void model_to_world_space(Models* models)

@@ -49,7 +49,7 @@ void engine_on_init(Engine* engine)
         scene->models.mis_dirty_ids[scene->models.mis_total_dirty++] = i;
     }
     
-    /*
+    
     create_model_instances(&scene->models, 1, 2);
 
 
@@ -93,7 +93,7 @@ void engine_on_init(Engine* engine)
     // TODO: Function for this?
     
     scene->models.mis_dirty_ids[scene->models.mis_total_dirty++] = n0 + 2;
-    */
+    
 
 }
 
