@@ -1509,6 +1509,11 @@ void frustum_culling_and_lighting(
 	const M4 view_matrix, 
 	Scene* scene)
 {
+	// TODO: There is literally no point seperating this and the drawing stuff, surely too much data
+	//		 plus, allocating space for 1000 monkeys at 6 planes takes like 6gb ram which is dumb.
+
+
+
 	// TODO: Look into this: https://zeux.io/2009/01/31/view-frustum-culling-optimization-introduction/
 
 

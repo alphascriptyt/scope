@@ -19,7 +19,7 @@ void engine_on_init(Engine* engine)
     // Load models into the scene
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
-    int n0 = 100;
+    int n0 = 1000;
     
     create_model_instances(&scene->models, 0, n0);
 
