@@ -100,20 +100,14 @@ typedef struct
 	int mis_total_faces;				// Total number of faces from all mis, keeps track of the size of the buffers.
 	int mis_total_positions;
 	int mis_total_normals;
-	int mis_total_dirty;				// The number of dirty mi transforms.
 
 	int* mis_base_ids;					// The id of the model base.
-	int* mis_dirty_ids;					// The ids of dirty mi transforms signal recalculating the world space data.
 	int* mis_texture_ids;				// The id of the texture.
+	int* mis_dirty_transforms_flags;	// Flags to show the mi's world space data needs updating.
 
 	float* mis_vertex_colours;			// Per vertex colours for the instances.
 	float* mis_transforms;				// The instance world space transforms: [ Position, Direction, Scale ]
 	float* mis_bounding_spheres;		// The bounding sphere for each instance in world space.
-
-	// Offsets into the world/view space buffers for accessing per mi data. 
-	// These offsets are pre-multiplied by their strides.
-	int* mis_positions_offsets;		
-	int* mis_normals_offsets;			
 
 	// Transform results buffers.
 	// TODO: These are specific to mis, should prefix.

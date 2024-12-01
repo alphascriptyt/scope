@@ -19,7 +19,7 @@ void engine_on_init(Engine* engine)
     // Load models into the scene
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
-    int n0 = 1;
+    int n0 = 100;
     
     create_model_instances(&scene->models, 0, n0);
 
@@ -46,7 +46,7 @@ void engine_on_init(Engine* engine)
         scene->models.mis_transforms[++index_transform] = scale[1];
         scene->models.mis_transforms[++index_transform] = scale[2];
 
-        scene->models.mis_dirty_ids[scene->models.mis_total_dirty++] = i;
+        scene->models.mis_dirty_transforms_flags[i] = 1;
     }
     
     
@@ -75,9 +75,8 @@ void engine_on_init(Engine* engine)
     scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 7] = 2;
     scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 8] = 1;
 
-    scene->models.mis_dirty_ids[scene->models.mis_total_dirty++] = n0;
-    scene->models.mis_dirty_ids[scene->models.mis_total_dirty++] = n0 + 1;
-
+    scene->models.mis_dirty_transforms_flags[n0] = 1;
+    scene->models.mis_dirty_transforms_flags[n0 + 1] = 1;
     
     create_model_instances(&scene->models, 0, 1);
     scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM] = -3;
@@ -92,17 +91,53 @@ void engine_on_init(Engine* engine)
 
     // TODO: Function for this?
     
-    scene->models.mis_dirty_ids[scene->models.mis_total_dirty++] = n0 + 2;
+    scene->models.mis_dirty_transforms_flags[n0 + 2] = 1;
     
 
 }
 
 void engine_on_update(Engine* engine, float dt)
 {
-    /*
-    return;
+    
     Scene* scene = &engine->scenes[engine->current_scene_id];
 
+    
+    int end = scene->models.mis_count * STRIDE_MI_TRANSFORM + 3;
+    for (int i = 3; i < end; i += STRIDE_MI_TRANSFORM)
+    {
+        if (scene->models.mis_transforms[i] > PI * 2)
+        {
+            scene->models.mis_transforms[i] = 0;
+        }
+        else
+        {
+            scene->models.mis_transforms[i] -= dt;
+        }
+    }
+
+    for (int i = 0; i < scene->models.mis_count; ++i)
+    {
+        scene->models.mis_dirty_transforms_flags[i] = 1;
+    }
+    
+    /*
+    for (int i = 0; i < scene->models.mis_count; ++i)
+    {
+        int index = i * STRIDE_MI_TRANSFORM + 3;
+
+        scene->models.mis_transforms[index] -= dt;
+
+        if (scene->models.mis_transforms[index] > PI * 2)
+        {
+            scene->models.mis_transforms[index] = 0;
+        }
+
+        scene->models.mis_dirty_ids[scene->models.mis_total_dirty++] = i;
+
+    }*/
+        
+    
+    /*
     // TEMP: Model always facing camera.
     V3 pos;
     v3_init(pos, scene->models.mis_transforms[0], scene->models.mis_transforms[1], scene->models.mis_transforms[2]);

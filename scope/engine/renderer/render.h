@@ -24,7 +24,7 @@ void debug_draw_world_space_point(RenderTarget* rt, const RenderSettings* settin
 
 // SECTION: 2D drawing functions.
 void draw_line(RenderTarget* rt, int x0, int y0, int x1, int y1, const V3 colour);
-void draw_sphere(RenderTarget* rt, int cx, int cy, int r, const V3 colour);
+void draw_circle(RenderTarget* rt, int cx, int cy, int r, const V3 colour);
 void draw_rect(RenderTarget* rt, int x0, int y0, int x1, int y1, int colour);
 
 // TODO: Not sure where to put this?

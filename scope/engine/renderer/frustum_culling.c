@@ -86,6 +86,8 @@ void create_clipping_view_frustum(float near_plane_dist, float fov, float aspect
 
 void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dist, float fov, float aspect_ratio)
 {
+	// TODO: All 6. Could draw this in front of the camera to check the shape maybe.
+
 	// Reset the struct.
 	memset(view_frustum, 0, sizeof(ViewFrustum));
 
@@ -239,13 +241,13 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 	Plane top =
 	{
 		.point = { near_centre[0], near_centre[1], near_centre[2] },
-		.normal = { 0, 0.866, -0.5 }
+		.normal = { 0.f, 0.866f, -0.5 }
 	};
 
 	Plane bottom =
 	{
 		.point = { near_centre[0], near_centre[1], near_centre[2] },
-		.normal = { 0, -0.866, -0.5 }
+		.normal = { 0.f, -0.866f, -0.5 }
 	};
 
 	

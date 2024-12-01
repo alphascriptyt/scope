@@ -60,6 +60,8 @@ void debug_draw_point_lights(RenderTarget* rt, const RenderSettings* settings, P
 
 void debug_draw_bounding_spheres(RenderTarget* rt, const RenderSettings* settings, const Models* models, const M4 view_matrix)
 {
+	// TODO: This doesn't really work.
+
 	// TODO: For a function like this, I should be able to do debug_draw_bounding_sphere and pass in the mi index.
 
 	const V3 colour = { 1,0,0 };
@@ -114,7 +116,7 @@ void debug_draw_bounding_spheres(RenderTarget* rt, const RenderSettings* setting
 		
 		float pr = fabsf(pb[1] - pt[1]) / 2.f;
 		
-		draw_sphere(rt, (int)pc[0], (int)pc[1], (int)pr, colour);
+		draw_circle(rt, (int)pc[0], (int)pc[1], (int)pr, colour);
 	}
 }
 
@@ -181,7 +183,7 @@ void draw_line(RenderTarget* rt, int x0, int y0, int x1, int y1, const V3 colour
 	}
 }
 
-void draw_sphere(RenderTarget* rt, int cx, int cy, int r, const V3 colour)
+void draw_circle(RenderTarget* rt, int cx, int cy, int r, const V3 colour)
 {
 
 	// (x-a)^2 + (y-b)^2
@@ -1029,14 +1031,17 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 
 void model_to_world_space(Models* models)
 {
-	// TODO: Rename some vars.
+	/*
+	TODO: Move back to the dirty flags, was taking 2ms for 1mil cubes, but the render takes 1 second. 2ms means nothing here.
+		- use old commit as reference
+	*/
 
 	// Locally store to avoid dereferencing the pointers constantly.
 	// Not sure if this is a speedup or not. TODO: Time at some point.
-	const int mis_total_dirty = models->mis_total_dirty;
-	const int* mis_dirty_ids = models->mis_dirty_ids;
+	const int mis_count = models->mis_count;
 
 	const float* mis_transforms = models->mis_transforms;
+	int* mis_dirty_transforms_flags = models->mis_dirty_transforms_flags;
 
 	const int* mis_base_ids = models->mis_base_ids;
 	const int* mbs_positions_counts = models->mbs_positions_counts;
@@ -1051,20 +1056,31 @@ void model_to_world_space(Models* models)
 	float* world_space_positions = models->world_space_positions;
 	float* world_space_normals = models->world_space_normals;
 
-	const int* mis_positions_offsets = models->mis_positions_offsets;
-	const int* mis_normals_offsets = models->mis_normals_offsets;
-
 	float* mis_bounding_spheres = models->mis_bounding_spheres;
 
 	// TODO: For some of this I could probably put in {} to let some go out of scope?
+	int wsp_out_index = 0;
+	int wsn_out_index = 0;
 
-	for (int i = 0; i < mis_total_dirty; ++i)
+	for (int i = 0; i < mis_count; ++i)
 	{
-		// Get the dirty model instance id.
-		const int mi_index = mis_dirty_ids[i];
-			
+		// Convert the model base object space positions to world space
+		// for the current model instance.
+		const int mb_index = mis_base_ids[i];
+		const int mb_positions_count = mbs_positions_counts[mb_index];
+		const int normals_count = mbs_normals_counts[mb_index];
+
+		if (!mis_dirty_transforms_flags[i])
+		{
+			// Move past the current mi if we don't need to update it.
+			wsp_out_index += mb_positions_count * STRIDE_POSITION;
+			wsn_out_index += normals_count * STRIDE_NORMAL;
+
+			continue;
+		}
+
 		// Calculate the new model/normal matrix from the mi's transform.
-		int transform_index = mi_index * STRIDE_MI_TRANSFORM;
+		int transform_index = i * STRIDE_MI_TRANSFORM;
 
 		const V3 position = {
 			mis_transforms[transform_index],
@@ -1090,14 +1106,12 @@ void model_to_world_space(Models* models)
 		M4 normal_matrix;
 		m4_normal_matrix(eulers, scale, normal_matrix);
 
-		// Get information about the model base.
-		const int mb_index = mis_base_ids[mi_index];
-		const int mb_positions_offset = mbs_positions_offsets[mb_index];
+		
+		// Store the initial out index so we can iterate over the 
+		// wsp later when calculating the radius of the bounding sphere.
+		const int start_wsp_out_index = wsp_out_index;
 
-		// Convert the model base object space positions to world space
-		// for the current model instance.
-		const int mb_positions_count = mbs_positions_counts[mb_index];
-		int wsp_out = mis_positions_offsets[mi_index];
+		const int mb_positions_offset = mbs_positions_offsets[mb_index];
 		
 		for (int j = 0; j < mb_positions_count; ++j)
 		{
@@ -1117,15 +1131,14 @@ void model_to_world_space(Models* models)
 			m4_mul_v4(model_matrix, object_space_position, world_space_position);
 
 			// inline v4_write()?
-			world_space_positions[wsp_out++] = world_space_position[0];
-			world_space_positions[wsp_out++] = world_space_position[1];
-			world_space_positions[wsp_out++] = world_space_position[2];
+			world_space_positions[wsp_out_index++] = world_space_position[0];
+			world_space_positions[wsp_out_index++] = world_space_position[1];
+			world_space_positions[wsp_out_index++] = world_space_position[2];
 		}
 
 		// Do the same for normals.
 		const int mb_normals_offset = mbs_normals_offsets[mb_index];
-		const int normals_count = mbs_normals_counts[mb_index];
-		int wsn_out = mis_normals_offsets[mi_index];
+		
 
 		for (int j = 0; j < normals_count; ++j)
 		{
@@ -1141,9 +1154,9 @@ void model_to_world_space(Models* models)
 			V4 world_space_normal;
 			m4_mul_v4(normal_matrix, object_space_normal, world_space_normal);
 
-			world_space_normals[wsn_out++] = world_space_normal[0];
-			world_space_normals[wsn_out++] = world_space_normal[1];
-			world_space_normals[wsn_out++] = world_space_normal[2];
+			world_space_normals[wsn_out_index++] = world_space_normal[0];
+			world_space_normals[wsn_out_index++] = world_space_normal[1];
+			world_space_normals[wsn_out_index++] = world_space_normal[2];
 		}
 
 		// Update the mi's bounding sphere.
@@ -1160,7 +1173,7 @@ void model_to_world_space(Models* models)
 		V4 ws_centre;
 		m4_mul_v4(model_matrix, centre, ws_centre);
 
-		const int bs_index = mi_index * STRIDE_SPHERE;
+		const int bs_index = i * STRIDE_SPHERE;
 		mis_bounding_spheres[bs_index] = ws_centre[0];
 		mis_bounding_spheres[bs_index + 1] = ws_centre[1];
 		mis_bounding_spheres[bs_index + 2] = ws_centre[2];
@@ -1168,10 +1181,9 @@ void model_to_world_space(Models* models)
 		// Calculate the new radius of the mi's bounding sphere.
 		// TODO: We only really need to do this if the scale changes.
 		//		 Not sure if it's worth handling this.
-		const int positions_offset = mis_positions_offsets[mi_index];
 		float radius_squared = -1;
 		
-		for (int j = positions_offset; j < positions_offset + mb_positions_count * STRIDE_POSITION; j += STRIDE_POSITION)
+		for (int j = start_wsp_out_index; j < wsp_out_index; j += STRIDE_POSITION)
 		{
 			V3 v = 
 			{
@@ -1189,7 +1201,7 @@ void model_to_world_space(Models* models)
 				radius_squared = ss;
 
 				//v3_copy(v, models->temp_far);
-				int temp_index = mi_index * STRIDE_POSITION;
+				int temp_index = i * STRIDE_POSITION;
 				models->temp_far[temp_index] = v[0];
 				models->temp_far[temp_index + 1] = v[1];
 				models->temp_far[temp_index + 2] = v[2];
@@ -1202,9 +1214,6 @@ void model_to_world_space(Models* models)
 		// Save the radius.
 		mis_bounding_spheres[bs_index + 3] = sqrtf(radius_squared);
 	}
-
-	// Essentially the queue of dirty transforms.
-	models->mis_total_dirty = 0;
 }
 
 void world_to_view_space(Models* models, PointLights* point_lights, const M4 view_matrix)

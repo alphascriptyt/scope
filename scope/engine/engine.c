@@ -126,11 +126,6 @@ void engine_run(Engine* engine)
         engine_handle_input(engine, dt);
         snprintf(handle_input_str, sizeof(handle_input_str), "HandleInput: %d", timer_get_elapsed(&t));
         
-        // Fire the egine update event.
-        timer_restart(&t);
-        engine_on_update(engine, dt);
-        snprintf(update_str, sizeof(update_str), "UpdateEvent: %d", timer_get_elapsed(&t));
-
         M4 view_matrix;
         calculate_view_matrix(&engine->renderer.camera, view_matrix);
         
@@ -158,6 +153,12 @@ void engine_run(Engine* engine)
         timer_restart(&t);
         window_display(&engine->window);
         snprintf(display_str, sizeof(display_str), "Display: %d", timer_get_elapsed(&t));
+
+        // Fire the egine update event.
+        timer_restart(&t);
+        engine_on_update(engine, dt);
+        snprintf(update_str, sizeof(update_str), "UpdateEvent: %d", timer_get_elapsed(&t));
+
 
         // Calculate performance.
         QueryPerformanceCounter(&endTime);

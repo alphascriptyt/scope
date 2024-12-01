@@ -281,8 +281,6 @@ void create_model_instances(Models* models, int mb_index, int n)
 	// TEMP:
 	resize_float_buffer(&models->temp_far, (models->mis_count + n) * STRIDE_POSITION);
 
-
-
 	if (mb_index > models->mbs_count - 1)
 	{
 		log_error("mb_index out of range.");
@@ -293,8 +291,8 @@ void create_model_instances(Models* models, int mb_index, int n)
 
 	// Resize buffers
 	resize_int_buffer(&models->mis_base_ids, new_instances_count);
-	resize_int_buffer(&models->mis_dirty_ids, new_instances_count);
 	resize_int_buffer(&models->mis_texture_ids, new_instances_count);
+	resize_int_buffer(&models->mis_dirty_transforms_flags, new_instances_count);
 	
 	for (int i = models->mis_count; i < new_instances_count; ++i)
 	{
@@ -302,6 +300,8 @@ void create_model_instances(Models* models, int mb_index, int n)
 
 		// TODO: Textures. Should be a parameter?
 		models->mis_texture_ids[i] = -69;
+
+		models->mis_dirty_transforms_flags[i] = 0;
 	}
 
 	resize_float_buffer(&models->mis_transforms, new_instances_count * STRIDE_MI_TRANSFORM);
@@ -329,38 +329,6 @@ void create_model_instances(Models* models, int mb_index, int n)
 	resize_float_buffer(&models->world_space_normals, models->mis_total_normals * STRIDE_NORMAL);
 	resize_float_buffer(&models->view_space_positions, models->mis_total_positions * STRIDE_POSITION);
 	resize_float_buffer(&models->view_space_normals, models->mis_total_normals * STRIDE_NORMAL);
-
-	// Resize buffers containing offsets to the world/view space per instance data.
-	resize_int_buffer(&models->mis_positions_offsets, new_instances_count);
-	resize_int_buffer(&models->mis_normals_offsets, new_instances_count);
-
-	
-	// Set the positions offsets.
-	for (int i = 0; i < n; ++i)
-	{
-		int positions_in_last_mi = 0;
-		int last_positions_offset = 0;
-		if (models->mis_count + i > 0)
-		{
-			positions_in_last_mi = models->mbs_positions_counts[models->mis_base_ids[models->mis_count + i - 1]];
-			last_positions_offset = models->mis_positions_offsets[models->mis_count + i - 1];
-		}
-		
-		models->mis_positions_offsets[models->mis_count + i] = last_positions_offset + positions_in_last_mi * STRIDE_POSITION;
-	}
-
-	// Set the normals offsets.
-	for (int i = 0; i < n; ++i)
-	{
-		int normals_in_last_mi = 0;
-		int last_normals_offset = 0;
-		if (models->mis_count + i > 0)
-		{
-			normals_in_last_mi = models->mbs_normals_counts[models->mis_base_ids[models->mis_count + i - 1]];
-			last_normals_offset = models->mis_normals_offsets[models->mis_count + i - 1];
-		}
-		models->mis_normals_offsets[models->mis_count + i] = last_normals_offset + normals_in_last_mi * STRIDE_NORMAL;
-	}
 
 	// Resize intermediate/temporary rendering buffers.
 	resize_int_buffer(&models->front_faces_counts, new_instances_count);
@@ -390,8 +358,8 @@ void free_models(Models* models)
 	free(models->mbs_normals_offsets);
 
 	free(models->mis_base_ids);
-	free(models->mis_dirty_ids);
 	free(models->mis_texture_ids);
+	free(models->mis_dirty_transforms_flags);
 	free(models->mis_vertex_colours);
 	free(models->mis_transforms);
 	free(models->mis_bounding_spheres);
