@@ -17,6 +17,7 @@ void engine_on_init(Engine* engine)
     ++engine->scenes_count;
     
     // Load models into the scene
+    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
     int n0 = 1000;
@@ -49,7 +50,7 @@ void engine_on_init(Engine* engine)
         scene->models.mis_dirty_transforms_flags[i] = 1;
     }
     
-    
+    /*
     create_model_instances(&scene->models, 1, 2);
 
 
@@ -92,7 +93,7 @@ void engine_on_init(Engine* engine)
     // TODO: Function for this?
     
     scene->models.mis_dirty_transforms_flags[n0 + 2] = 1;
-    
+    */
 
 }
 
@@ -101,7 +102,7 @@ void engine_on_update(Engine* engine, float dt)
     
     Scene* scene = &engine->scenes[engine->current_scene_id];
 
-    
+    return;
     int end = scene->models.mis_count * STRIDE_MI_TRANSFORM + 3;
     for (int i = 3; i < end; i += STRIDE_MI_TRANSFORM)
     {

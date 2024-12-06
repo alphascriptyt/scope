@@ -21,10 +21,6 @@
 void models_init(Models* models)
 {
 	// TODO: Comments
-
-	// Projected faces are clipped one at a time, so the buffer can be allocated now.
-	resize_float_buffer(&models->projected_clipped_faces, STRIDE_PROJECTED_FACE * (int)pow(2, 4));
-	resize_float_buffer(&models->projected_clipped_faces_temp, STRIDE_PROJECTED_FACE * (int)pow(2, 4));
 }
 
 void parse_obj_counts(FILE* file, int* num_positions, int* num_uvs, int* num_normals, int* num_faces)
@@ -140,8 +136,14 @@ void load_model_base_from_obj(Models* models, const char* filename)
 	{
 		models->max_mb_faces = face_count;
 
-		resize_float_buffer(&models->temp_clipped_faces_in, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 6));
-		resize_float_buffer(&models->temp_clipped_faces_out, face_count * STRIDE_ENTIRE_FACE * (int)pow(2, 6)); //MAX_FRUSTUM_PLANES);
+		// Calculate the maximum number of triangles that one could turn into after clipping against all
+		// enabled planes.
+		const int MAX_FRUSTUM_PLANES = 6;
+		const int max_tris_factor = (int)pow(2, MAX_FRUSTUM_PLANES);
+		const int max_clipped_tris = face_count * STRIDE_ENTIRE_FACE * max_tris_factor;
+		resize_float_buffer(&models->temp_clipped_faces_in, max_clipped_tris);
+		resize_float_buffer(&models->temp_clipped_faces_out, max_clipped_tris);
+		resize_float_buffer(&models->clipped_faces, max_clipped_tris);
 	}
 
 	// Move to the start of the file again so we can read it.
@@ -333,10 +335,7 @@ void create_model_instances(Models* models, int mb_index, int n)
 	// Resize intermediate/temporary rendering buffers.
 	resize_int_buffer(&models->front_faces_counts, new_instances_count);
 	resize_float_buffer(&models->front_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE);
-
-	resize_int_buffer(&models->clipped_faces_counts, new_instances_count);
-	resize_float_buffer(&models->clipped_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE * (int)pow(2, 6)); // TODO: * pow(2, ENABLED_FRUSTUM_PLANES_COUNT.....)
-
+	
 	// Update the number of instances.
 	models->mis_count = new_instances_count;
 }
@@ -373,14 +372,10 @@ void free_models(Models* models)
 	free(models->front_faces_counts);
 	free(models->front_faces);
 
-	free(models->clipped_faces_counts);
 	free(models->clipped_faces);
 
 	free(models->temp_clipped_faces_in);
 	free(models->temp_clipped_faces_out);
-
-	free(models->projected_clipped_faces);
-	free(models->projected_clipped_faces_temp);
 }
 
 #undef _CRT_SECURE_NO_WARNINGS

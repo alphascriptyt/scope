@@ -122,14 +122,9 @@ typedef struct
 	float* front_faces;				// An invertleaved buffer of {x, y, z, u, v, x, y, z, r, g, b, a} for each vertex of each front face after backface culling.
 
 	// Buffers used for frustum culling.
-	int* clipped_faces_counts;		// Number of faces that are visible to the camera after clipping.
 	float* clipped_faces;			// An invertleaved buffer of {x, y, z, u, v, x, y, z, r, g, b, a} for each vertex of each face after frustum culling.
 	float* temp_clipped_faces_in;	// Used for temporarily storing the faces whilst clipping against multiple planes.
 	float* temp_clipped_faces_out;	// Used for temporarily storing the faces whilst clipping against multiple planes.
-
-	// Buffers used for screen space clipping.
-	float* projected_clipped_faces;	// x,y,w,r,g,b,a per vertex, TODO: UVs.
-	float* projected_clipped_faces_temp;
 
 } Models;
 
