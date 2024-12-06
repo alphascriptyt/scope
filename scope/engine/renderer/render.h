@@ -21,6 +21,7 @@
 void debug_draw_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights);
 void debug_draw_bounding_spheres(RenderTarget* rt, const RenderSettings* settings, const Models* models, const M4 view_matrix);
 void debug_draw_world_space_point(RenderTarget* rt, const RenderSettings* settings, const V3 point, const M4 view_matrix, int colour);
+void debug_draw_view_space_point(RenderTarget* rt, const RenderSettings* settings, const V3 point, int colour);
 
 // SECTION: 2D drawing functions.
 void draw_line(RenderTarget* rt, int x0, int y0, int x1, int y1, const V3 colour);
@@ -42,6 +43,11 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 
 void model_to_world_space(Models* models);
 void world_to_view_space(Models* models, PointLights* point_lights, const M4 view_matrix);
+
+
+void model_to_view_space(Models* models, const M4 view_matrix);
+
+void lights_world_to_view_space(PointLights* point_lights, const M4 view_matrix);
 
 void cull_backfaces(Models* models);
 

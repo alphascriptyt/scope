@@ -46,8 +46,6 @@ void engine_on_init(Engine* engine)
         scene->models.mis_transforms[++index_transform] = scale[0];
         scene->models.mis_transforms[++index_transform] = scale[1];
         scene->models.mis_transforms[++index_transform] = scale[2];
-
-        scene->models.mis_dirty_transforms_flags[i] = 1;
     }
     
     /*
@@ -101,10 +99,11 @@ void engine_on_update(Engine* engine, float dt)
 {
     
     Scene* scene = &engine->scenes[engine->current_scene_id];
+    
+    int c = 3;
 
-    return;
-    int end = scene->models.mis_count * STRIDE_MI_TRANSFORM + 3;
-    for (int i = 3; i < end; i += STRIDE_MI_TRANSFORM)
+    int end = scene->models.mis_count * STRIDE_MI_TRANSFORM + c;
+    for (int i = c; i < end; i += STRIDE_MI_TRANSFORM)
     {
         if (scene->models.mis_transforms[i] > PI * 2)
         {
@@ -116,10 +115,14 @@ void engine_on_update(Engine* engine, float dt)
         }
     }
 
-    for (int i = 0; i < scene->models.mis_count; ++i)
+    if (c > 6)
     {
-        scene->models.mis_dirty_transforms_flags[i] = 1;
+        for (int i = 0; i < scene->models.mis_count; ++i)
+        {
+            scene->models.mis_dirty_bounding_sphere_flags[i] = 1;
+        }
     }
+    
     
     /*
     for (int i = 0; i < scene->models.mis_count; ++i)

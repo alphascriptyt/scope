@@ -280,9 +280,6 @@ void load_model_base_from_obj(Models* models, const char* filename)
 
 void create_model_instances(Models* models, int mb_index, int n)
 {
-	// TEMP:
-	resize_float_buffer(&models->temp_far, (models->mis_count + n) * STRIDE_POSITION);
-
 	if (mb_index > models->mbs_count - 1)
 	{
 		log_error("mb_index out of range.");
@@ -294,8 +291,8 @@ void create_model_instances(Models* models, int mb_index, int n)
 	// Resize buffers
 	resize_int_buffer(&models->mis_base_ids, new_instances_count);
 	resize_int_buffer(&models->mis_texture_ids, new_instances_count);
-	resize_int_buffer(&models->mis_dirty_transforms_flags, new_instances_count);
-	
+	resize_int_buffer(&models->mis_dirty_bounding_sphere_flags, new_instances_count);
+
 	for (int i = models->mis_count; i < new_instances_count; ++i)
 	{
 		models->mis_base_ids[i] = mb_index;
@@ -303,7 +300,7 @@ void create_model_instances(Models* models, int mb_index, int n)
 		// TODO: Textures. Should be a parameter?
 		models->mis_texture_ids[i] = -69;
 
-		models->mis_dirty_transforms_flags[i] = 0;
+		models->mis_dirty_bounding_sphere_flags[i] = 1;
 	}
 
 	resize_float_buffer(&models->mis_transforms, new_instances_count * STRIDE_MI_TRANSFORM);
@@ -327,8 +324,6 @@ void create_model_instances(Models* models, int mb_index, int n)
 	resize_float_buffer(&models->mis_vertex_colours, new_total_vertices * STRIDE_COLOUR);
 
 	// Resize buffers used for indexed rendering.
-	resize_float_buffer(&models->world_space_positions, models->mis_total_positions * STRIDE_POSITION);
-	resize_float_buffer(&models->world_space_normals, models->mis_total_normals * STRIDE_NORMAL);
 	resize_float_buffer(&models->view_space_positions, models->mis_total_positions * STRIDE_POSITION);
 	resize_float_buffer(&models->view_space_normals, models->mis_total_normals * STRIDE_NORMAL);
 
@@ -358,13 +353,10 @@ void free_models(Models* models)
 
 	free(models->mis_base_ids);
 	free(models->mis_texture_ids);
-	free(models->mis_dirty_transforms_flags);
+	free(models->mis_dirty_bounding_sphere_flags);
 	free(models->mis_vertex_colours);
 	free(models->mis_transforms);
 	free(models->mis_bounding_spheres);
-
-	free(models->world_space_positions);
-	free(models->world_space_normals);
 
 	free(models->view_space_positions);
 	free(models->view_space_normals);

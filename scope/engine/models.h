@@ -58,10 +58,6 @@ physics system, to avoid recomputation of world space positions etc.
 
 typedef struct
 {	
-	//V3 temp_far;
-	float* temp_far;
-
-
 	// TODO: Comments and naming. Currently mb = model base, mi = model instance
 
 	// Buffer sizes.
@@ -103,7 +99,7 @@ typedef struct
 
 	int* mis_base_ids;					// The id of the model base.
 	int* mis_texture_ids;				// The id of the texture.
-	int* mis_dirty_transforms_flags;	// Flags to show the mi's world space data needs updating.
+	int* mis_dirty_bounding_sphere_flags;	// If a mi's scale has changed, the bounding sphere centre needs to be recalculated.
 
 	float* mis_vertex_colours;			// Per vertex colours for the instances.
 	float* mis_transforms;				// The instance world space transforms: [ Position, Direction, Scale ]
@@ -111,9 +107,6 @@ typedef struct
 
 	// Transform results buffers.
 	// TODO: These are specific to mis, should prefix.
-	float* world_space_positions;
-	float* world_space_normals;
-
 	float* view_space_positions;
 	float* view_space_normals;
 	
