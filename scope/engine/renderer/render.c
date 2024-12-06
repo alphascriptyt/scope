@@ -632,101 +632,6 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 	o[3] = v_projected[3];
 }
 
-void world_to_view_space(Models* models, PointLights* point_lights, const M4 view_matrix)
-{
-	/*
-
-	// Transform the world space mesh positions.
-	const float* world_space_positions = models->world_space_positions;
-	float* view_space_positions = models->view_space_positions;
-
-	// For each world space position, convert it to view space.
-	int num_position_components = models->mis_total_positions * STRIDE_POSITION;
-	for (int i = 0; i < num_position_components; i += STRIDE_POSITION)
-	{
-		V4 v = {
-			world_space_positions[i],
-			world_space_positions[i + 1],
-			world_space_positions[i + 2],
-			1
-		};
-
-		
-		V4 v_view_space;
-		m4_mul_v4(view_matrix, v, v_view_space);
-
-		// There is no need to save the w component as it is always 1 until 
-		// after projection.
-		view_space_positions[i] = v_view_space[0];
-		view_space_positions[i + 1] = v_view_space[1];
-		view_space_positions[i + 2] = v_view_space[2];
-	}
-
-	// Transform the world space light positions.
-	world_space_positions = point_lights->world_space_positions;
-	view_space_positions = point_lights->view_space_positions;
-
-	// For each world space position, convert it to view space.
-	num_position_components = point_lights->count * STRIDE_POSITION;
-	for (int i = 0; i < num_position_components; i += STRIDE_POSITION)
-	{
-		V4 v = {
-			world_space_positions[i],
-			world_space_positions[i + 1],
-			world_space_positions[i + 2],
-			1
-		};
-
-		V4 v_view_space;
-		m4_mul_v4(view_matrix, v, v_view_space);
-
-		// There is no need to save the w component as it is always 1 until 
-		// after projection.
-		view_space_positions[i] = v_view_space[0];
-		view_space_positions[i + 1] = v_view_space[1];
-		view_space_positions[i + 2] = v_view_space[2];
-	}
-
-
-	// For each world space normal, convert it to view space.
-	int num_normal_components = models->mis_total_normals * STRIDE_NORMAL;
-	const float* world_space_normals = models->world_space_normals;
-	float* view_space_normals = models->view_space_normals;
-
-	// View matrix has no scale, so just get the top left 3x3 containing,
-	// the rotation.
-	M4 view_normal_matrix;
-	m4_copy_m3(view_matrix, view_normal_matrix); // TODO: Function name is misleading.
-
-	for (int i = 0; i < num_normal_components; i += STRIDE_NORMAL)
-	{
-		V4 dir = {
-			world_space_normals[i],
-			world_space_normals[i + 1],
-			world_space_normals[i + 2],
-			0
-		};
-
-		V4 dir_view_space;
-		m4_mul_v4(view_normal_matrix, dir, dir_view_space);
-
-		V3 n_view_space = {
-			dir_view_space[0],
-			dir_view_space[1],
-			dir_view_space[2]
-		};
-
-		// TODO: Test, can we pass a v4 as a v3 to ignore w ?
-		normalise(n_view_space);
-
-		// There is no need to save the w component as it is always 1 until 
-		// after projection.
-		view_space_normals[i]	  = n_view_space[0];
-		view_space_normals[i + 1] = n_view_space[1];
-		view_space_normals[i + 2] = n_view_space[2];
-	}*/
-}
-
 void model_to_view_space(Models* models, const M4 view_matrix)
 {
 	// NOTE: Timings Before these changes. 20fps rendering with no changing transforms
@@ -763,8 +668,8 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 	float* mis_bounding_spheres = models->mis_bounding_spheres;
 
 	// TODO: For some of this I could probably put in {} to let some go out of scope?
-	int wsp_out_index = 0;
-	int wsn_out_index = 0;
+	int vsp_out_index = 0;
+	int vsn_out_index = 0;
 
 	// TODO: Rename vars.
 
@@ -806,10 +711,14 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 		M4 normal_matrix;
 		m4_normal_matrix(eulers, scale, normal_matrix);
 
+		M4 view_normal_matrix;
+		m4_mul_m4(view_matrix, normal_matrix, view_normal_matrix);
+
+
 
 		// Store the initial out index so we can iterate over the 
 		// wsp later when calculating the radius of the bounding sphere.
-		const int start_wsp_out_index = wsp_out_index;
+		const int start_wsp_out_index = vsp_out_index;
 
 		const int mb_positions_offset = mbs_positions_offsets[mb_index];
 
@@ -831,18 +740,16 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 			m4_mul_v4(model_view_matrix, object_space_position, view_space_position);
 
 			// inline v4_write()?
-			view_space_positions[wsp_out_index++] = view_space_position[0];
-			view_space_positions[wsp_out_index++] = view_space_position[1];
-			view_space_positions[wsp_out_index++] = view_space_position[2];
+			view_space_positions[vsp_out_index++] = view_space_position[0];
+			view_space_positions[vsp_out_index++] = view_space_position[1];
+			view_space_positions[vsp_out_index++] = view_space_position[2];
 		}
 
 		
 
-		// Do the same for normals.
-		/*
+		// Do the same for normals.		
 		const int mb_normals_offset = mbs_normals_offsets[mb_index];
 
-		
 		for (int j = 0; j < normals_count; ++j)
 		{
 			int index_object_space_normals = (j + mb_normals_offset) * STRIDE_NORMAL;
@@ -851,16 +758,16 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 				object_space_normals[index_object_space_normals],
 				object_space_normals[index_object_space_normals + 1],
 				object_space_normals[index_object_space_normals + 2],
-				1
+				0 // No translation
 			};
 
-			V4 world_space_normal;
-			m4_mul_v4(normal_matrix, object_space_normal, world_space_normal);
+			V4 view_space_normal;
+			m4_mul_v4(view_normal_matrix, object_space_normal, view_space_normal);
 
-			world_space_normals[wsn_out_index++] = world_space_normal[0];
-			world_space_normals[wsn_out_index++] = world_space_normal[1];
-			world_space_normals[wsn_out_index++] = world_space_normal[2];
-		}*/
+			view_space_normals[vsn_out_index++] = view_space_normal[0];
+			view_space_normals[vsn_out_index++] = view_space_normal[1];
+			view_space_normals[vsn_out_index++] = view_space_normal[2];
+		}
 
 		// Update the mi's bounding sphere.
 		const int centre_index = mb_index * STRIDE_POSITION;
@@ -890,7 +797,7 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 			// Calculate the new radius of the mi's bounding sphere.
 			float radius_squared = -1;
 
-			for (int j = start_wsp_out_index; j < wsp_out_index; j += STRIDE_POSITION)
+			for (int j = start_wsp_out_index; j < vsp_out_index; j += STRIDE_POSITION)
 			{
 				V3 v =
 				{
@@ -914,6 +821,30 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 
 void lights_world_to_view_space(PointLights* point_lights, const M4 view_matrix)
 {
+	// Transform the world space light positions.
+	const float* world_space_positions = point_lights->world_space_positions;
+	float* view_space_positions = point_lights->view_space_positions;
+
+	// For each world space position, convert it to view space.
+	const int num_position_components = point_lights->count * STRIDE_POSITION;
+	for (int i = 0; i < num_position_components; i += STRIDE_POSITION)
+	{
+		V4 v = {
+			world_space_positions[i],
+			world_space_positions[i + 1],
+			world_space_positions[i + 2],
+			1
+		};
+
+		V4 v_view_space;
+		m4_mul_v4(view_matrix, v, v_view_space);
+
+		// There is no need to save the w component as it is always 1 until 
+		// after projection.
+		view_space_positions[i] = v_view_space[0];
+		view_space_positions[i + 1] = v_view_space[1];
+		view_space_positions[i + 2] = v_view_space[2];
+	}
 }
 
 void cull_backfaces(Models* models)
@@ -1680,20 +1611,17 @@ void render(
 
 	// TODO: Make view matrix a part of the renderer, and the camera maybe. Then render should take the renderer i would assume.
 	//		 or maybe these are a part of the settings. Bascially that part needs a refactor.
-
-
-
-
 	Timer t = timer_start();
 	
-
-	// TODO: Combine world and view transforms. Per vertex physics stuff can be done in view space.
 	// Transform object space positions to view space.
 	model_to_view_space(&scene->models, view_matrix);
 
 	printf("model_to_view_space took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
+	lights_world_to_view_space(&scene->point_lights, view_matrix);
+	printf("lights_world_to_view_space took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 
 	// TODO: Broad phase culling before backface culling.
 
@@ -1803,13 +1731,6 @@ void render(
 	frustum_culling(rt, settings->projection_matrix, &settings->view_frustum, view_matrix, &scene->models);
 
 	printf("frustum_culling_and_lighting took: %d\n", timer_get_elapsed(&t));
-	timer_restart(&t);
-	
-
-	
-
-
-	printf("project_and_draw_triangles took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
 	//debug_draw_point_lights(rt, settings, &scene->point_lights);
