@@ -18,10 +18,12 @@
 // TODO: Organise this all.
 
 // SECTION: Debug tools.
+// TODO: Refactor and comments etc.
 void debug_draw_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights);
 void debug_draw_bounding_spheres(RenderTarget* rt, const RenderSettings* settings, const Models* models, const M4 view_matrix);
 void debug_draw_world_space_point(RenderTarget* rt, const RenderSettings* settings, const V3 point, const M4 view_matrix, int colour);
 void debug_draw_view_space_point(RenderTarget* rt, const RenderSettings* settings, const V3 point, int colour);
+void debug_draw_world_space_line(RenderTarget* rt, const RenderSettings* settings, const M4 view_matrix, const V3 v0, const V3 v1, const V3 colour);
 
 // SECTION: 2D drawing functions.
 void draw_line(RenderTarget* rt, int x0, int y0, int x1, int y1, const V3 colour);

@@ -6,11 +6,6 @@
 
 void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dist, float fov, float aspect_ratio)
 {
-	// TODO: All 6. Could draw this in front of the camera to check the shape maybe. Remember 
-	// TODO: Check that I can even allocate enough space for 1000 monkeys with 6 planes. (if not, do i need to draw straight away.
-	// TODO: If i can clip against all 5 (far doesnt matetr), I will be able to stop screen space clipping.
-
-
 	// Reset the struct.
 	memset(view_frustum, 0, sizeof(ViewFrustum));
 
@@ -25,6 +20,8 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 
 	// Define the forward direction.
 	// TODO: Should these be defined globally somewhere? or at least in a function? like v3_world_up?
+	// TODO: Also these are really world up as well. Not specific to view space. 
+	// TODO: Should be defined in some engine_globals.h maybe.
 	V3 view_forward = { 0, 0, -1.f };
 	V3 view_up = { 0, 1.f, 0 };
 	V3 view_right = { 1.f, 0, 0 };
@@ -83,29 +80,7 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 	v3_sub_v3_out(far_centre, far_top_offset, far_bottom_right);
 	v3_add_v3(far_bottom_right, far_right_offset);
 
-	V3 a;
-	v3_add_v3_out(near_centre, near_right_offset, a);
-	normalise(a);
-
-	V3 nr;
-	V3 e0;
-	v3_sub_v3_out(far_top_right, near_bottom_right, e0);
-	V3 e1;
-	v3_sub_v3_out(near_top_right, near_bottom_right, e1);
-	
-	cross(e1, e0, nr);
-
-	normalise(nr);
-
-
-
-	// TODO: Cleanup all this code and add the rest of the planes to clip against, again, if this 
-	//		 is going to be a slowdown, we can comment them out. But I should at least get them working.
-	//		 left right and near working.
-
-	// TODO: Actually, clipping still seems to break with 120 fov. Not sure why. look into how normals
-	//		 are calculated agian.
-
+	// Near and far are trivial to define.
 	Plane near =
 	{
 		.point = { near_centre[0], near_centre[1], near_centre[2] },
@@ -118,66 +93,48 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 		.normal = { 0, 0, 1.f}
 	};
 
+	// Define the left/right planes, opposite x direction.
+	V3 right_normal, e0, e1;
+	v3_sub_v3_out(far_top_right, near_bottom_right, e0);
+	v3_sub_v3_out(near_top_right, near_bottom_right, e1);
+	cross(e1, e0, right_normal);
+	normalise(right_normal);
 
-	// TODO: YOU IDIOT. THE PLANE POINTS ARE NOT THE NEAR CENTRE ARGHHHHHHHH THE NEAR PLANE IS A SQUARE............
-	// Although there is still something going wrong with the normals. and directions in the program, must fix 
-	// the model directions first i think.
-	//Plane right = {
-		//.normal = { -0.707, 0, -0.707 }
-	//};
 	Plane right = { 0 };
 	v3_copy(near_top_right, right.point);
-	v3_copy(nr, right.normal);
-	normalise(right.normal);
+	v3_copy(right_normal, right.normal);
 
-
-	v3_sub_v3_out(far_top_left, near_bottom_left, e0);
-	v3_sub_v3_out(near_top_left, near_bottom_left, e1);
-	V3 left_normal;
-	cross(e0, e1, left_normal);
-	
+	// Define the left plane.
 	Plane left = { 0 };
 	v3_copy(near_top_left, left.point);
-	v3_copy(left_normal, left.normal);
-	normalise(left.normal);
+	v3_copy(right_normal, left.normal);
+	left.normal[0] *= -1;
 
-	/*
-	{
-		.point = { near_top_right[0]},
-		//.normal = { nr[0], nr[1], nr[2] }
-		
-	};*/
+	// Define the top/bottom planes, opposite y direction.
+	v3_sub_v3_out(far_top_right, far_top_left, e0);
+	v3_sub_v3_out(near_top_left, far_top_left, e1);
+	V3 top_normal;
+	cross(e0, e1, top_normal);
+	normalise(top_normal);
 
+	Plane top = { 0 };
+	v3_copy(near_top_left, top.point);
+	v3_copy(top_normal, top.normal);
+
+	Plane bottom = { 0 };
+	v3_copy(near_bottom_left, bottom.point);
+	v3_copy(top_normal, bottom.normal);
+	bottom.normal[1] *= -1;
 	
-	/*
-	Plane left =
-	{
-		.point = { near_centre[0], near_centre[1], near_centre[2] },
-		.normal = { -0.707, 0, -0.707 }
-	};*/
-
-	Plane top =
-	{
-		.point = { near_centre[0], near_centre[1], near_centre[2] },
-		.normal = { 0.f, 0.866f, -0.5 }
-	};
-
-	Plane bottom =
-	{
-		.point = { near_centre[0], near_centre[1], near_centre[2] },
-		.normal = { 0.f, -0.866f, -0.5 }
-	};
-
-	
+	// As we're not doing screen space clipping, all are necessary except far,
+	// however, if we're rendering stuff far away, far is a great optimisation.
+	// Also, there is almost no real cost to enabling far even if we're not 
+	// rendering anything far away because it's just a broad phase check that
+	// will fail.
 	view_frustum->planes[view_frustum->planes_count++] = near;
-	//view_frustum->planes[view_frustum->planes_count++] = far;
+	view_frustum->planes[view_frustum->planes_count++] = far;
 	view_frustum->planes[view_frustum->planes_count++] = right;
-	//view_frustum->planes[view_frustum->planes_count++] = left;
-	//view_frustum->planes[view_frustum->planes_count++] = top;
-	//view_frustum->planes[view_frustum->planes_count++] = bottom;
-
-
-	
-
-
+	view_frustum->planes[view_frustum->planes_count++] = left;
+	view_frustum->planes[view_frustum->planes_count++] = top;
+	view_frustum->planes[view_frustum->planes_count++] = bottom;
 }

@@ -13,6 +13,8 @@
 #include "utils/timer.h"
 #include "utils/common.h"
 
+#include "globals.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -168,6 +170,62 @@ void debug_draw_view_space_point(RenderTarget* rt, const RenderSettings* setting
 	int x1 = (int)(ssp[0] + n);
 
 	draw_rect(rt, x0, y0, x1, y1, colour);
+}
+
+void debug_draw_world_space_line(RenderTarget* rt, const RenderSettings* settings, const M4 view_matrix, const V3 v0, const V3 v1, const V3 colour)
+{
+	V4 ws_v0;
+	v3_to_v4_point(v0, ws_v0);
+
+	V4 ws_v1;
+	v3_to_v4_point(v1, ws_v1);
+
+	V4 vs_v0, vs_v1;
+	m4_mul_v4(view_matrix, ws_v0, vs_v0);
+	m4_mul_v4(view_matrix, ws_v1, vs_v1);
+
+	// Don't draw if behind the camera.
+	if (vs_v0[2] > -settings->near_plane && vs_v1[2] > -settings->near_plane)
+	{
+		return;
+	}
+
+	// Clip the points to the near plane so we don't draw anything behind.
+	// I think this works okay.
+	if (vs_v0[2] > -settings->near_plane)
+	{
+		V4 between;
+		v4_sub_v4_out(vs_v1, vs_v0, between);
+
+		float dist = vs_v0[2] + settings->near_plane;
+		
+		float dxdz = (vs_v1[0] - vs_v0[0]) / (vs_v1[2] - vs_v0[2]);
+		float dydz = (vs_v1[1] - vs_v0[1]) / (vs_v1[2] - vs_v0[2]);
+
+		vs_v0[0] += dxdz * dist;
+		vs_v0[1] += dydz * dist;
+		vs_v0[2] = -settings->near_plane;
+	}
+	else if (vs_v1[2] > -settings->near_plane)
+	{
+		V4 between;
+		v4_sub_v4_out(vs_v0, vs_v1, between);
+
+		float dist = vs_v1[2] + settings->near_plane;
+
+		float dxdz = (vs_v0[0] - vs_v1[0]) / (vs_v0[2] - vs_v1[2]);
+		float dydz = (vs_v0[1] - vs_v1[1]) / (vs_v0[2] - vs_v1[2]);
+
+		vs_v1[0] += dxdz * dist;
+		vs_v1[1] += dydz * dist;
+		vs_v1[2] = -settings->near_plane;
+	}
+
+	V4 ss_v0, ss_v1;
+	project(&rt->canvas, settings->projection_matrix, vs_v0, ss_v0);
+	project(&rt->canvas, settings->projection_matrix, vs_v1, ss_v1);
+
+	draw_line(rt, ss_v0[0], ss_v0[1], ss_v1[0], ss_v1[1], colour);
 }
 
 void draw_line(RenderTarget* rt, int x0, int y0, int x1, int y1, const V3 colour)
@@ -615,6 +673,13 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 	v_projected[1] *= invW;
 	v_projected[2] *= invW; 
 
+	if (v_projected[0] > 1.000001f || v_projected[0] < -1.000001f)
+	{
+		//printf("%s\n", v3_to_str(v_projected));
+	}
+
+
+
 	// Convert from NDC space to screen space.
 	// Convert from [-1:1] to [0:1], then scale to the screen dimensions.
 	o[0] = (v_projected[0] + 1) * 0.5f * canvas->width;
@@ -895,7 +960,7 @@ void broad_phase_frustum_culling(Models* models, const ViewFrustum* view_frustum
 			else if (dist < radius)
 			{
 				// Mark that we need to clip against this plane.
-				clip_against_plane[j] = j;
+				clip_against_plane[num_planes_to_clip_against] = j;
 				++num_planes_to_clip_against;
 			}
 		}
@@ -1183,6 +1248,7 @@ void frustum_culling(
 		}
 		else
 		{
+
 			// TODO: The last mesh added is getting clipped when nowhere near it.
 			// TODO: I think it's actually clipping is overwriting something.
 
@@ -1209,6 +1275,7 @@ void frustum_culling(
 
 			for (int j = 0; j < num_planes_to_clip_against; ++j)
 			{
+				//printf("clip against: %d\n", intersected_planes[intersected_planes_index]);
 				const Plane* plane = &view_frustum->planes[intersected_planes[intersected_planes_index++]];
 				
 				// Reset the index to write out to.
@@ -1652,16 +1719,16 @@ void render(
 	
 	// Transform object space positions to view space.
 	model_to_view_space(&scene->models, view_matrix);
-	printf("model_to_view_space took: %d\n", timer_get_elapsed(&t));
+	//printf("model_to_view_space took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
 	lights_world_to_view_space(&scene->point_lights, view_matrix);
-	printf("lights_world_to_view_space took: %d\n", timer_get_elapsed(&t));
+	//printf("lights_world_to_view_space took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
 	// Perform broad phase frustum culling to avoid unnecessary backface culling.
 	broad_phase_frustum_culling(&scene->models, &settings->view_frustum);
-	printf("broad_phase_frustum_culling took: %d\n", timer_get_elapsed(&t));
+	//printf("broad_phase_frustum_culling took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
 
@@ -1749,7 +1816,7 @@ void render(
 
 	// Perform backface culling.
 	cull_backfaces(&scene->models);
-	printf("cull_backfaces took: %d\n", timer_get_elapsed(&t));
+	//printf("cull_backfaces took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
 

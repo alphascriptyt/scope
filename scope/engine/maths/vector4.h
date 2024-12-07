@@ -90,7 +90,6 @@ inline void v4_copy(const V4 v, V4 out)
 	out[3] = v[3];
 }
 
-
 inline char* v4_to_str(V4 v)
 {
 	return format_str("%f %f %f %f", v[0], v[1], v[2], v[3]);

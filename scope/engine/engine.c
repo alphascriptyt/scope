@@ -5,6 +5,8 @@
 
 #include "common/colour.h"
 
+#include "globals.h"
+
 #include <Windows.h>
 
 #include <stdio.h>
@@ -110,15 +112,6 @@ void engine_run(Engine* engine)
             break;
         }
 
-        // TEMP:
-        POINT p;
-        GetCursorPos(&p);
-        ScreenToClient(engine->window.hwnd, &p);
-
-        engine->renderer.settings.mx = p.x;
-        engine->renderer.settings.my = p.y;
-
-
         snprintf(process_messages_str, sizeof(process_messages_str), "ProcMsgs: %d", timer_get_elapsed(&t));
 
         // Handle any keyboard/mouse input.
@@ -128,6 +121,7 @@ void engine_run(Engine* engine)
         
         M4 view_matrix;
         calculate_view_matrix(&engine->renderer.camera, view_matrix);
+
         
         // Clear the canvas.
         timer_restart(&t);

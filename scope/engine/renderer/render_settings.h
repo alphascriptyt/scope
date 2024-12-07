@@ -27,12 +27,6 @@ typedef struct
 	M4 projection_matrix;
 	ViewFrustum view_frustum; // TODO: Definitely should go in the renderer.
 
-
-	// TEMP: Globals.
-
-	int mx;
-	int my;
-
 } RenderSettings;
 
 inline void update_projection_m4(RenderSettings* rs, float aspect_ratio)

@@ -40,7 +40,7 @@ add_executable (scope "main.c"
 "engine/utils/memory_utils.h" "engine/utils/memory_utils.c"
 "engine/utils/str_utils.h" "engine/utils/str_utils.c"
 "engine/utils/timer.h"
- )
+  "engine/globals.h")
 
 include_directories ("engine")
 include_directories ("engine/common")

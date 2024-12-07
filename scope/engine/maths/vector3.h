@@ -1,6 +1,8 @@
 #ifndef VECTOR3_H
 #define VECTOR3_H
 
+#include "vector4.h"
+
 #include "utils/str_utils.h"
 
 #include <math.h>
@@ -13,6 +15,10 @@
 
 // TODO: Is the order of in/out okay?
 
+
+// TODO: I think using x,y,z for all this is going to be a good refactor. I can convert it all and benchmark
+//		 with my 1000 monkeys. I don't think there will be any performance difference. as there should be no padding.
+//		 We will need to pass everything as pointers but should be fine.
 typedef float V3[3];
 
 inline void cross(const V3 v0, const V3 v1, V3 out)
@@ -115,8 +121,6 @@ inline void v3_sub_v3_out(const V3 v0, const V3 v1, V3 out)
 	out[2] = v0[2] - v1[2];
 }
 
-
-
 inline void v3_init(V3 v, float x, float y, float z)
 {
 	v[0] = x;
@@ -133,12 +137,23 @@ inline void v3_copy(const V3 in, V3 out)
 	out[2] = in[2];
 }
 
+inline void v3_to_v4_point(const V3 in, V4 out)
+{
+	// Copy the v3.
+	out[0] = in[0];
+	out[1] = in[1];
+	out[2] = in[2];
+
+	// Set w = 1 so an m4's translation will be applied.
+	out[3] = 1; 
+}
+
 inline char* v3_to_str(const V3 v)
 {
 	return format_str("%f %f %f", v[0], v[1], v[2]);
 }
 
-// TODO: This shouldn't be in V3 i dont think.
+// TODO: This shouldn't be in V3.
 inline int is_front_face(const V3 v0, const V3 v1, const V3 v2)
 {
 	V3 v1v0, v2v0;
