@@ -3,12 +3,12 @@
 
 #include "maths/plane.h"
 
-#define MAX_FRUSTUM_PLANES 5
+#define MAX_FRUSTUM_PLANES 6
 
 typedef struct
 {
 	Plane planes[MAX_FRUSTUM_PLANES];
-	int num_planes;
+	int planes_count;
 
 } ViewFrustum;
 

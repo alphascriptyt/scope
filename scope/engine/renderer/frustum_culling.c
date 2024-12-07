@@ -88,11 +88,6 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 	normalise(a);
 
 	V3 nr;
-	//cross(up, a, nr);
-	//nr[0] = -near_dist;
-	//nr[1] = 0;
-	//nr[2] = -near_width;
-
 	V3 e0;
 	v3_sub_v3_out(far_top_right, near_bottom_right, e0);
 	V3 e1;
@@ -174,12 +169,12 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 	};
 
 	
-	view_frustum->planes[view_frustum->num_planes++] = near;
-	//view_frustum->planes[view_frustum->num_planes++] = far;
-	//view_frustum->planes[view_frustum->num_planes++] = right;
-	//view_frustum->planes[view_frustum->num_planes++] = left;
-	//view_frustum->planes[view_frustum->num_planes++] = top;
-	//view_frustum->planes[view_frustum->num_planes++] = bottom;
+	view_frustum->planes[view_frustum->planes_count++] = near;
+	//view_frustum->planes[view_frustum->planes_count++] = far;
+	view_frustum->planes[view_frustum->planes_count++] = right;
+	//view_frustum->planes[view_frustum->planes_count++] = left;
+	//view_frustum->planes[view_frustum->planes_count++] = top;
+	//view_frustum->planes[view_frustum->planes_count++] = bottom;
 
 
 	

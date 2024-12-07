@@ -100,6 +100,8 @@ typedef struct
 	int* mis_base_ids;					// The id of the model base.
 	int* mis_texture_ids;				// The id of the texture.
 	int* mis_dirty_bounding_sphere_flags;	// If a mi's scale has changed, the bounding sphere centre needs to be recalculated.
+	int* mis_intersected_planes;		// For each mi, the number of planes intersected, then the indices of the planes.
+	int* mis_passed_broad_phase_flags;	// Whether the mi is visible after broad phase culling. TODO: Name.
 
 	float* mis_vertex_colours;			// Per vertex colours for the instances.
 	float* mis_transforms;				// The instance world space transforms: [ Position, Direction, Scale ]

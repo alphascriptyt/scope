@@ -292,6 +292,8 @@ void create_model_instances(Models* models, int mb_index, int n)
 	resize_int_buffer(&models->mis_base_ids, new_instances_count);
 	resize_int_buffer(&models->mis_texture_ids, new_instances_count);
 	resize_int_buffer(&models->mis_dirty_bounding_sphere_flags, new_instances_count);
+	resize_int_buffer(&models->mis_intersected_planes, new_instances_count * 7); // 1 for how many planes, 6 for the potential plane indices. 
+	resize_int_buffer(&models->mis_passed_broad_phase_flags, new_instances_count);
 
 	for (int i = models->mis_count; i < new_instances_count; ++i)
 	{
@@ -301,6 +303,12 @@ void create_model_instances(Models* models, int mb_index, int n)
 		models->mis_texture_ids[i] = -69;
 
 		models->mis_dirty_bounding_sphere_flags[i] = 1;
+		models->mis_passed_broad_phase_flags[i] = 0;
+
+		for (int j = i * 7; j < (i + 1) * 7; ++j)
+		{
+			models->mis_intersected_planes[j] = 0;
+		}
 	}
 
 	resize_float_buffer(&models->mis_transforms, new_instances_count * STRIDE_MI_TRANSFORM);
@@ -354,6 +362,9 @@ void free_models(Models* models)
 	free(models->mis_base_ids);
 	free(models->mis_texture_ids);
 	free(models->mis_dirty_bounding_sphere_flags);
+	free(models->mis_passed_broad_phase_flags);
+	free(models->mis_intersected_planes);
+
 	free(models->mis_vertex_colours);
 	free(models->mis_transforms);
 	free(models->mis_bounding_spheres);

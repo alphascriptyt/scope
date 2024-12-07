@@ -41,13 +41,11 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 
 void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o);
 
-void model_to_world_space(Models* models);
-void world_to_view_space(Models* models, PointLights* point_lights, const M4 view_matrix);
-
-
 void model_to_view_space(Models* models, const M4 view_matrix);
 
 void lights_world_to_view_space(PointLights* point_lights, const M4 view_matrix);
+
+void broad_phase_frustum_culling(Models* models, const ViewFrustum* view_frustum);
 
 void cull_backfaces(Models* models);
 

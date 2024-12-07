@@ -25,6 +25,7 @@ float line_intersect_plane(const V3 v0, const V3 v1, const Plane* plane, V3 out)
 		// TODO: Parallel, no intersection. Should test if this ever actually happens.
 		// It shouldn't happen with how we use this. Could just document that it doesn't handle the lines not intersecting.
 		printf("normal_dot_ray == 0. Should not happen\n");
+		return 0;
 	}
 
 	V3 v0_to_plane_point;

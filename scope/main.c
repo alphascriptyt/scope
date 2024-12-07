@@ -39,7 +39,7 @@ void engine_on_init(Engine* engine)
 
         scene->models.mis_transforms[index_transform] = pos[0];
         scene->models.mis_transforms[++index_transform] = pos[1];
-        scene->models.mis_transforms[++index_transform] = pos[2] - i * 3;
+        scene->models.mis_transforms[++index_transform] = pos[2] - (i+1) * 3;
         scene->models.mis_transforms[++index_transform] = eulers[0];
         scene->models.mis_transforms[++index_transform] = eulers[1];
         scene->models.mis_transforms[++index_transform] = eulers[2];

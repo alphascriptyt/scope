@@ -718,7 +718,7 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 
 		// Store the initial out index so we can iterate over the 
 		// wsp later when calculating the radius of the bounding sphere.
-		const int start_wsp_out_index = vsp_out_index;
+		const int start_vsp_out_index = vsp_out_index;
 
 		const int mb_positions_offset = mbs_positions_offsets[mb_index];
 
@@ -797,7 +797,7 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 			// Calculate the new radius of the mi's bounding sphere.
 			float radius_squared = -1;
 
-			for (int j = start_wsp_out_index; j < vsp_out_index; j += STRIDE_POSITION)
+			for (int j = start_vsp_out_index; j < vsp_out_index; j += STRIDE_POSITION)
 			{
 				V3 v =
 				{
@@ -809,8 +809,7 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 				V3 between;
 				v3_sub_v3_out(v, vs_centre, between);
 
-				float ss = size_squared(between);
-				radius_squared = max(size_squared(v), radius_squared);
+				radius_squared = max(size_squared(between), radius_squared);
 			}
 
 			// Save the radius.
@@ -847,6 +846,84 @@ void lights_world_to_view_space(PointLights* point_lights, const M4 view_matrix)
 	}
 }
 
+void broad_phase_frustum_culling(Models* models, const ViewFrustum* view_frustum)
+{
+	// Performs broad phase frustum culling on the models, writes out the planes
+	// that can need to be clipped against.
+	const int mis_count = models->mis_count;
+	const float* bounding_spheres = models->mis_bounding_spheres;
+
+	// Should be wrote out in the 
+	int* intersected_planes = models->mis_intersected_planes;
+	int intersected_planes_out_index = 0;
+	int* passed_broad_phase_flags = models->mis_passed_broad_phase_flags;
+
+	const int planes_count = view_frustum->planes_count;
+	const Plane* planes = view_frustum->planes;
+
+	// Perform frustum culling per model instance.
+	for (int i = 0; i < mis_count; ++i)
+	{
+		// Perform board phase bounding sphere check against each plane.
+		int index_bounding_sphere = i * STRIDE_SPHERE;
+
+		// We must convert the center to view space
+		V3 view_space_centre =
+		{
+			bounding_spheres[index_bounding_sphere++],
+			bounding_spheres[index_bounding_sphere++],
+			bounding_spheres[index_bounding_sphere++],
+		};
+
+		// Radius stays the same as the view matrix does not scale.
+		const float radius = bounding_spheres[index_bounding_sphere];
+
+		// Store what planes need clipping against.
+		int clip_against_plane[MAX_FRUSTUM_PLANES] = { 0 };
+		int num_planes_to_clip_against = 0;
+
+		// Broad phase bounding sphere test.
+		for (int j = 0; j < planes_count; ++j)
+		{
+			float dist = signed_distance(&planes[j], view_space_centre);
+			if (dist < -radius)
+			{
+				// Completely outside the plane, therefore, no need to check against the others.
+				num_planes_to_clip_against = -1; // -1 here means the mi is not visible.
+				break;
+			}
+			else if (dist < radius)
+			{
+				// Mark that we need to clip against this plane.
+				clip_against_plane[j] = j;
+				++num_planes_to_clip_against;
+			}
+		}
+
+		// Mark whether the mi passed the broad phase and store the intersection data
+		// if it passed.
+		if (-1 == num_planes_to_clip_against)
+		{
+			// Flag the mi as having failed the broad phase.
+			passed_broad_phase_flags[i] = 0;
+		}
+		else
+		{
+			// Flag the mi as having passed the broad phase.
+			passed_broad_phase_flags[i] = 1;
+
+			// Write out for narrow phase to use.
+			// In format: num_planes_intersecting, plane_index_0, plane_index_1, ...
+			intersected_planes[intersected_planes_out_index++] = num_planes_to_clip_against;
+
+			for (int j = 0; j < num_planes_to_clip_against; ++j)
+			{
+				intersected_planes[intersected_planes_out_index++] = clip_against_plane[j];
+			}
+		}
+	}
+}
+
 void cull_backfaces(Models* models)
 {
 	// TODO: This takes like 15% CPU time, can I refactor this? Is copying all the data an issue?
@@ -878,6 +955,7 @@ void cull_backfaces(Models* models)
 	// TODO: We're copying a lot of data here and unpacking indices. 
 
 	// TODO: Refactor.
+	const int* passed_broad_phase_flags = models->mis_passed_broad_phase_flags;
 
 	const int* face_position_indices = models->mbs_face_position_indices;
 	const int* face_normal_indices = models->mbs_face_normal_indices;
@@ -900,6 +978,18 @@ void cull_backfaces(Models* models)
 	for (int i = 0; i < models->mis_count; ++i)
 	{
 		const int mb_index = models->mis_base_ids[i];
+
+		// Only do backface culling if the mi passed the broad phase.
+		if (!passed_broad_phase_flags[i])
+		{
+			models->front_faces_counts[i] = 0;
+
+			// Update the offsets for per instance data.
+			positions_offset += models->mbs_positions_counts[mb_index];
+			normals_offset += models->mbs_normals_counts[mb_index];
+
+			continue;
+		}
 
 		// Get the offsets for the buffers that are not instance specific.
 		const int mb_faces_offset = models->mbs_faces_offsets[mb_index];
@@ -1021,10 +1111,6 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_offset++] = 0;
 				front_faces[front_face_offset++] = 0;
 				front_faces[front_face_offset++] = 1;
-				
-
-
-
 
 				++front_face_count;
 			}
@@ -1047,24 +1133,19 @@ void frustum_culling(
 	const M4 view_matrix, 
 	Models* models)
 {
-	// TODO: There is literally no point seperating this and the drawing stuff, surely too much data
-	//		 plus, allocating space for 1000 monkeys at 6 planes takes like 6gb ram which is dumb.
+	// TODO: Rename this.
 
+	
 	// TODO: Look into this: https://zeux.io/2009/01/31/view-frustum-culling-optimization-introduction/
 
 
 	// TODO: With 1000 monkeys takes about 160ms.
-	/*
-	The lighting takes about half of this which is way too long. A lot of that is temporary code though.
-	But I should consider doing a test with the strength and distance first.
-	*/
 	
-	
-
 	// Frustum culling
-	float* clipped_faces = models->clipped_faces;
+	const int* intersected_planes = models->mis_intersected_planes;
+	const int* passed_broad_phase_flags = models->mis_passed_broad_phase_flags;
 
-	const float* bounding_spheres = models->mis_bounding_spheres;
+	float* clipped_faces = models->clipped_faces;
 
 	int face_offset = 0;
 	int positions_offset = 0;
@@ -1072,61 +1153,23 @@ void frustum_culling(
 	float* front_faces = models->front_faces; // TEMP: Not const whilst drawing normals.
 	const int* front_faces_counts = models->front_faces_counts;
 
+	int intersected_planes_index = 0;
+
 	// Perform frustum culling per model instance.
 	for (int i = 0; i < models->mis_count; ++i)
 	{
-		// Perform board phase bounding sphere check against each plane.
-		int index_bounding_sphere = i * STRIDE_SPHERE;
-		
-		// We must convert the center to view space
-		V3 view_space_center =
+		// Mesh isn't visible, so move to the next.
+		if (!passed_broad_phase_flags[i])
 		{
-			bounding_spheres[index_bounding_sphere++],
-			bounding_spheres[index_bounding_sphere++],
-			bounding_spheres[index_bounding_sphere++],
-		};
-
-		// Radius stays the same as the view matrix does not scale.
-		float radius = bounding_spheres[index_bounding_sphere];
-
-		// Store what planes need clipping against.
-		int clip_against_plane[MAX_FRUSTUM_PLANES] = { 0 };
-		int num_planes_to_clip_against = 0;
-
-		// Broad phase bounding sphere test.
-		int mesh_visible = 1;
-		for (int j = 0; j < view_frustum->num_planes; ++j)
-		{
-			float dist = signed_distance(&view_frustum->planes[j], view_space_center);
-			if (dist < -radius)
-			{
-				// Completely outside the plane, therefore, no need to check against the others.
-				mesh_visible = 0;
-				break;
-			}
-			else if (dist < radius)
-			{
-				// The mesh intersects with this plane, so the mesh could be partially visible.
-				mesh_visible = 1;
-
-				// Mark that we need to clip against this plane.
-				clip_against_plane[j] = 1;
-				++num_planes_to_clip_against;
-			}
-		}
-
-		// Skip the mesh if it's not visible at all.
-		if (0 == mesh_visible)
-		{
-			// Move to the next model instance.
+			// Move to the next mi.
 			face_offset += front_faces_counts[i];
-
 			continue;
 		}
 		
-		// TEMP
-		//mesh_visible = 1; num_planes_to_clip_against = 0;
-		if (1 == mesh_visible && 0 == num_planes_to_clip_against)
+		int num_planes_to_clip_against = intersected_planes[intersected_planes_index++];
+
+		// Skip the mesh if it's not visible at all.
+		if (0 == num_planes_to_clip_against)
 		{
 			// Entire mesh is visible so just copy the vertices over.
 			int index_face = face_offset * STRIDE_ENTIRE_FACE;
@@ -1164,15 +1207,9 @@ void frustum_culling(
 			// render against, not the plane index.
 			int num_planes_clipped_against = 0;
 
-			for (int index_plane = 0; index_plane < view_frustum->num_planes; ++index_plane)
+			for (int j = 0; j < num_planes_to_clip_against; ++j)
 			{
-				// Only clip against the plane if the broad phase flagged it.
-				if (clip_against_plane[index_plane] == 0)
-				{
-					continue;
-				}
-					
-				const Plane* plane = &view_frustum->planes[index_plane];
+				const Plane* plane = &view_frustum->planes[intersected_planes[intersected_planes_index++]];
 				
 				// Reset the index to write out to.
 				index_out = 0;
@@ -1615,7 +1652,6 @@ void render(
 	
 	// Transform object space positions to view space.
 	model_to_view_space(&scene->models, view_matrix);
-
 	printf("model_to_view_space took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
@@ -1623,8 +1659,10 @@ void render(
 	printf("lights_world_to_view_space took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
-	// TODO: Broad phase culling before backface culling.
-
+	// Perform broad phase frustum culling to avoid unnecessary backface culling.
+	broad_phase_frustum_culling(&scene->models, &settings->view_frustum);
+	printf("broad_phase_frustum_culling took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 
 
 			// At this point we know the mesh is partially visible at least.
@@ -1711,7 +1749,6 @@ void render(
 
 	// Perform backface culling.
 	cull_backfaces(&scene->models);
-
 	printf("cull_backfaces took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
@@ -1724,12 +1761,9 @@ void render(
 	// So light each vertex before clipping.
 	// NOTE: I think this means the lighting will be linear, taking away from
 	//		 the attenuation?
-	timer_restart(&t);
-
 	// TODO: Lighting can be separated to different function if we do broad phase culling first.
-
+	// TODO: Rename.
 	frustum_culling(rt, settings->projection_matrix, &settings->view_frustum, view_matrix, &scene->models);
-
 	printf("frustum_culling_and_lighting took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
