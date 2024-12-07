@@ -17,9 +17,9 @@ void engine_on_init(Engine* engine)
     ++engine->scenes_count;
     
     // Load models into the scene
-    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
-    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
     int n0 = 1000;
     
     create_model_instances(&scene->models, 0, n0);
@@ -47,52 +47,11 @@ void engine_on_init(Engine* engine)
         scene->models.mis_transforms[++index_transform] = scale[1];
         scene->models.mis_transforms[++index_transform] = scale[2];
     }
-    
-    /*
-    create_model_instances(&scene->models, 1, 2);
 
 
-
-
-    scene->models.mis_transforms[n0 * STRIDE_MI_TRANSFORM] = 3;
-    scene->models.mis_transforms[n0 * STRIDE_MI_TRANSFORM + 1] = 0;
-    scene->models.mis_transforms[n0 * STRIDE_MI_TRANSFORM + 2] = -3;
-    scene->models.mis_transforms[n0 * STRIDE_MI_TRANSFORM + 3] = 0;
-    scene->models.mis_transforms[n0 * STRIDE_MI_TRANSFORM + 4] = 0;
-    scene->models.mis_transforms[n0 * STRIDE_MI_TRANSFORM + 5] = 0;
-    scene->models.mis_transforms[n0 * STRIDE_MI_TRANSFORM + 6] = 1;
-    scene->models.mis_transforms[n0 * STRIDE_MI_TRANSFORM + 7] = 1;
-    scene->models.mis_transforms[n0 * STRIDE_MI_TRANSFORM + 8] = 1;
-
-    scene->models.mis_transforms[(n0+1) * STRIDE_MI_TRANSFORM] = 6;
-    scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 1] = 0;
-    scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 2] = -3;
-    scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 3] = 0;
-    scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 4] = 0;
-    scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 5] = 0;
-    scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 6] = 1;
-    scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 7] = 2;
-    scene->models.mis_transforms[(n0 + 1) * STRIDE_MI_TRANSFORM + 8] = 1;
-
-    scene->models.mis_dirty_transforms_flags[n0] = 1;
-    scene->models.mis_dirty_transforms_flags[n0 + 1] = 1;
-    
-    create_model_instances(&scene->models, 0, 1);
-    scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM] = -3;
-    scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM + 1] = 0;
-    scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM + 2] = -3;
-    scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM + 3] = 0;
-    scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM + 4] = 0;
-    scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM + 5] = 0;
-    scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM + 6] = 3;
-    scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM + 7] = 0.2;
-    scene->models.mis_transforms[(n0 + 2) * STRIDE_MI_TRANSFORM + 8] = 0.2;
-
-    // TODO: Function for this?
-    
-    scene->models.mis_dirty_transforms_flags[n0 + 2] = 1;
-    */
-
+    V3 pl_pos = { 0, 5, -3 };
+    V3 pl_col = { 1, 1, 1 };
+    point_lights_create(&scene->point_lights, pl_pos, pl_col, 10.f);
 }
 
 void engine_on_update(Engine* engine, float dt)

@@ -1,6 +1,8 @@
 #include "render.h"
 
 #include "render_target.h"
+#include "draw_2d.h"
+
 #include "common/colour.h"
 
 #include "maths/matrix4.h"
@@ -18,7 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void debug_draw_point_lights(RenderTarget* rt, const RenderSettings* settings, PointLights* point_lights)
+void debug_draw_point_lights(Canvas* canvas, const RenderSettings* settings, PointLights* point_lights)
 {
 	// Debug draw point light icons.
 	// TEMP: But this is quite nice and could be a decent feature.
@@ -38,8 +40,8 @@ void debug_draw_point_lights(RenderTarget* rt, const RenderSettings* settings, P
 			continue;
 		}
 
-		V3 projected;
-		project(&rt->canvas, settings->projection_matrix, p, projected);
+		V4 projected;
+		project(canvas, settings->projection_matrix, p, projected);
 
 		float z = 1.f / projected[2];
 
@@ -56,11 +58,11 @@ void debug_draw_point_lights(RenderTarget* rt, const RenderSettings* settings, P
 		int y0 = (int)(projected[1] - radius);
 		int y1 = (int)(projected[1] + radius);
 
-		draw_rect(rt, x0, y0, x1, y1, colour);
+		draw_rect(canvas, x0, y0, x1, y1, colour);
 	}
 }
 
-void debug_draw_bounding_spheres(RenderTarget* rt, const RenderSettings* settings, const Models* models, const M4 view_matrix)
+void debug_draw_bounding_spheres(Canvas* canvas, const RenderSettings* settings, const Models* models, const M4 view_matrix)
 {
 	// TODO: This doesn't really work.
 
@@ -78,7 +80,7 @@ void debug_draw_bounding_spheres(RenderTarget* rt, const RenderSettings* setting
 			models->mis_bounding_spheres[sphere_index + 2]
 		};
 
-		debug_draw_view_space_point(rt, settings, view_centre_v3, COLOUR_LIME);
+		debug_draw_view_space_point(canvas, settings, view_centre_v3, COLOUR_LIME);
 
 		V4 world_centre_v4 = {
 			models->mis_bounding_spheres[sphere_index],
@@ -111,17 +113,17 @@ void debug_draw_bounding_spheres(RenderTarget* rt, const RenderSettings* setting
 		m4_mul_v4(view_matrix, world_top, view_top);
 
 		V4 pc, pb, pt;
-		project(&rt->canvas, settings->projection_matrix, view_centre, pc);
-		project(&rt->canvas, settings->projection_matrix, view_top, pt);
-		project(&rt->canvas, settings->projection_matrix, view_bottom, pb);
+		project(canvas, settings->projection_matrix, view_centre, pc);
+		project(canvas, settings->projection_matrix, view_top, pt);
+		project(canvas, settings->projection_matrix, view_bottom, pb);
 		
 		float pr = fabsf(pb[1] - pt[1]) / 2.f;
 		
-		draw_circle(rt, (int)pc[0], (int)pc[1], (int)pr, colour);
+		draw_circle(canvas, (int)pc[0], (int)pc[1], (int)pr, colour);
 	}
 }
 
-void debug_draw_world_space_point(RenderTarget* rt, const RenderSettings* settings, const V3 point, const M4 view_matrix, int colour)
+void debug_draw_world_space_point(Canvas* canvas, const RenderSettings* settings, const V3 point, const M4 view_matrix, int colour)
 {
 	// Convert from world space to screen space.
 	V4 wsp = { point[0], point[1], point[2], 1 };
@@ -135,7 +137,7 @@ void debug_draw_world_space_point(RenderTarget* rt, const RenderSettings* settin
 		return;
 	}
 
-	project(&rt->canvas, settings->projection_matrix, vsp, ssp);
+	project(canvas, settings->projection_matrix, vsp, ssp);
 
 
 	// TODO: Could be a draw 2d rect function.
@@ -145,10 +147,10 @@ void debug_draw_world_space_point(RenderTarget* rt, const RenderSettings* settin
 	int x0 = (int)(ssp[0] - n);
 	int x1 = (int)(ssp[0] + n);
 
-	draw_rect(rt, x0, y0, x1, y1, colour);
+	draw_rect(canvas, x0, y0, x1, y1, colour);
 }
 
-void debug_draw_view_space_point(RenderTarget* rt, const RenderSettings* settings, const V3 point, int colour)
+void debug_draw_view_space_point(Canvas* canvas, const RenderSettings* settings, const V3 point, int colour)
 {
 	// Convert from world space to screen space.
 	V4 vsp = { point[0], point[1], point[2], 1 };
@@ -160,7 +162,7 @@ void debug_draw_view_space_point(RenderTarget* rt, const RenderSettings* setting
 		return;
 	}
 
-	project(&rt->canvas, settings->projection_matrix, vsp, ssp);
+	project(canvas, settings->projection_matrix, vsp, ssp);
 
 	// TODO: Could be a draw 2d rect function.
 	int n = 2;
@@ -169,10 +171,10 @@ void debug_draw_view_space_point(RenderTarget* rt, const RenderSettings* setting
 	int x0 = (int)(ssp[0] - n);
 	int x1 = (int)(ssp[0] + n);
 
-	draw_rect(rt, x0, y0, x1, y1, colour);
+	draw_rect(canvas, x0, y0, x1, y1, colour);
 }
 
-void debug_draw_world_space_line(RenderTarget* rt, const RenderSettings* settings, const M4 view_matrix, const V3 v0, const V3 v1, const V3 colour)
+void debug_draw_world_space_line(Canvas* canvas, const RenderSettings* settings, const M4 view_matrix, const V3 v0, const V3 v1, const V3 colour)
 {
 	V4 ws_v0;
 	v3_to_v4_point(v0, ws_v0);
@@ -222,107 +224,80 @@ void debug_draw_world_space_line(RenderTarget* rt, const RenderSettings* setting
 	}
 
 	V4 ss_v0, ss_v1;
-	project(&rt->canvas, settings->projection_matrix, vs_v0, ss_v0);
-	project(&rt->canvas, settings->projection_matrix, vs_v1, ss_v1);
+	project(canvas, settings->projection_matrix, vs_v0, ss_v0);
+	project(canvas, settings->projection_matrix, vs_v1, ss_v1);
 
-	draw_line(rt, ss_v0[0], ss_v0[1], ss_v1[0], ss_v1[1], colour);
+	draw_line(canvas, (int)ss_v0[0], (int)ss_v0[1], (int)ss_v1[0], (int)ss_v1[1], colour);
 }
 
-void draw_line(RenderTarget* rt, int x0, int y0, int x1, int y1, const V3 colour)
+void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V4 c0, const V4 c1)
 {
-	int dx = abs(x1 - x0);
-	int sx = x0 < x1 ? 1 : -1;
-	int dy = -abs(y1 - y0);
-	int sy = y0 < y1 ? 1 : -1;
-	int error = dx + dy;
+	// TODO: Refactor function args.
+	// TODO: If not combining with a texture, we don't need the colour alpha.
 
-	int colour_int = float_rgb_to_int(colour[0], colour[1], colour[2]);
+	// Precalculate deltas.
+	const unsigned int dx = x1 - x0;
+	float inv_dx = 1.f / dx;
 
-	while (1)
+	float w_step = (w1 - w0) * inv_dx;
+
+	// Offset x by the given y.
+	int row_offset = rt->canvas.width * y;
+
+	int start_x = x0 + row_offset;
+	int end_x = x1 + row_offset;
+
+	V4 c_step;
+	v4_sub_v4_out(c1, c0, c_step);
+	v4_mul_f(c_step, inv_dx);
+
+	V4 c = {
+		c0[0],
+		c0[1],
+		c0[2],
+		c0[3],
+	};
+
+	// Render the scanline
+	unsigned int* pixels = rt->canvas.pixels + start_x;
+	float* depth_buffer = rt->depth_buffer + start_x;
+
+	float inv_w = w0;
+	float z = z0;
+	float z_step = (z1 - z0) * inv_dx;
+
+	for (unsigned int i = 0; i < dx; ++i)
 	{
-		if (x0 > -1 && x0 < rt->canvas.width - 1 && y0 > -1 && y0 < rt->canvas.height - 1)
+		// Depth test, only draw closer values.
+		if (*depth_buffer > z)
 		{
-			int pos = y0 * rt->canvas.width + x0;
-			rt->canvas.pixels[pos] = colour_int;
-			rt->depth_buffer[pos] = 0;
+			// Recover w
+			const float w = 1.0f / inv_w;
+
+			// Render as depth buffer, testing depth values
+			/*
+			V3 white = { 1,1,1 };
+			float r = (white[0] * (1.f - z));
+			float g = (white[1] * (1.f - z));
+			float b = (white[2] * (1.f - z));
+			*/
+
+			const float r = (c[0] * w);
+			const float g = (c[1] * w);
+			const float b = (c[2] * w);
+
+			*pixels = float_rgb_to_int(r, g, b);
+			*depth_buffer = z;
 		}
 
-		if (x0 == x1 && y0 == y1) break;
+		// Move to the next pixel
+		++pixels;
+		++depth_buffer;
 
-		int e2 = 2 * error;
-		if (e2 >= dy)
-		{
-			error = error + dy;
-			x0 = x0 + sx;
-		}
-
-		if (e2 <= dx)
-		{
-			error = error + dx;
-			y0 = y0 + sy;
-		}
-	}
-}
-
-void draw_circle(RenderTarget* rt, int cx, int cy, int r, const V3 colour)
-{
-
-	// (x-a)^2 + (y-b)^2
-	
-	// All this could be better, doesn't work great.
-	const int c = float_rgb_to_int(colour[0], colour[1], colour[2]);
-
-	int rr = r * r;
-
-	for (int y = -r; y < r; ++y)
-	{
-		if (cy + y < 0 || cy + y > rt->canvas.height - 1)
-		{
-			continue;
-		}
-
-		int xx = abs(y * y - rr);
-		float x = sqrtf((float)xx);
-
-		int x0 = (int)(cx - x);
-		int x1 = (int)(cx + x);
-
-		if (x0 > -1 && x0 < rt->canvas.width)
-		{
-			rt->canvas.pixels[(int)((cy + y) * rt->canvas.width + x0)] = c;
-		}
-
-		if (x1 > -1 && x1 < rt->canvas.width)
-		{
-			rt->canvas.pixels[(int)((cy + y) * rt->canvas.width + x1)] = c;
-		}
-
-		
-		
-	}
-}
-
-void draw_rect(RenderTarget* rt, int x0, int y0, int x1, int y1, int colour)
-{
-	// TODO: Can optimise.
-	for (int y = y0; y < y1; ++y)
-	{
-		if (y < 0 || y >= rt->canvas.height)
-		{
-			continue;
-		}
-
-		for (int x = x0; x < x1; ++x)
-		{
-
-			if (x < 0 || x >= rt->canvas.width)
-			{
-				continue;
-			}
-
-			int i = y * rt->canvas.width + x;
-			rt->canvas.pixels[i] = colour;
-		}
+		// Step per pixel values.
+		z += z_step;
+		inv_w += w_step;
+		v4_add_v4(c, c_step);
 	}
 }
 
@@ -572,87 +547,6 @@ float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, float
 	return dp;
 }
 
-void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V4 c0, const V4 c1)
-{
-	// TODO: Refactor function args.
-
-	// Ignore if the line is offscreen.
-	if (y > rt->canvas.height - 1 || y < 0 ||
-		x0 > rt->canvas.width - 1 || x1 < 0)
-	{
-		return;
-	}
-
-	// Precalculate deltas.
-	float invDx = 1.f / (x1 - x0);
-
-	//Colour colourStep = (colour1 - colour0) * invDx;
-	float wStep = (w1 - w0) * invDx;
-
-	// Offset x by the given y.
-	int row_offset = rt->canvas.width * y;
-
-	int start_x = x0 + row_offset;
-	int end_x = x1 + row_offset;
-
-	V4 c_step;
-	v4_sub_v4_out(c1, c0, c_step);
-	v4_mul_f(c_step, invDx);
-
-	V4 c = {
-		c0[0],
-		c0[1],
-		c0[2],
-		c0[3],
-	};
-
-	// Render the scanline
-	unsigned int* pixels = rt->canvas.pixels + start_x;
-	unsigned int i = end_x - start_x;
-	
-	float* depth_buffer = rt->depth_buffer + start_x;
-	V3 white = { 1,1,1 };
-
-	float w = w0;
-	float z = z0;
-	float z_step = (z1 - z0) * invDx;
-	
-	// TODO: Swap for normal for loop
-	while (i)
-	{
-
-		// Recover clip space depth. - TODO: Understand this a bit more, when are we in clip space? That's x,y,z after perspective projection?
-		// TODO: Call this something better.
-		
-		// Depth test, only draw closer values.
-		if (*depth_buffer > z)
-		{
-			// TODO: Better name for this, it is actually w here. So rename the other w's?
-			float actualw = 1.0f / w;
-
-			// Render as depth buffer, testing depth values.
-			float r = (white[0] * (1.f - z));
-			float g = (white[1] * (1.f - z));
-			float b = (white[2] * (1.f - z));
-
-			/*
-			float r = (c[0] * actualw);
-			float g = (c[1] * actualw);
-			float b = (c[2] * actualw);
-			*/
-			*pixels = float_rgb_to_int(r, g, b);
-			*depth_buffer = z;
-		}
-
-		--i;
-		++pixels;
-		++depth_buffer;
-		z += z_step;
-		w += wStep;
-		v4_add_v4(c, c_step);
-	}
-}
-
 void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 {
 	// Opengl uses a right handed coordinate system, camera looks down the -z axis,
@@ -667,18 +561,11 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 
 	// Perform perspective divide to bring to NDC space.
 	// NDC space is a left handed coordinate system from -1 to 1 in all axis.
-	float invW = 1.0f / v_projected[3]; // Precalculate the perspective divide.
+	const float inv_w = 1.0f / v_projected[3]; // Precalculate the perspective divide.
 
-	v_projected[0] *= invW;
-	v_projected[1] *= invW;
-	v_projected[2] *= invW; 
-
-	if (v_projected[0] > 1.000001f || v_projected[0] < -1.000001f)
-	{
-		//printf("%s\n", v3_to_str(v_projected));
-	}
-
-
+	v_projected[0] *= inv_w;
+	v_projected[1] *= inv_w;
+	v_projected[2] *= inv_w;
 
 	// Convert from NDC space to screen space.
 	// Convert from [-1:1] to [0:1], then scale to the screen dimensions.
@@ -991,51 +878,31 @@ void broad_phase_frustum_culling(Models* models, const ViewFrustum* view_frustum
 
 void cull_backfaces(Models* models)
 {
-	// TODO: This takes like 15% CPU time, can I refactor this? Is copying all the data an issue?
-	//		 I have a feeling it could be. Need to thing about DOD for the next stages. I should
-	//		 probably separate the broad phase clipping, lighting and narrow phase clipping
+	// TODO: We're copying a lot of data here and unpacking indices. Some of this could
+	//		 potentially be optimised if for example we write all positions, then all
+	//		 normals, all colours etc.
 
-	//		 Takes about 15ms in release which is the whole 60fps frame. If I just store indices to the 
-	//		 front faces, will this make it faster..... for this, use a 'memory arena' a predefined array of
-	//		 indices to faces, to reset this we just set the index to 0 and overwrite previous ones.
-
-	//		 With only incrementing the front face count, the function takes 4ms rather than 15ms. I think
-	//		 indices could be the way to go. But then obviously if this then increase the clipping,
-	//	     that will not be great. HOWEVER. It could improve the broad phase clipping as we could only
-	//		 use the positions until we know the vertex is visible, then get the other necessary data!!! 
-	//		 Time and profile. record how long each thing takes first.
-
-	//		 Remember, 1000 monkeys means 1000 faces which means this loop goes 1000000 times a frame.
-
-	//		 I think a good way of thinking about DOD is to only use the necessary data at one time. So here
-	//		 as we're just copying everything, we only need to test the positions. In this case, I think that
-	//		 accessing the data via indices is not an issue. And we might as well delay it until clipping,
-	//		 because then the broad phase could ignore a LOT of unpacking. Would also simplify this code.
-
-	//		 Will we just need to store the face index? We shall see. How will these work when indexing into
-	//		 the per mesh instance data.
-
-	//		 TODO: All this ^^ twust.
-
-	// TODO: We're copying a lot of data here and unpacking indices. 
-
-	// TODO: Refactor.
 	const int* passed_broad_phase_flags = models->mis_passed_broad_phase_flags;
+
+	const int* mbs_positions_counts = models->mbs_positions_counts;
+	const int* mbs_normals_counts = models->mbs_normals_counts;
+	const int* mbs_faces_offsets = models->mbs_faces_offsets;
+	const int* mbs_uvs_offsets = models->mbs_uvs_offsets;
+	const int* mbs_faces_counts = models->mbs_faces_counts;
 
 	const int* face_position_indices = models->mbs_face_position_indices;
 	const int* face_normal_indices = models->mbs_face_normal_indices;
 	const int* face_uvs_indices = models->mbs_face_uvs_indices;
-
 	const float* uvs = models->mbs_uvs;
 
 	const float* view_space_positions = models->view_space_positions;
 	const float* view_space_normals = models->view_space_normals;
+	
+	float* front_faces = models->front_faces;
+	int* front_faces_counts = models->front_faces_counts;
 
 	int face_offset = 0;
-	int front_face_offset = 0;
-
-	float* front_faces = models->front_faces;
-
+	int front_face_out = 0;
 	int positions_offset = 0;
 	int normals_offset = 0;
 	int uvs_offset = 0;
@@ -1044,25 +911,25 @@ void cull_backfaces(Models* models)
 	{
 		const int mb_index = models->mis_base_ids[i];
 
-		// Only do backface culling if the mi passed the broad phase.
+		// Only need to do backface culling if the mi passed the broad phase.
 		if (!passed_broad_phase_flags[i])
 		{
-			models->front_faces_counts[i] = 0;
+			front_faces_counts[i] = 0;
 
 			// Update the offsets for per instance data.
-			positions_offset += models->mbs_positions_counts[mb_index];
-			normals_offset += models->mbs_normals_counts[mb_index];
+			positions_offset += mbs_positions_counts[mb_index];
+			normals_offset += mbs_normals_counts[mb_index];
 
 			continue;
 		}
 
 		// Get the offsets for the buffers that are not instance specific.
-		const int mb_faces_offset = models->mbs_faces_offsets[mb_index];
-		const int mb_uvs_offset = models->mbs_uvs_offsets[mb_index];
+		const int mb_faces_offset = mbs_faces_offsets[mb_index];
+		const int mb_uvs_offset = mbs_uvs_offsets[mb_index];
 
 		int front_face_count = 0;
 
-		for (int j = 0; j < models->mbs_faces_counts[mb_index]; ++j)
+		for (int j = 0; j < mbs_faces_counts[mb_index]; ++j)
 		{
 			const int face_index = (mb_faces_offset + j) * STRIDE_FACE_VERTICES;
 
@@ -1071,24 +938,24 @@ void cull_backfaces(Models* models)
 			const int index_v1 = face_position_indices[face_index + 1] + positions_offset;
 			const int index_v2 = face_position_indices[face_index + 2] + positions_offset;
 
-			int index_parts_v0 = index_v0 * STRIDE_POSITION;
-			int index_parts_v1 = index_v1 * STRIDE_POSITION;
-			int index_parts_v2 = index_v2 * STRIDE_POSITION;
+			const int index_parts_v0 = index_v0 * STRIDE_POSITION;
+			const int index_parts_v1 = index_v1 * STRIDE_POSITION;
+			const int index_parts_v2 = index_v2 * STRIDE_POSITION;
 
 			// Get the vertices from the face indices.
-			V3 v0 = {
+			const V3 v0 = {
 				view_space_positions[index_parts_v0],
 				view_space_positions[index_parts_v0 + 1],
 				view_space_positions[index_parts_v0 + 2]
 			};
 
-			V3 v1 = {
+			const V3 v1 = {
 				view_space_positions[index_parts_v1],
 				view_space_positions[index_parts_v1 + 1],
 				view_space_positions[index_parts_v1 + 2]
 			};
 
-			V3 v2 = {
+			const V3 v2 = {
 				view_space_positions[index_parts_v2],
 				view_space_positions[index_parts_v2 + 1],
 				view_space_positions[index_parts_v2 + 2]
@@ -1096,11 +963,7 @@ void cull_backfaces(Models* models)
 
 			// If the face is front facing, we can possibly see it.
 			if (is_front_face(v0, v1, v2))
-			{
-				
-				// TODO: Should we just store indices to the front faces here? Time it.
-				//		
-				
+			{		
 				// Get the indices to the first component of each vertex normal.
 				const int index_n0 = face_normal_indices[face_index] + normals_offset;
 				const int index_n1 = face_normal_indices[face_index + 1] + normals_offset;
@@ -1118,64 +981,62 @@ void cull_backfaces(Models* models)
 				int index_parts_uv1 = index_uv1 * STRIDE_UV;
 				int index_parts_uv2 = index_uv2 * STRIDE_UV;
 
-
 				// Copy all the face vertex data.
 				// We copy the attributes over here as well because when clipping we need the data
 				// all together for lerping.
-				front_faces[front_face_offset++] = v0[0];
-				front_faces[front_face_offset++] = v0[1];
-				front_faces[front_face_offset++] = v0[2];
+				front_faces[front_face_out++] = v0[0];
+				front_faces[front_face_out++] = v0[1];
+				front_faces[front_face_out++] = v0[2];
 
-				front_faces[front_face_offset++] = uvs[index_parts_uv0];
-				front_faces[front_face_offset++] = uvs[index_parts_uv0 + 1];
+				front_faces[front_face_out++] = uvs[index_parts_uv0];
+				front_faces[front_face_out++] = uvs[index_parts_uv0 + 1];
 
-				front_faces[front_face_offset++] = view_space_normals[index_parts_n0];
-				front_faces[front_face_offset++] = view_space_normals[index_parts_n0 + 1];
-				front_faces[front_face_offset++] = view_space_normals[index_parts_n0 + 2];
+				front_faces[front_face_out++] = view_space_normals[index_parts_n0];
+				front_faces[front_face_out++] = view_space_normals[index_parts_n0 + 1];
+				front_faces[front_face_out++] = view_space_normals[index_parts_n0 + 2];
 
-				//front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				//front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				//front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
-				//front_faces[front_face_offset++] = face_attributes[index_face_attributes++];
+				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
+				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
+				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
+				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
 
 				// TEMP: HARDCODE COLOURS
-				front_faces[front_face_offset++] = 1;
-				front_faces[front_face_offset++] = 0;
-				front_faces[front_face_offset++] = 0;
-				front_faces[front_face_offset++] = 1;
+				front_faces[front_face_out++] = 1;
+				front_faces[front_face_out++] = 0;
+				front_faces[front_face_out++] = 0;
+				front_faces[front_face_out++] = 1;
 
+				front_faces[front_face_out++] = v1[0];
+				front_faces[front_face_out++] = v1[1];
+				front_faces[front_face_out++] = v1[2];
 
-				front_faces[front_face_offset++] = v1[0];
-				front_faces[front_face_offset++] = v1[1];
-				front_faces[front_face_offset++] = v1[2];
+				front_faces[front_face_out++] = uvs[index_parts_uv1];
+				front_faces[front_face_out++] = uvs[index_parts_uv1 + 1];
 
-				front_faces[front_face_offset++] = uvs[index_parts_uv1];
-				front_faces[front_face_offset++] = uvs[index_parts_uv1 + 1];
+				front_faces[front_face_out++] = view_space_normals[index_parts_n1];
+				front_faces[front_face_out++] = view_space_normals[index_parts_n1 + 1];
+				front_faces[front_face_out++] = view_space_normals[index_parts_n1 + 2];
 
-				front_faces[front_face_offset++] = view_space_normals[index_parts_n1];
-				front_faces[front_face_offset++] = view_space_normals[index_parts_n1 + 1];
-				front_faces[front_face_offset++] = view_space_normals[index_parts_n1 + 2];
+				front_faces[front_face_out++] = 1;
+				front_faces[front_face_out++] = 0;
+				front_faces[front_face_out++] = 0;
+				front_faces[front_face_out++] = 1;
 
-				front_faces[front_face_offset++] = 1;
-				front_faces[front_face_offset++] = 0;
-				front_faces[front_face_offset++] = 0;
-				front_faces[front_face_offset++] = 1;
+				front_faces[front_face_out++] = v2[0];
+				front_faces[front_face_out++] = v2[1];
+				front_faces[front_face_out++] = v2[2];
 
-				front_faces[front_face_offset++] = v2[0];
-				front_faces[front_face_offset++] = v2[1];
-				front_faces[front_face_offset++] = v2[2];
+				front_faces[front_face_out++] = uvs[index_parts_uv2];
+				front_faces[front_face_out++] = uvs[index_parts_uv2 + 1];
 
-				front_faces[front_face_offset++] = uvs[index_parts_uv2];
-				front_faces[front_face_offset++] = uvs[index_parts_uv2 + 1];
+				front_faces[front_face_out++] = view_space_normals[index_parts_n2];
+				front_faces[front_face_out++] = view_space_normals[index_parts_n2 + 1];
+				front_faces[front_face_out++] = view_space_normals[index_parts_n2 + 2];
 
-				front_faces[front_face_offset++] = view_space_normals[index_parts_n2];
-				front_faces[front_face_offset++] = view_space_normals[index_parts_n2 + 1];
-				front_faces[front_face_offset++] = view_space_normals[index_parts_n2 + 2];
-
-				front_faces[front_face_offset++] = 1;
-				front_faces[front_face_offset++] = 0;
-				front_faces[front_face_offset++] = 0;
-				front_faces[front_face_offset++] = 1;
+				front_faces[front_face_out++] = 1;
+				front_faces[front_face_out++] = 0;
+				front_faces[front_face_out++] = 0;
+				front_faces[front_face_out++] = 1;
 
 				++front_face_count;
 			}
@@ -1183,15 +1044,101 @@ void cull_backfaces(Models* models)
 
 		// Update the number of front faces for the current mesh.
 		// This is needed for frustum culling.
-		models->front_faces_counts[i] = front_face_count;
+		front_faces_counts[i] = front_face_count;
 		
 		// Update the offsets for per instance data.
-		positions_offset += models->mbs_positions_counts[mb_index];
-		normals_offset += models->mbs_normals_counts[mb_index];
+		positions_offset += mbs_positions_counts[mb_index];
+		normals_offset += mbs_normals_counts[mb_index];
 	}
 }
 
-void frustum_culling(
+void light_front_faces(Models* models, const PointLights* point_lights)
+{
+	// TODO: Apply lighting to all the front faces.
+	// We do this before clipping so if we don't get inconsistent results. 
+
+
+#if 0
+	for (int j = face_offset; j < face_offset + scene->models.front_faces_counts[i]; ++j)
+	{
+		int index_face = j * STRIDE_ENTIRE_FACE;
+
+		// For each vertex apply lighting directly to the colour.
+
+		// 12 attributes per vertex. TODO: STRIDE for this?
+		for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += 12)
+		{
+			const V3 pos = {
+				front_faces[k],
+				front_faces[k + 1],
+				front_faces[k + 2],
+			};
+
+			const V3 normal = {
+				front_faces[k + 5],
+				front_faces[k + 6],
+				front_faces[k + 7],
+			};
+
+			V3 col = { 1,0,1 };
+
+			// Only need RGB, only need A for combining with texture???
+
+			// This is how much light it absorbs?
+			V3 colour = {
+				front_faces[k + 8],
+				front_faces[k + 9],
+				front_faces[k + 10],
+			};
+
+			// TODO: THIS IS ALL TEMPORARY FOR ONE LIGHT NO SPECIAL MATHS.
+
+			// TODO: I'm pretty sure the per pixel interpolation is broken or maybe that's just the lighting.
+
+			// For each light
+			for (int i_light = 0; i_light < scene->point_lights.count; ++i_light)
+			{
+				int i_light_pos = i_light * 3;
+				int i_light_attr = i_light * STRIDE_POINT_LIGHT_ATTRIBUTES;
+
+				const V3 light_pos =
+				{
+					scene->point_lights.view_space_positions[i_light_pos],
+					scene->point_lights.view_space_positions[i_light_pos + 1],
+					scene->point_lights.view_space_positions[i_light_pos + 2]
+				};
+
+				const V3 light_colour =
+				{
+					scene->point_lights.attributes[i_light_attr],
+					scene->point_lights.attributes[i_light_attr + 1],
+					scene->point_lights.attributes[i_light_attr + 2]
+				};
+
+				float strength = scene->point_lights.attributes[3];
+
+				// TODO: Could cache this? Then the user can also set
+				//		 the attenuation?
+				float a = 0.1f / strength;
+				float b = 0.01f / strength;
+
+				float df = calculate_diffuse_factor(pos, normal, light_pos, a, b);
+
+				// TODO: ALL TEMPPPP
+				if (df > 1) df = 1;
+				if (df < 0) df = 0;
+
+				front_faces[k + 8] = df;
+				front_faces[k + 9] = df;
+				front_faces[k + 10] = df;
+			}
+		}
+	}
+#endif
+
+}
+
+void clip_to_view_frustum(
 	RenderTarget* rt, 
 	const M4 projection_matrix, 
 	const ViewFrustum* view_frustum, 
@@ -1706,13 +1653,6 @@ void render(
 	Scene* scene,
 	const M4 view_matrix)
 {
-	/*
-	TODO: Time to make all this perfect.
-	Would be nice to frustum cull against all planes, not sure how much this will hurt fps.
-	Remember the plane generation code was wrong for some reason. I believe if i cull against all planes,
-	i don't need to do the screen space culling.
-	*/
-
 	// TODO: Make view matrix a part of the renderer, and the camera maybe. Then render should take the renderer i would assume.
 	//		 or maybe these are a part of the settings. Bascially that part needs a refactor.
 	Timer t = timer_start();
@@ -1731,125 +1671,30 @@ void render(
 	//printf("broad_phase_frustum_culling took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
-
-			// At this point we know the mesh is partially visible at least.
-		// Apply lighting here so that the if a vertex is clipped closer
-		// to the light, the lighing doesn't change.
-#if 0
-	for (int j = face_offset; j < face_offset + scene->models.front_faces_counts[i]; ++j)
-	{
-		int index_face = j * STRIDE_ENTIRE_FACE;
-
-		// For each vertex apply lighting directly to the colour.
-
-		// 12 attributes per vertex. TODO: STRIDE for this?
-		for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += 12)
-		{
-			const V3 pos = {
-				front_faces[k],
-				front_faces[k + 1],
-				front_faces[k + 2],
-			};
-
-			const V3 normal = {
-				front_faces[k + 5],
-				front_faces[k + 6],
-				front_faces[k + 7],
-			};
-
-			V3 col = { 1,0,1 };
-
-			// Only need RGB, only need A for combining with texture???
-
-			// This is how much light it absorbs?
-			V3 colour = {
-				front_faces[k + 8],
-				front_faces[k + 9],
-				front_faces[k + 10],
-			};
-
-			// TODO: THIS IS ALL TEMPORARY FOR ONE LIGHT NO SPECIAL MATHS.
-
-			// TODO: I'm pretty sure the per pixel interpolation is broken or maybe that's just the lighting.
-
-			// For each light
-			for (int i_light = 0; i_light < scene->point_lights.count; ++i_light)
-			{
-				int i_light_pos = i_light * 3;
-				int i_light_attr = i_light * STRIDE_POINT_LIGHT_ATTRIBUTES;
-
-				const V3 light_pos =
-				{
-					scene->point_lights.view_space_positions[i_light_pos],
-					scene->point_lights.view_space_positions[i_light_pos + 1],
-					scene->point_lights.view_space_positions[i_light_pos + 2]
-				};
-
-				const V3 light_colour =
-				{
-					scene->point_lights.attributes[i_light_attr],
-					scene->point_lights.attributes[i_light_attr + 1],
-					scene->point_lights.attributes[i_light_attr + 2]
-				};
-
-				float strength = scene->point_lights.attributes[3];
-
-				// TODO: Could cache this? Then the user can also set
-				//		 the attenuation?
-				float a = 0.1f / strength;
-				float b = 0.01f / strength;
-
-				float df = calculate_diffuse_factor(pos, normal, light_pos, a, b);
-
-				// TODO: ALL TEMPPPP
-				if (df > 1) df = 1;
-				if (df < 0) df = 0;
-
-				front_faces[k + 8] = df;
-				front_faces[k + 9] = df;
-				front_faces[k + 10] = df;
-			}
-		}
-	}
-#endif
-
+	// At this point we know what mis arepartially visible at least.
+	// Apply lighting here so that the if a vertex is clipped closer
+	// to the light, the lighing doesn't change.
+	light_front_faces(&scene->models, &scene->point_lights);
+	//printf("light_front_faces took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
 
 	// Perform backface culling.
 	cull_backfaces(&scene->models);
 	//printf("cull_backfaces took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
-
-	// Frustum culling and lighting is done together as we do per vertex
-	// lighting. 
-	// This should solve the issue where if we have a massive plane
-	// and the two triangles are clipped, the clipped triangle could create
-	// a vertex closer to the light, meaning we would get inconsistent lighting.
-	// So light each vertex before clipping.
-	// NOTE: I think this means the lighting will be linear, taking away from
-	//		 the attenuation?
-	// TODO: Lighting can be separated to different function if we do broad phase culling first.
-	// TODO: Rename.
-	frustum_culling(rt, settings->projection_matrix, &settings->view_frustum, view_matrix, &scene->models);
-	printf("frustum_culling_and_lighting took: %d\n", timer_get_elapsed(&t));
+	// Perform the narrow phase of frustum culling.
+	clip_to_view_frustum(rt, settings->projection_matrix, &settings->view_frustum, view_matrix, &scene->models);
+	//printf("clip_to_view_frustum took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
-	//debug_draw_point_lights(rt, settings, &scene->point_lights);
-
-	//printf("debug_draw_point_lights took: %d\n", timer_get_elapsed(&t));
+	debug_draw_point_lights(rt, settings, &scene->point_lights);
+	printf("debug_draw_point_lights took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 	
 	// Draw crosshair temporarily cause looks cool.
-	int half_length = 2;
+	int r = 2;
 	int cx = (int)(rt->canvas.width / 2.f);
 	int cy = (int)(rt->canvas.height / 2.f);
-	for (int y = cy - half_length; y < cy + half_length; ++y)
-	{
-		for (int x = cx - half_length; x < cx + half_length; ++x)
-		{
-			rt->canvas.pixels[y * rt->canvas.width + x] = COLOUR_WHITE;
-		}
-	}
-
-	//debug_draw_bounding_spheres(rt, settings, &scene->models, view_matrix);	
+	draw_rect(&rt->canvas, cx - r, cy - r, cx + r, cy + r, COLOUR_WHITE);
 }
