@@ -45,7 +45,8 @@ void debug_draw_point_lights(Canvas* canvas, const RenderSettings* settings, Poi
 		int idx_attr = i * STRIDE_POINT_LIGHT_ATTRIBUTES;
 		int colour = float_rgb_to_int(point_lights->attributes[idx_attr], point_lights->attributes[idx_attr + 1], point_lights->attributes[idx_attr + 2]);
 
-		const int radius = 10; // Square radius nice.
+		// Scale the radius so it's at a maximum of 10.
+		const float radius = 10.f * (-settings->near_plane / p[2]); // Square radius nice.
 
 		int x0 = (int)(projected[0] - radius);
 		int x1 = (int)(projected[0] + radius);
@@ -223,6 +224,60 @@ void debug_draw_world_space_line(Canvas* canvas, const RenderSettings* settings,
 	project(canvas, settings->projection_matrix, vs_v1, ss_v1);
 
 	draw_line(canvas, (int)ss_v0[0], (int)ss_v0[1], (int)ss_v1[0], (int)ss_v1[1], colour);
+}
+
+void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const Models* models, int mi_index)
+{
+	// TODO: How can we just access the data without this sort of loop??
+	//		 If we actually need this for something other than debugging,
+	//		 we should store offsets that are calculated per render call.
+	int front_faces_offset = 0;
+	for (int i = 0; i < mi_index; ++i)
+	{
+		front_faces_offset += models->front_faces_counts[i];
+	}
+
+	for (int i = front_faces_offset; i < front_faces_offset + models->front_faces_counts[mi_index]; ++i)
+	{
+		int face_index = i * STRIDE_ENTIRE_FACE;
+
+		for (int j = 0; j < STRIDE_FACE_VERTICES; ++j)
+		{
+			int k = face_index + j * 12;
+			const V3 start = {
+				models->front_faces[k],
+				models->front_faces[k + 1],
+				models->front_faces[k + 2],
+			};
+
+			V3 normal = {
+				models->front_faces[k + 5],
+				models->front_faces[k + 6],
+				models->front_faces[k + 7],
+			};
+
+			const float length = 0.5f;
+
+			V3 dir;
+			v3_copy(normal, dir);
+			v3_mul_f(dir, length);
+
+			V3 end = { 0,0,0 };
+			v3_add_v3(end, dir);
+			v3_add_v3(end, start);
+
+			V4 start_v4, end_v4;
+
+			v3_to_v4_point(start, start_v4);
+			v3_to_v4_point(end, end_v4);
+
+			V4 ss_start, ss_end;
+			project(canvas, settings->projection_matrix, start_v4, ss_start);
+			project(canvas, settings->projection_matrix, end_v4, ss_end);
+
+			draw_line(canvas, ss_start[0], ss_start[1], ss_end[0], ss_end[1], COLOUR_LIME);
+		}
+	}
 }
 
 void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V4 c0, const V4 c1)
@@ -534,6 +589,8 @@ float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, float
 	// Calculate how much the vertex is lit
 	float diffuse_factor = max(0.0f, dot(light_dir, n));
 
+	// TODO: Just hardcode the attenuation factors here? Not sure we will need to change them.
+
 	float attenuation = 1.0f / (1.0f + (a * light_distance) + (b * light_distance * light_distance));
 	float dp = diffuse_factor * attenuation;
 
@@ -710,6 +767,8 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 
 			V4 view_space_normal;
 			m4_mul_v4(view_normal_matrix, object_space_normal, view_space_normal);
+
+			normalise(view_space_normal);
 
 			view_space_normals[vsn_out_index++] = view_space_normal[0];
 			view_space_normals[vsn_out_index++] = view_space_normal[1];
@@ -888,10 +947,10 @@ void cull_backfaces(Models* models)
 	const int* face_position_indices = models->mbs_face_position_indices;
 	const int* face_normal_indices = models->mbs_face_normal_indices;
 	const int* face_uvs_indices = models->mbs_face_uvs_indices;
-	const float* uvs = models->mbs_uvs;
-
+	
 	const float* view_space_positions = models->view_space_positions;
 	const float* view_space_normals = models->view_space_normals;
+	const float* uvs = models->mbs_uvs;
 	
 	float* front_faces = models->front_faces;
 	int* front_faces_counts = models->front_faces_counts;
@@ -995,7 +1054,7 @@ void cull_backfaces(Models* models)
 				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
 				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
 
-				// TEMP: HARDCODE COLOURS
+				// TODO: FIX. TEMP: HARDCODE COLOURS
 				front_faces[front_face_out++] = 1;
 				front_faces[front_face_out++] = 1;
 				front_faces[front_face_out++] = 1;
@@ -1080,7 +1139,6 @@ void light_front_faces(Models* models, const PointLights* point_lights)
 			int index_face = j * STRIDE_ENTIRE_FACE;
 
 			// For each vertex apply lighting directly to the colour.
-
 			// 12 attributes per vertex. TODO: STRIDE for this?
 			for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += 12)
 			{
@@ -1096,18 +1154,14 @@ void light_front_faces(Models* models, const PointLights* point_lights)
 					front_faces[k + 7],
 				};
 
-				V3 col = { 1,0,1 };
-
 				// Only need RGB, only need A for combining with texture???
 
 				// This is how much light it absorbs?
 				V3 colour = {
 					front_faces[k + 8],
 					front_faces[k + 9],
-					front_faces[k + 10],
+					front_faces[k + 10]
 				};
-
-				// TODO: THIS IS ALL TEMPORARY FOR ONE LIGHT NO SPECIAL MATHS.
 
 				// TODO: I'm pretty sure the per pixel interpolation is broken or maybe that's just the lighting.
 
@@ -1142,13 +1196,13 @@ void light_front_faces(Models* models, const PointLights* point_lights)
 
 					float df = calculate_diffuse_factor(pos, normal, light_pos, a, b);
 
-					// TODO: ALL TEMPPPP
-					if (df > 1) df = 1;
-					if (df < 0) df = 0;
-
 					v3_mul_f(light_colour, df);
 					v3_add_v3(diffuse_part, light_colour);
 				}
+
+				diffuse_part[0] = min(diffuse_part[0], 1);
+				diffuse_part[1] = min(diffuse_part[1], 1);
+				diffuse_part[2] = min(diffuse_part[2], 1);
 
 				v3_mul_v3(colour, diffuse_part);
 
@@ -1648,6 +1702,7 @@ void project_and_draw_clipped_triangles(RenderTarget* rt, const M4 projection_ma
 		project(&rt->canvas, projection_matrix, v1, projected_v1);
 		project(&rt->canvas, projection_matrix, v2, projected_v2);
 
+		
 		V4 colour0 = {
 			clipped_faces[clipped_face_index + 8] * projected_v0[3],
 			clipped_faces[clipped_face_index + 9] * projected_v0[3],
@@ -1668,6 +1723,8 @@ void project_and_draw_clipped_triangles(RenderTarget* rt, const M4 projection_ma
 			clipped_faces[clipped_face_index + 34] * projected_v2[3],
 			clipped_faces[clipped_face_index + 35] * projected_v2[3],
 		};
+
+
 		
 		draw_triangle(rt, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
 	}
@@ -1710,6 +1767,7 @@ void render(
 	timer_restart(&t);
 
 	// Perform the narrow phase of frustum culling.
+	// TODO: Rename to show we draw here.
 	clip_to_view_frustum(rt, settings->projection_matrix, &settings->view_frustum, view_matrix, &scene->models);
 	//printf("clip_to_view_frustum took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
@@ -1723,4 +1781,10 @@ void render(
 	int cx = (int)(rt->canvas.width / 2.f);
 	int cy = (int)(rt->canvas.height / 2.f);
 	draw_rect(&rt->canvas, cx - r, cy - r, cx + r, cy + r, COLOUR_WHITE);
+
+	if (g_draw_normals)
+	{
+		debug_draw_mi_normals(&rt->canvas, settings, &scene->models, 0);
+	}
+	
 }

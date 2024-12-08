@@ -10,6 +10,7 @@
 #include <Windows.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 
 Status engine_init(Engine* engine, int window_width, int window_height)
 {
@@ -39,7 +40,7 @@ Status engine_init(Engine* engine, int window_width, int window_height)
 
     // Set window callbacks.
     engine->window.on_resize = &engine_on_resize;
-    engine->window.on_keyup = &engine_on_keyup;
+    engine->window.on_keyup = &engine_process_keyup;
 
     // Initialise the UI.
     status = ui_init(&engine->ui, &engine->renderer.target.canvas);
@@ -48,6 +49,9 @@ Status engine_init(Engine* engine, int window_width, int window_height)
         log_error("Failed to ui_init because of %s", status_to_str(status));
         return status;
     }
+
+    // Initialise a random seed
+    srand((unsigned int)time(NULL));
     
     log_info("Fired engine_on_init event.");
     engine_on_init(engine);
@@ -317,7 +321,7 @@ void engine_on_resize(void* ctx)
     }
 }
 
-void engine_on_keyup(void* ctx, WPARAM wParam) 
+void engine_process_keyup(void* ctx, WPARAM wParam) 
 {
     Engine* engine = (Engine*)ctx;
 
@@ -364,36 +368,8 @@ void engine_on_keyup(void* ctx, WPARAM wParam)
         engine->running = 0;
         PostQuitMessage(0);
     }
-    else if (VK_F1 == wParam)
-    {
-        Scene* scene = &engine->scenes[engine->current_scene_id];
-        V3 n;
-        v3_copy(engine->renderer.settings.view_frustum.planes[1].normal, n);
-   
-        float yaw = 0;
 
-        // atan2f doesn't work with 2 0 values.
-        if (n[0] != 0 || n[2] != 0)
-        {
-            yaw = atan2f(-n[0], -n[2]);
-        }
-        
-        float pitch = asinf(n[1]);
-
-
-        scene->models.mis_transforms[0] = engine->renderer.camera.position[0];
-        scene->models.mis_transforms[1] = engine->renderer.camera.position[1];
-        scene->models.mis_transforms[2] = engine->renderer.camera.position[2];
-
-        scene->models.mis_transforms[3] = pitch;
-        scene->models.mis_transforms[4] = yaw;
-        scene->models.mis_transforms[5] = 0;
-        //scene->models.mis_transforms_updated_flags[0] = 1;
-    }
-    else if (VK_F2 == wParam)
-    {
-        engine->renderer.camera.position[0] = 0;
-        engine->renderer.camera.position[1] = 5;
-        engine->renderer.camera.position[2] = 0;
-    }
+    // Fire the engine callback.
+    // TODO: Would be nice to not use WPARAM.
+    engine_on_keyup(engine, wParam);
 }

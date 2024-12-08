@@ -24,6 +24,7 @@ void debug_draw_bounding_spheres(Canvas* canvas, const RenderSettings* settings,
 void debug_draw_world_space_point(Canvas* canvas, const RenderSettings* settings, const V3 point, const M4 view_matrix, int colour);
 void debug_draw_view_space_point(Canvas* canvas, const RenderSettings* settings, const V3 point, int colour);
 void debug_draw_world_space_line(Canvas* canvas, const RenderSettings* settings, const M4 view_matrix, const V3 v0, const V3 v1, const V3 colour);
+void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const Models* models, int mi_index);
 
 // TODO: Not sure where to put this?
 

@@ -206,19 +206,55 @@ void load_model_base_from_obj(Models* models, const char* filename)
 			// A face from the obj file is vertex index, uv index, normal index.
 			int face_indices[9] = { 0 };
 
+			// Define a buffer to store the string part of a face.
+			char buffer[32] = "\0";
+
 			// Faces must be triangulated
 			for (int i = 0; i < 3; ++i)
 			{
-				// Split the face into its 3 indices pos, uv, normal
-				char* face_token = strtok(tokens[1 + i], "/");
+				// Break the string into per vertex indices.
+				const char* vertex_str = tokens[1 + i];
+				
+				int char_index = 0;
 
-				int j = 0;
-				while (face_token != NULL && j < 3)
+				// For each vertex component, pos, uv, normal.
+				for (int component_index = 0; component_index < 3; ++component_index)
 				{
-					face_indices[i * 3 + j] = atoi(face_token) - 1; // All indices are 1 based.
-					face_token = strtok(NULL, "/");
+					// Overwrite the previous component.
+					int buffer_index = 0;
 
-					j++;
+					// Copy the component str into the buffer until we reach the 
+					// delimiter or the end of the string.
+					while (vertex_str[char_index] != '/' && vertex_str[char_index] != '\0')
+					{
+						buffer[buffer_index++] = vertex_str[char_index++];
+					}
+
+					// Write the null character to terminate the string.
+					buffer[buffer_index] = '\0';
+
+					// If the last character was a delimiter, move past it.
+					if (vertex_str[char_index] == '/')
+					{
+						++char_index;
+					}
+
+					// Convert the buffer contents to an index.
+					if (buffer_index == 0)
+					{
+						// 3 components per vertex.
+						face_indices[i * 3 + component_index] = -1; // No index was defined.
+					}
+					else
+					{
+						face_indices[i * 3 + component_index] = atoi(buffer) - 1; // All indices are 1 based.
+					}
+					
+					// Check for the end of the string.
+					if (vertex_str[char_index] == '\0')
+					{
+						break;
+					}
 				}
 			}
 
@@ -229,7 +265,7 @@ void load_model_base_from_obj(Models* models, const char* filename)
 			models->mbs_face_normal_indices[faces_normals_offset++] = face_indices[2];
 			models->mbs_face_normal_indices[faces_normals_offset++] = face_indices[5];
 			models->mbs_face_normal_indices[faces_normals_offset++] = face_indices[8];
-
+			
 			models->mbs_face_uvs_indices[faces_uvs_offset++] = face_indices[1];
 			models->mbs_face_uvs_indices[faces_uvs_offset++] = face_indices[4];
 			models->mbs_face_uvs_indices[faces_uvs_offset++] = face_indices[7];

@@ -32,6 +32,8 @@ typedef struct
 	int lock_mouse;
 	float upscaling_factor;
 
+	// TODO: Allow the user to set callbacks just like the window class.
+
 } Engine;
 
 // Main API
@@ -47,11 +49,13 @@ void engine_handle_input(Engine* engine, float dt);
 // Window events.
 void engine_on_resize(void* ctx);
 
-void engine_on_keyup(void* ctx, WPARAM wParam);
+void engine_process_keyup(void* ctx, WPARAM wParam);
 
 // Engine events that the game should define.
 void engine_on_init(Engine* engine);
 
 void engine_on_update(Engine* engine, float dt);
+
+void engine_on_keyup(Engine* engine, WPARAM wParam);
 
 #endif

@@ -1,9 +1,18 @@
 ﻿#include "engine/engine.h"
 
+#include "utils/common.h"
+
+#include "globals.h"
+
 // TODO: Look into switching to an actual c compiler, not sure how to check that its compiled with c or if it even matters.
+
+float* directions;
+
 
 void engine_on_init(Engine* engine)
 {
+    g_draw_normals = 0;
+
     // Create a scene
     Scene* scene = &engine->scenes[0];
     Status status = scene_init(scene);
@@ -18,8 +27,9 @@ void engine_on_init(Engine* engine)
     
     // Load models into the scene
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/teapot.obj");
+    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
+    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
     int n0 = 1;
     
     create_model_instances(&scene->models, 0, n0);
@@ -39,7 +49,7 @@ void engine_on_init(Engine* engine)
 
         scene->models.mis_transforms[index_transform] = pos[0];
         scene->models.mis_transforms[++index_transform] = pos[1];
-        scene->models.mis_transforms[++index_transform] = pos[2] - (i+1) * 3;
+        scene->models.mis_transforms[++index_transform] = pos[2] - (i + 1) * 3;
         scene->models.mis_transforms[++index_transform] = eulers[0];
         scene->models.mis_transforms[++index_transform] = eulers[1];
         scene->models.mis_transforms[++index_transform] = eulers[2];
@@ -55,12 +65,12 @@ void engine_on_init(Engine* engine)
 
     V3 pl_pos1 = { 1, 5, -3 };
     V3 pl_col1 = { 0, 0, 1 };
-    point_lights_create(&scene->point_lights, pl_pos1, pl_col1, 1.f);
+    //point_lights_create(&scene->point_lights, pl_pos1, pl_col1, 1.f);
 }
 
 void engine_on_update(Engine* engine, float dt)
 {
-    
+    return;
     Scene* scene = &engine->scenes[engine->current_scene_id];
     
     int c = 3;
@@ -86,7 +96,17 @@ void engine_on_update(Engine* engine, float dt)
         }
     }
 
-    scene->point_lights.world_space_positions[2] -= dt;
+    /*
+    const int speed = 1;
+    for (int i = 0; i < scene->point_lights.count; ++i)
+    {
+        int j = i * 3;
+        scene->point_lights.world_space_positions[j] += directions[j] * dt * speed;
+        scene->point_lights.world_space_positions[j + 1] += directions[j + 1] * dt * speed;
+        scene->point_lights.world_space_positions[j + 2] += directions[j + 2] * dt * speed;
+    }
+    */
+
 
     
     
@@ -137,6 +157,58 @@ void engine_on_update(Engine* engine, float dt)
     }
 
     scene->models.mis_transforms_updated_flags[0] = 1;*/
+}
+
+void engine_on_keyup(Engine* engine, WPARAM wParam)
+{
+    switch (wParam)
+    {
+    case VK_F1:
+    {
+        return;
+        Scene* scene = &engine->scenes[engine->current_scene_id];
+
+        V3 colour =
+        {
+            random_float(),
+            random_float(),
+            random_float()
+        };
+
+        point_lights_create(&scene->point_lights, engine->renderer.camera.position, colour, 1);
+
+        if (directions)
+        {
+             float* temp = realloc(directions, (size_t)scene->point_lights.count * 3 * sizeof(float));
+             if (temp)
+             {
+                 directions = temp;
+             }
+        }
+        else
+        {
+            directions = malloc((size_t)scene->point_lights.count * 3 * sizeof(float));
+        }
+
+        if (!directions)
+        {
+            printf("!directions.\n");
+            return;
+        }
+
+        int i = (scene->point_lights.count - 1) * 3;
+        directions[i] = engine->renderer.camera.direction[0];
+        directions[i + 1] = engine->renderer.camera.direction[1];
+        directions[i + 2] = engine->renderer.camera.direction[2];
+
+        break;
+    }
+    case VK_F2:
+    {
+        g_draw_normals = !g_draw_normals;
+        break;
+    }
+    }
 }
 
 int main()

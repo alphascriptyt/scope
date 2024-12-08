@@ -7,6 +7,6 @@
 // lots of stuff.
 
 // In the future, this could be for defining ui values for text etc.
-
+int g_draw_normals;
 
 #endif
