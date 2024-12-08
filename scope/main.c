@@ -26,8 +26,9 @@ void engine_on_init(Engine* engine)
     ++engine->scenes_count;
     
     // Load models into the scene
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/smoothteapot.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/teapot.obj");
+    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/teapot.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
     int n0 = 1;
@@ -73,6 +74,7 @@ void engine_on_update(Engine* engine, float dt)
     return;
     Scene* scene = &engine->scenes[engine->current_scene_id];
     
+    /*
     int c = 3;
 
     int end = scene->models.mis_count * STRIDE_MI_TRANSFORM + c;
@@ -95,8 +97,8 @@ void engine_on_update(Engine* engine, float dt)
             scene->models.mis_dirty_bounding_sphere_flags[i] = 1;
         }
     }
-
-    /*
+    */
+    
     const int speed = 1;
     for (int i = 0; i < scene->point_lights.count; ++i)
     {
@@ -105,7 +107,7 @@ void engine_on_update(Engine* engine, float dt)
         scene->point_lights.world_space_positions[j + 1] += directions[j + 1] * dt * speed;
         scene->point_lights.world_space_positions[j + 2] += directions[j + 2] * dt * speed;
     }
-    */
+    
 
 
     
@@ -165,7 +167,6 @@ void engine_on_keyup(Engine* engine, WPARAM wParam)
     {
     case VK_F1:
     {
-        return;
         Scene* scene = &engine->scenes[engine->current_scene_id];
 
         V3 colour =

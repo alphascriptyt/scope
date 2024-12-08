@@ -1108,6 +1108,22 @@ void cull_backfaces(Models* models)
 
 void light_front_faces(Models* models, const PointLights* point_lights)
 {
+	/*
+	TODO: Why doens't the per vertex seem to work?
+
+	looks more like per face?
+
+	for some reason it worked perfectly with mb loading issue when uvs werent defined
+	and we were loading a different obj utah teapot (diff to the one we have now) 
+	then having the light inside the mesh. No idea what happened but was smooth
+
+
+	it will be something stupid but 5am now bed time :D
+	
+	
+	*/
+
+
 	// TODO: For optimising this, some sort of broad phase could be implemented.
 	//		 Potentially when we 
 
