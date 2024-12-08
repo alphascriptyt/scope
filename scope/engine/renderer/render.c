@@ -22,8 +22,7 @@
 
 void debug_draw_point_lights(Canvas* canvas, const RenderSettings* settings, PointLights* point_lights)
 {
-	// Debug draw point light icons.
-	// TEMP: But this is quite nice and could be a decent feature.
+	// Debug draw point light icons as rects.
 	for (int i = 0; i < point_lights->count; ++i)
 	{
 		int idx_vsp = i * STRIDE_POSITION;
@@ -43,11 +42,7 @@ void debug_draw_point_lights(Canvas* canvas, const RenderSettings* settings, Poi
 		V4 projected;
 		project(canvas, settings->projection_matrix, p, projected);
 
-		float z = 1.f / projected[2];
-
-
 		int idx_attr = i * STRIDE_POINT_LIGHT_ATTRIBUTES;
-
 		int colour = float_rgb_to_int(point_lights->attributes[idx_attr], point_lights->attributes[idx_attr + 1], point_lights->attributes[idx_attr + 2]);
 
 		const int radius = 10; // Square radius nice.
@@ -1002,8 +997,8 @@ void cull_backfaces(Models* models)
 
 				// TEMP: HARDCODE COLOURS
 				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 0;
-				front_faces[front_face_out++] = 0;
+				front_faces[front_face_out++] = 1;
+				front_faces[front_face_out++] = 1;
 				front_faces[front_face_out++] = 1;
 
 				front_faces[front_face_out++] = v1[0];
@@ -1018,8 +1013,8 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_out++] = view_space_normals[index_parts_n1 + 2];
 
 				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 0;
-				front_faces[front_face_out++] = 0;
+				front_faces[front_face_out++] = 1;
+				front_faces[front_face_out++] = 1;
 				front_faces[front_face_out++] = 1;
 
 				front_faces[front_face_out++] = v2[0];
@@ -1034,8 +1029,8 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_out++] = view_space_normals[index_parts_n2 + 2];
 
 				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 0;
-				front_faces[front_face_out++] = 0;
+				front_faces[front_face_out++] = 1;
+				front_faces[front_face_out++] = 1;
 				front_faces[front_face_out++] = 1;
 
 				++front_face_count;
@@ -1054,88 +1049,119 @@ void cull_backfaces(Models* models)
 
 void light_front_faces(Models* models, const PointLights* point_lights)
 {
-	// TODO: Apply lighting to all the front faces.
+	// TODO: For optimising this, some sort of broad phase could be implemented.
+	//		 Potentially when we 
+
+	// Apply lighting to all the front faces.
 	// We do this before clipping so if we don't get inconsistent results. 
+	float* front_faces = models->front_faces;
+	const int* front_faces_counts = models->front_faces_counts;
 
+	int face_offset = 0;
 
-#if 0
-	for (int j = face_offset; j < face_offset + scene->models.front_faces_counts[i]; ++j)
+	const int mis_count = models->mis_count;
+
+	const int* passed_broad_phase_flags = models->mis_passed_broad_phase_flags;
+
+	for (int i = 0; i < mis_count; ++i)
 	{
-		int index_face = j * STRIDE_ENTIRE_FACE;
-
-		// For each vertex apply lighting directly to the colour.
-
-		// 12 attributes per vertex. TODO: STRIDE for this?
-		for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += 12)
+		// Mesh isn't visible, so move to the next.
+		if (!passed_broad_phase_flags[i])
 		{
-			const V3 pos = {
-				front_faces[k],
-				front_faces[k + 1],
-				front_faces[k + 2],
-			};
+			// Move to the next mi.
+			face_offset += front_faces_counts[i];
+			continue;
+		}
 
-			const V3 normal = {
-				front_faces[k + 5],
-				front_faces[k + 6],
-				front_faces[k + 7],
-			};
+		const int front_faces_count = front_faces_counts[i];
 
-			V3 col = { 1,0,1 };
+		for (int j = face_offset; j < face_offset + front_faces_count; ++j)
+		{
+			int index_face = j * STRIDE_ENTIRE_FACE;
 
-			// Only need RGB, only need A for combining with texture???
+			// For each vertex apply lighting directly to the colour.
 
-			// This is how much light it absorbs?
-			V3 colour = {
-				front_faces[k + 8],
-				front_faces[k + 9],
-				front_faces[k + 10],
-			};
-
-			// TODO: THIS IS ALL TEMPORARY FOR ONE LIGHT NO SPECIAL MATHS.
-
-			// TODO: I'm pretty sure the per pixel interpolation is broken or maybe that's just the lighting.
-
-			// For each light
-			for (int i_light = 0; i_light < scene->point_lights.count; ++i_light)
+			// 12 attributes per vertex. TODO: STRIDE for this?
+			for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += 12)
 			{
-				int i_light_pos = i_light * 3;
-				int i_light_attr = i_light * STRIDE_POINT_LIGHT_ATTRIBUTES;
-
-				const V3 light_pos =
-				{
-					scene->point_lights.view_space_positions[i_light_pos],
-					scene->point_lights.view_space_positions[i_light_pos + 1],
-					scene->point_lights.view_space_positions[i_light_pos + 2]
+				const V3 pos = {
+					front_faces[k],
+					front_faces[k + 1],
+					front_faces[k + 2],
 				};
 
-				const V3 light_colour =
-				{
-					scene->point_lights.attributes[i_light_attr],
-					scene->point_lights.attributes[i_light_attr + 1],
-					scene->point_lights.attributes[i_light_attr + 2]
+				const V3 normal = {
+					front_faces[k + 5],
+					front_faces[k + 6],
+					front_faces[k + 7],
 				};
 
-				float strength = scene->point_lights.attributes[3];
+				V3 col = { 1,0,1 };
 
-				// TODO: Could cache this? Then the user can also set
-				//		 the attenuation?
-				float a = 0.1f / strength;
-				float b = 0.01f / strength;
+				// Only need RGB, only need A for combining with texture???
 
-				float df = calculate_diffuse_factor(pos, normal, light_pos, a, b);
+				// This is how much light it absorbs?
+				V3 colour = {
+					front_faces[k + 8],
+					front_faces[k + 9],
+					front_faces[k + 10],
+				};
 
-				// TODO: ALL TEMPPPP
-				if (df > 1) df = 1;
-				if (df < 0) df = 0;
+				// TODO: THIS IS ALL TEMPORARY FOR ONE LIGHT NO SPECIAL MATHS.
 
-				front_faces[k + 8] = df;
-				front_faces[k + 9] = df;
-				front_faces[k + 10] = df;
+				// TODO: I'm pretty sure the per pixel interpolation is broken or maybe that's just the lighting.
+
+				V3 diffuse_part = { 0, 0, 0 };
+
+				// For each light
+				for (int i_light = 0; i_light < point_lights->count; ++i_light)
+				{
+					int i_light_pos = i_light * STRIDE_POSITION;
+					int i_light_attr = i_light * STRIDE_POINT_LIGHT_ATTRIBUTES;
+
+					const V3 light_pos =
+					{
+						point_lights->view_space_positions[i_light_pos],
+						point_lights->view_space_positions[i_light_pos + 1],
+						point_lights->view_space_positions[i_light_pos + 2]
+					};
+
+					V3 light_colour =
+					{
+						point_lights->attributes[i_light_attr],
+						point_lights->attributes[i_light_attr + 1],
+						point_lights->attributes[i_light_attr + 2]
+					};
+
+					float strength = point_lights->attributes[3];
+
+					// TODO: Could cache this? Then the user can also set
+					//		 the attenuation?
+					float a = 0.1f / strength;
+					float b = 0.01f / strength;
+
+					float df = calculate_diffuse_factor(pos, normal, light_pos, a, b);
+
+					// TODO: ALL TEMPPPP
+					if (df > 1) df = 1;
+					if (df < 0) df = 0;
+
+					v3_mul_f(light_colour, df);
+					v3_add_v3(diffuse_part, light_colour);
+				}
+
+				v3_mul_v3(colour, diffuse_part);
+
+				// TODO: Add Ambient too.
+
+				front_faces[k + 8] = colour[0];
+				front_faces[k + 9] = colour[1];
+				front_faces[k + 10] = colour[2];
 			}
 		}
+	
+		face_offset += front_faces_count;
 	}
-#endif
-
 }
 
 void clip_to_view_frustum(
@@ -1671,16 +1697,16 @@ void render(
 	//printf("broad_phase_frustum_culling took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
+	// Perform backface culling.
+	cull_backfaces(&scene->models);
+	//printf("cull_backfaces took: %d\n", timer_get_elapsed(&t));
+	timer_restart(&t);
+
 	// At this point we know what mis arepartially visible at least.
 	// Apply lighting here so that the if a vertex is clipped closer
 	// to the light, the lighing doesn't change.
 	light_front_faces(&scene->models, &scene->point_lights);
 	//printf("light_front_faces took: %d\n", timer_get_elapsed(&t));
-	timer_restart(&t);
-
-	// Perform backface culling.
-	cull_backfaces(&scene->models);
-	//printf("cull_backfaces took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
 	// Perform the narrow phase of frustum culling.
@@ -1689,7 +1715,7 @@ void render(
 	timer_restart(&t);
 
 	debug_draw_point_lights(rt, settings, &scene->point_lights);
-	printf("debug_draw_point_lights took: %d\n", timer_get_elapsed(&t));
+	//printf("debug_draw_point_lights took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 	
 	// Draw crosshair temporarily cause looks cool.

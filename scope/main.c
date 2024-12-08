@@ -17,10 +17,10 @@ void engine_on_init(Engine* engine)
     ++engine->scenes_count;
     
     // Load models into the scene
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
+    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
-    int n0 = 1000;
+    int n0 = 1;
     
     create_model_instances(&scene->models, 0, n0);
 
@@ -49,9 +49,13 @@ void engine_on_init(Engine* engine)
     }
 
 
-    V3 pl_pos = { 0, 5, -3 };
-    V3 pl_col = { 1, 1, 1 };
-    point_lights_create(&scene->point_lights, pl_pos, pl_col, 10.f);
+    V3 pl_pos0 = { -1, 5, -3 };
+    V3 pl_col0 = { 1, 0, 0 };
+    point_lights_create(&scene->point_lights, pl_pos0, pl_col0, 1.f);
+
+    V3 pl_pos1 = { 1, 5, -3 };
+    V3 pl_col1 = { 0, 0, 1 };
+    point_lights_create(&scene->point_lights, pl_pos1, pl_col1, 1.f);
 }
 
 void engine_on_update(Engine* engine, float dt)
@@ -81,6 +85,9 @@ void engine_on_update(Engine* engine, float dt)
             scene->models.mis_dirty_bounding_sphere_flags[i] = 1;
         }
     }
+
+    scene->point_lights.world_space_positions[2] -= dt;
+
     
     
     /*

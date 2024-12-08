@@ -11,10 +11,12 @@ void point_lights_init(PointLights* point_lights)
 
 void point_lights_create(PointLights* point_lights, const V3 position, const V3 colour, float strength)
 {
+	const int new_count = point_lights->count + 1;
+
 	// Resize the view positions buffers.
 	// TODO: I Would like to use STRIDE_POSITION without importing models.h.
-	resize_float_buffer(&point_lights->world_space_positions, point_lights->count * 3);
-	resize_float_buffer(&point_lights->view_space_positions, point_lights->count * 3);
+	resize_float_buffer(&point_lights->world_space_positions, new_count * 3);
+	resize_float_buffer(&point_lights->view_space_positions, new_count * 3);
 
 	// Copy the lights position.
 	int i = point_lights->count * 3;
@@ -32,5 +34,5 @@ void point_lights_create(PointLights* point_lights, const V3 position, const V3 
 	point_lights->attributes[++old_size] = colour[2];
 	point_lights->attributes[++old_size] = strength;
 
-	++point_lights->count;
+	point_lights->count = new_count;
 }
