@@ -126,7 +126,6 @@ void engine_run(Engine* engine)
         M4 view_matrix;
         calculate_view_matrix(&engine->renderer.camera, view_matrix);
 
-        
         // Clear the canvas.
         timer_restart(&t);
         render_target_clear(&engine->renderer.target, 0x22222222);
@@ -146,17 +145,16 @@ void engine_run(Engine* engine)
         ui_draw(&engine->ui, engine->upscaling_factor);
         snprintf(ui_draw_str, sizeof(render_str), "DrawUI: %d", draw_ui_ms);
         draw_ui_ms = timer_get_elapsed(&t); // Must be done a frame late.
+
+        // Fire the engine update event.
+        timer_restart(&t);
+        engine_on_update(engine, dt);
+        snprintf(update_str, sizeof(update_str), "UpdateEvent: %d", timer_get_elapsed(&t));
         
         // Update the display.
         timer_restart(&t);
         window_display(&engine->window);
         snprintf(display_str, sizeof(display_str), "Display: %d", timer_get_elapsed(&t));
-
-        // Fire the egine update event.
-        timer_restart(&t);
-        engine_on_update(engine, dt);
-        snprintf(update_str, sizeof(update_str), "UpdateEvent: %d", timer_get_elapsed(&t));
-
 
         // Calculate performance.
         QueryPerformanceCounter(&endTime);

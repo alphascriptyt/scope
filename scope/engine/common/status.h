@@ -1,6 +1,9 @@
 #ifndef STATUS_H
 #define STATUS_H
 
+// TODO: In the future it would be nice to have some prefix for engine/game code to differentiate it 
+//       from Windows code for example there are lots of STATUS_ from <Windows.h>.
+
 typedef enum
 {
 	STATUS_OK,

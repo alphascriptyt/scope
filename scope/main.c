@@ -4,13 +4,24 @@
 
 #include "globals.h"
 
+#include "engine/renderer/texture.h"
+
+
 // TODO: Look into switching to an actual c compiler, not sure how to check that its compiled with c or if it even matters.
 
 float* directions;
 
+Texture t;
+
 
 void engine_on_init(Engine* engine)
 {
+
+    if (STATUS_OK != texture_load(&t, "C:/Users/olive/source/repos/scope/scope/res/textures/rickreal.bmp"))
+    {
+        log_error("FAiled to load\n");
+    }
+
     g_draw_normals = 0;
 
     // Create a scene
@@ -26,7 +37,7 @@ void engine_on_init(Engine* engine)
     ++engine->scenes_count;
     
     // Load models into the scene
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/smoothteapot.obj");
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/smooth_cylinder.obj");  
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/teapot.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
@@ -71,6 +82,16 @@ void engine_on_init(Engine* engine)
 
 void engine_on_update(Engine* engine, float dt)
 {
+    // TODO: Just copy the bitmap to test first.
+    for (int y = 0; y < t.height; ++y)
+    {
+        for (int x = 0; x < t.width; ++x)
+        {
+            engine->renderer.target.canvas.pixels[y * engine->renderer.target.canvas.width + x] = t.pixels[y * t.width + x];
+        }
+    }
+
+
     return;
     Scene* scene = &engine->scenes[engine->current_scene_id];
     
@@ -211,6 +232,7 @@ void engine_on_keyup(Engine* engine, WPARAM wParam)
     }
     }
 }
+
 
 int main()
 {

@@ -49,6 +49,7 @@ inline Status render_target_resize(RenderTarget* rt, int width, int height)
     }
 
     // Allocate memory for the new array.
+    // TODO: Use my memory allocating helpers for this.
     float* new_db = realloc(rt->depth_buffer, (size_t)width * height * sizeof(float));
 
     // Check the allocation worked.

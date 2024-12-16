@@ -46,7 +46,7 @@ ModelBase
 - Used to create instances.
 
 ModelInstance
-- Instantiated from a ModelBase.
+- Created from a ModelBase.
 - Defines a transform: Position, Direction, Scale.
 - Defines visual stuff like colours and textures (although uvs from base).
 

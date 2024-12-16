@@ -33,6 +33,7 @@ Status canvas_resize(Canvas* canvas, int width, int height)
 	}
 	
 	// Allocate memory for the new array.
+	// TODO: Use my memory allocating helpers for this.
 	unsigned int* new_pixels = realloc(canvas->pixels, (size_t)width * height * sizeof(unsigned int));
 
 	// Check the allocation worked.
