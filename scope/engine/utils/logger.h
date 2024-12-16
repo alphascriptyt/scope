@@ -17,12 +17,19 @@ inline void log_info(const char* format, ...)
     va_end(args);
 }
 
-/*
-inline void log_warn(const char* msg)
+
+inline void log_warn(const char* format, ...)
 {
-	printf("[WARN] : %s\n", msg);
+    va_list args;
+    va_start(args, format);
+
+    fprintf(stderr, "[WARN] : ");
+    vfprintf(stderr, format, args);
+    fprintf(stderr, "\n");
+
+    va_end(args);
 }
-*/
+
 
 inline void log_error(const char* format, ...)
 {

@@ -50,6 +50,9 @@ Status engine_init(Engine* engine, int window_width, int window_height)
         return status;
     }
 
+    // Initialise the resources.
+    resources_init(&engine->resources);
+
     // Initialise a random seed
     srand((unsigned int)time(NULL));
     

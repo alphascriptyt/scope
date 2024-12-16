@@ -13,6 +13,8 @@ typedef struct
 
 Status canvas_init(Canvas* canvas, int width, int height);
 
+Status canvas_init_from_bitmap(Canvas* canvas, const char* file);
+
 Status canvas_resize(Canvas* canvas, int width, int height);
 
 void canvas_fill(Canvas* canvas, const unsigned int colour);

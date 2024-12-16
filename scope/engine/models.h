@@ -56,6 +56,19 @@ physics system, to avoid recomputation of world space positions etc.
 
 */
 
+/*
+
+TODO: 
+
+One day, I reckon I will need models to be made up of meshes. Where each mesh can be 
+moved seperately. Maybe this is something that would be abstracted from the render functions
+I'm not sure. I will need to think about it properly. But let's say we had a basic character
+and wanted to do a running animation, it would be nice to be able to animate it's bodyparts,
+for example, we could store transforms for parts of the animation and lerp each mesh in the 
+model for those. Or reloading etc. This will be quite important.
+
+*/
+
 typedef struct
 {	
 	// TODO: Comments and naming. Currently mb = model base, mi = model instance

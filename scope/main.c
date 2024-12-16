@@ -4,20 +4,17 @@
 
 #include "globals.h"
 
-#include "engine/renderer/texture.h"
+#include "canvas.h"
 
 
 // TODO: Look into switching to an actual c compiler, not sure how to check that its compiled with c or if it even matters.
 
 float* directions;
 
-Texture t;
-
 
 void engine_on_init(Engine* engine)
 {
-
-    if (STATUS_OK != texture_load(&t, "C:/Users/olive/source/repos/scope/scope/res/textures/rickreal.bmp"))
+    if (STATUS_OK != resources_load_texture(&engine->resources, "C:/Users/olive/source/repos/scope/scope/res/textures/rickreal.bmp"))
     {
         log_error("FAiled to load\n");
     }
@@ -42,7 +39,7 @@ void engine_on_init(Engine* engine)
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/teapot.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
-    int n0 = 1;
+    int n0 = 1000;
     
     create_model_instances(&scene->models, 0, n0);
 
@@ -82,12 +79,13 @@ void engine_on_init(Engine* engine)
 
 void engine_on_update(Engine* engine, float dt)
 {
+    Canvas* t = &engine->resources.textures[0];
     // TODO: Just copy the bitmap to test first.
-    for (int y = 0; y < t.height; ++y)
+    for (int y = 0; y < t->height; ++y)
     {
-        for (int x = 0; x < t.width; ++x)
+        for (int x = 0; x < t->width; ++x)
         {
-            engine->renderer.target.canvas.pixels[y * engine->renderer.target.canvas.width + x] = t.pixels[y * t.width + x];
+            engine->renderer.target.canvas.pixels[y * engine->renderer.target.canvas.width + x] = t->pixels[y * t->width + x];
         }
     }
 

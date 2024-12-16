@@ -7,8 +7,10 @@
 
 #include "window.h"
 #include "ui/ui.h"
-#include "renderer/renderer.h"
+#include "resources.h"
 
+// TODO: These need to be refactored.
+#include "renderer/renderer.h"
 #include "renderer/render.h"
 
 #include "common/status.h"
@@ -19,6 +21,7 @@ typedef struct
 	Window window;
 	UI ui;
 	Renderer renderer;
+	Resources resources; // Works fine for now, potentially something to refactor.
 
 	// Scene data.
 	Scene scenes[MAX_SCENES];
