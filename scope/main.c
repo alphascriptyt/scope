@@ -79,6 +79,7 @@ void engine_on_init(Engine* engine)
 
 void engine_on_update(Engine* engine, float dt)
 {
+    /*
     Canvas* t = &engine->resources.textures[0];
     // TODO: Just copy the bitmap to test first.
     for (int y = 0; y < t->height; ++y)
@@ -87,7 +88,7 @@ void engine_on_update(Engine* engine, float dt)
         {
             engine->renderer.target.canvas.pixels[y * engine->renderer.target.canvas.width + x] = t->pixels[y * t->width + x];
         }
-    }
+    }*/
 
 
     return;

@@ -955,6 +955,8 @@ void cull_backfaces(Models* models)
 	float* front_faces = models->front_faces;
 	int* front_faces_counts = models->front_faces_counts;
 
+	const float* vertex_colours = models->mis_vertex_colours;
+
 	int face_offset = 0;
 	int front_face_out = 0;
 	int positions_offset = 0;
@@ -1035,6 +1037,11 @@ void cull_backfaces(Models* models)
 				int index_parts_uv1 = index_uv1 * STRIDE_UV;
 				int index_parts_uv2 = index_uv2 * STRIDE_UV;
 
+				// Vertex colours are defined aligned with the faces.
+				const int index_parts_c0 = face_index * STRIDE_COLOUR;
+				const int index_parts_c1 = (face_index + 1) * STRIDE_COLOUR;
+				const int index_parts_c2 = (face_index + 2) * STRIDE_COLOUR;
+
 				// Copy all the face vertex data.
 				// We copy the attributes over here as well because when clipping we need the data
 				// all together for lerping.
@@ -1049,16 +1056,10 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_out++] = view_space_normals[index_parts_n0 + 1];
 				front_faces[front_face_out++] = view_space_normals[index_parts_n0 + 2];
 
-				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
-				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
-				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
-				//front_faces[front_face_out++] = face_attributes[index_face_attributes++];
-
-				// TODO: FIX. TEMP: HARDCODE COLOURS
-				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 1;
+				front_faces[front_face_out++] = vertex_colours[index_parts_c0];
+				front_faces[front_face_out++] = vertex_colours[index_parts_c0 + 1];
+				front_faces[front_face_out++] = vertex_colours[index_parts_c0 + 2];
+				front_faces[front_face_out++] = vertex_colours[index_parts_c0 + 3];
 
 				front_faces[front_face_out++] = v1[0];
 				front_faces[front_face_out++] = v1[1];
@@ -1071,10 +1072,10 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_out++] = view_space_normals[index_parts_n1 + 1];
 				front_faces[front_face_out++] = view_space_normals[index_parts_n1 + 2];
 
-				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 1;
+				front_faces[front_face_out++] = vertex_colours[index_parts_c1];
+				front_faces[front_face_out++] = vertex_colours[index_parts_c1 + 1];
+				front_faces[front_face_out++] = vertex_colours[index_parts_c1 + 2];
+				front_faces[front_face_out++] = vertex_colours[index_parts_c1 + 3];
 
 				front_faces[front_face_out++] = v2[0];
 				front_faces[front_face_out++] = v2[1];
@@ -1087,10 +1088,10 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_out++] = view_space_normals[index_parts_n2 + 1];
 				front_faces[front_face_out++] = view_space_normals[index_parts_n2 + 2];
 
-				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 1;
-				front_faces[front_face_out++] = 1;
+				front_faces[front_face_out++] = vertex_colours[index_parts_c2];
+				front_faces[front_face_out++] = vertex_colours[index_parts_c2 + 1];
+				front_faces[front_face_out++] = vertex_colours[index_parts_c2 + 2];
+				front_faces[front_face_out++] = vertex_colours[index_parts_c2 + 3];
 
 				++front_face_count;
 			}

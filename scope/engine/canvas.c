@@ -31,12 +31,10 @@ Status canvas_init_from_bitmap(Canvas* canvas, const char* file)
     // TODO: Do we need to use Windows.h here? If we're only loading
     //       bitmaps, the image loading code could be quite simple.
 
-    // TODO: This could be called bitmap. I'm assuming we don't need an alpha value.
-
     // Initialise the texture.
     memset(canvas, 0, sizeof(Canvas));
-
-    // Load Resources, temporary. TODO: a ResourceManager?
+        
+    // Try load the bitmap.
     HBITMAP h_bitmap = (HBITMAP)LoadImageA(
         NULL,
         file,
@@ -64,7 +62,7 @@ Status canvas_init_from_bitmap(Canvas* canvas, const char* file)
 
     HGDIOBJ prev = SelectObject(mem_hdc, h_bitmap);
 
-    // Prepare bitmap info.
+    // Set bitmap info.
     BITMAPINFO bmi;
     memset(&bmi, 0, sizeof(BITMAPINFO));
     bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -85,7 +83,6 @@ Status canvas_init_from_bitmap(Canvas* canvas, const char* file)
     GetDIBits(mem_hdc, h_bitmap, 0, bitmap.bmHeight, canvas->pixels, &bmi, DIB_RGB_COLORS);
 
     // Cleanup.
-
     if (!DeleteObject(h_bitmap))
     {
         log_warn("Potential memory leak. Failed to DeleteObject when canvas_load_from_bitmap.");

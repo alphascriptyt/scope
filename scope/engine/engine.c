@@ -97,6 +97,8 @@ void engine_run(Engine* engine)
 
     int y = 10;
     int h = 30;
+
+    // TODO: This can be an add text function. Was thinking about 'draw_text()' but then something like this would be annoying.
     engine->ui.text[engine->ui.text_count++] = text_create(fps_str, 10, engine->ui.text_count * h + 10, COLOUR_LIME, 3);
     engine->ui.text[engine->ui.text_count++] = text_create(dir_str, 10, engine->ui.text_count * h + 10, COLOUR_RED, 3);
     engine->ui.text[engine->ui.text_count++] = text_create(pos_str, 10, engine->ui.text_count * h + 10, COLOUR_RED, 3);
@@ -143,17 +145,17 @@ void engine_run(Engine* engine)
         }
         snprintf(render_str, sizeof(render_str), "Render: %d", timer_get_elapsed(&t));
 
+        // Fire the engine update event.
+        timer_restart(&t);
+        engine_on_update(engine, dt);
+        snprintf(update_str, sizeof(update_str), "UpdateEvent: %d", timer_get_elapsed(&t));
+
         // Draw ui elements.
         timer_restart(&t);
         ui_draw(&engine->ui, engine->upscaling_factor);
         snprintf(ui_draw_str, sizeof(render_str), "DrawUI: %d", draw_ui_ms);
         draw_ui_ms = timer_get_elapsed(&t); // Must be done a frame late.
 
-        // Fire the engine update event.
-        timer_restart(&t);
-        engine_on_update(engine, dt);
-        snprintf(update_str, sizeof(update_str), "UpdateEvent: %d", timer_get_elapsed(&t));
-        
         // Update the display.
         timer_restart(&t);
         window_display(&engine->window);
@@ -178,7 +180,6 @@ void engine_run(Engine* engine)
         snprintf(dir_str, sizeof(dir_str), "DIR: %.2f %.2f %.2f", engine->renderer.camera.direction[0], engine->renderer.camera.direction[1], engine->renderer.camera.direction[2]);
         snprintf(pos_str, sizeof(pos_str), "POS: %.2f %.2f %.2f", engine->renderer.camera.position[0], engine->renderer.camera.position[1], engine->renderer.camera.position[2]);
     }
-
 }
 
 void engine_destroy(Engine* engine)

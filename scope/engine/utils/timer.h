@@ -3,6 +3,8 @@
 
 #include <time.h>
 
+// Extremely barebones timer functionality.
+// TODO: Would be nice to be able to 
 typedef struct 
 {
 	clock_t start;
