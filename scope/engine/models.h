@@ -15,7 +15,7 @@
 #define STRIDE_NORMAL	3
 #define STRIDE_UV		2
 #define STRIDE_SPHERE	4			// Center (x,y,z), Radius	
-#define STRIDE_ENTIRE_FACE 36		// x, y, z, u, v, x, y, z, r, g, b, a - per vertex TODO: Could think about this more.
+#define STRIDE_ENTIRE_FACE 36		// x, y, z, u, v, nx, ny, nz, r, g, b, a - per vertex TODO: Could think about this more.
 #define STRIDE_MI_TRANSFORM 9		// Position, Eulers, Scale
 
 // TODO: Need to think if i will differentiate between textures and no textures for this. With textures we would need the extra u,v.

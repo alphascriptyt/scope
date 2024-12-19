@@ -8,6 +8,8 @@
 //		 just updating the array. I actually don't mind using these as an array though.
 //		 But I assume that returning a V4 is never going to have a performance issue.
 //		 Could simplify some parts of code so maybe worth it.
+
+// TODO: Time returning the V4, if it's not a performance difference, refactor all.
 typedef float V4[4];
 
 inline void v4_mul_v4(V4 v0, const V4 v1)

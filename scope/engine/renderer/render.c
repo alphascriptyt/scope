@@ -17,6 +17,8 @@
 
 #include "globals.h"
 
+#include "resources.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -64,7 +66,7 @@ void debug_draw_bounding_spheres(Canvas* canvas, const RenderSettings* settings,
 
 	// TODO: For a function like this, I should be able to do debug_draw_bounding_sphere and pass in the mi index.
 
-	const V3 colour = { 1,0,0 };
+	int colour = int_rgb_to_int(1, 0, 0);
 
 	for (int i = 0; i < models->mis_count; ++i)
 	{
@@ -223,7 +225,9 @@ void debug_draw_world_space_line(Canvas* canvas, const RenderSettings* settings,
 	project(canvas, settings->projection_matrix, vs_v0, ss_v0);
 	project(canvas, settings->projection_matrix, vs_v1, ss_v1);
 
-	draw_line(canvas, (int)ss_v0[0], (int)ss_v0[1], (int)ss_v1[0], (int)ss_v1[1], colour);
+	const int colour_int = float_rgb_to_int(colour[0], colour[1], colour[2]);
+
+	draw_line(canvas, (int)ss_v0[0], (int)ss_v0[1], (int)ss_v1[0], (int)ss_v1[1], colour_int);
 }
 
 void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const Models* models, int mi_index)
@@ -275,7 +279,7 @@ void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const
 			project(canvas, settings->projection_matrix, start_v4, ss_start);
 			project(canvas, settings->projection_matrix, end_v4, ss_end);
 
-			draw_line(canvas, ss_start[0], ss_start[1], ss_end[0], ss_end[1], COLOUR_LIME);
+			draw_line(canvas, (int)ss_start[0], (int)ss_start[1], (int)ss_end[0], (int)ss_end[1], COLOUR_LIME);
 		}
 	}
 }
@@ -574,6 +578,418 @@ void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
 	draw_flat_bottom_triangle(rt, pv0, pv1, pv3, pc0, pc1, pc3);
 }
 
+void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V4 c0, const V4 c1, const V2 uv0, const V2 uv1, const Canvas* texture)
+{
+	// TODO: Refactor function args.
+	// TODO: If not combining with a texture, we don't need the colour alpha.
+
+	// Precalculate deltas.
+	const unsigned int dx = x1 - x0;
+	float inv_dx = 1.f / dx;
+
+	float w_step = (w1 - w0) * inv_dx;
+
+	// Offset x by the given y.
+	int row_offset = rt->canvas.width * y;
+
+	int start_x = x0 + row_offset;
+	int end_x = x1 + row_offset;
+
+	V4 c_step;
+	v4_sub_v4_out(c1, c0, c_step);
+	v4_mul_f(c_step, inv_dx);
+
+	V4 c = {
+		c0[0],
+		c0[1],
+		c0[2],
+		c0[3],
+	};
+
+	V2 uv = {
+		uv0[0],
+		uv0[1]
+	};
+
+	V2 uv_step = 
+	{
+		(uv1[0] - uv0[0]) * inv_dx,
+		(uv1[1] - uv0[1]) * inv_dx
+	};
+
+
+	// Render the scanline
+	unsigned int* pixels = rt->canvas.pixels + start_x;
+	float* depth_buffer = rt->depth_buffer + start_x;
+
+	float inv_w = w0;
+	float z = z0;
+	float z_step = (z1 - z0) * inv_dx;
+
+	for (unsigned int i = 0; i < dx; ++i)
+	{
+		// Depth test, only draw closer values.
+		if (*depth_buffer > z)
+		{
+			// Recover w
+			const float w = 1.0f / inv_w;
+
+			
+			/*
+			// Render as depth buffer, testing depth values
+			V3 white = { 1,1,1 };
+			float r = (white[0] * (1.f - z));
+			float g = (white[1] * (1.f - z));
+			float b = (white[2] * (1.f - z));
+			*/
+
+
+			// TODO: For now just render the texture.
+			//const float r = (c[0] * w);
+			//const float g = (c[1] * w);
+			//const float b = (c[2] * w);
+
+			float u = (uv[0] * w);
+			float v = (uv[1] * w);
+
+			// TODO: Why is this needed?
+			if (u > 1) u = 1;
+			if (v > 1) v = 1;
+			if (u < 0) u = 0;
+			if (v < 0) v = 0;
+
+			int rows = (1 - v) * texture->height;
+
+			int cols = u * texture->width;
+
+			// TODO: Could store texels as float[3] to solve this.
+			int tex = texture->pixels[rows * texture->width + cols];
+
+			float r, g, b;
+			unpack_int_rgb_to_floats(tex, &r, &g, &b);
+
+			float dr = c[0] * w;
+			float dg = c[1] * w;
+			float db = c[2] * w;
+
+
+
+			r *= dr;
+			g *= dg;
+			b *= db;
+
+			int out_colour = float_rgb_to_int(r, g, b);
+
+			*pixels = out_colour;
+			//*pixels = float_rgb_to_int(r, g, b);
+			*depth_buffer = z;
+		}
+
+		// Move to the next pixel
+		++pixels;
+		++depth_buffer;
+
+		// Step per pixel values.
+		z += z_step;
+		inv_w += w_step;
+
+
+		uv[0] += uv_step[0];
+		uv[1] += uv_step[1];
+
+		v4_add_v4(c, c_step);
+	}
+}
+
+void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture)
+{
+	// Sort the flat vertices left to right.
+	float* pv1 = v1;
+	float* pv2 = v2;
+	float* pc1 = c1;
+	float* pc2 = c2;
+	float* puv1 = uv1;
+	float* puv2 = uv2;
+
+	// Sort the flat top left to right.
+	if (v1[0] > v2[0])
+	{
+		swap(&pv1, &pv2);
+		swap(&pc1, &pc2);
+		swap(&puv1, &puv2);
+	}
+
+	float invDy = 1 / (pv2[1] - v0[1]);
+
+	float dxdy0 = (pv1[0] - v0[0]) * invDy;
+	float dxdy1 = (pv2[0] - v0[0]) * invDy;
+
+	float dzdy0 = (pv1[2] - v0[2]) * invDy;
+	float dzdy1 = (pv2[2] - v0[2]) * invDy;
+
+	float dwdy0 = (pv1[3] - v0[3]) * invDy;
+	float dwdy1 = (pv2[3] - v0[3]) * invDy;
+
+	V4 dcdy0;
+	v4_sub_v4_out(pc1, c0, dcdy0);
+	v4_mul_f(dcdy0, invDy);
+
+	V4 dcdy1;
+	v4_sub_v4_out(pc2, c0, dcdy1);
+	v4_mul_f(dcdy1, invDy);
+
+	V2 duvdy0 =
+	{
+		(puv1[0] - uv0[0]) * invDy,
+		(puv1[1] - uv0[1]) * invDy
+	};
+
+	V2 duvdy1 =
+	{
+		(puv2[0] - uv0[0]) * invDy,
+		(puv2[1] - uv0[1]) * invDy
+	};
+
+
+	// TODO: Should be able to just lerp this stuff by 'incrementing' as we won't notice a difference,
+	//		 right?
+	V4 start_c = {
+		c0[0],
+		c0[1],
+		c0[2],
+		c0[3],
+	};
+
+	V4 end_c = {
+		c0[0],
+		c0[1],
+		c0[2],
+		c0[3],
+	};
+
+	int yStart = (int)(ceil(v0[1] - 0.5f));
+	int yEnd = (int)(ceil(pv2[1] - 0.5f));
+
+	for (int y = yStart; y < yEnd; ++y) {
+		// Must lerp for the vertex attributes otherwise the accuracy is poor.
+		// TODO: Would be nice to not have to actually lerp but step instead.
+		float a = (y + 0.5f - v0[1]);
+
+		// Calculate the start and ends of the scanline
+		float x0 = v0[0] + dxdy0 * a;
+		float x1 = v0[0] + dxdy1 * a;
+
+		float z0 = v0[2] + dzdy0 * a;
+		float z1 = v0[2] + dzdy1 * a;
+
+		float wStart = v0[3] + dwdy0 * a;
+		float wEnd = v0[3] + dwdy1 * a;
+
+		V4 tempc0;
+		v4_mul_f_out(dcdy0, a, tempc0);
+		v4_add_v4(tempc0, start_c);
+
+		V4 tempc1;
+		v4_mul_f_out(dcdy1, a, tempc1);
+		v4_add_v4(tempc1, start_c);
+
+		int xStart = (int)(ceilf(x0 - 0.5f));
+		int xEnd = (int)(ceilf(x1 - 0.5f));
+
+		V2 temp_uv0 = {
+			uv0[0] + duvdy0[0] * a,
+			uv0[1] + duvdy0[1] * a
+		};
+
+		V2 temp_uv1 = {
+			uv0[0] + duvdy1[0] * a,
+			uv0[1] + duvdy1[1] * a
+		};
+
+		draw_textured_scanline(rt, xStart, xEnd, y, z0, z1, wStart, wEnd, tempc0, tempc1, temp_uv0, temp_uv1, texture);
+	}
+}
+
+void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture)
+{
+	// Sort the flat vertices left to right.
+	float* pv0 = v0;
+	float* pv1 = v1;
+	float* pc0 = c0;
+	float* pc1 = c1;
+	float* puv0 = uv0;
+	float* puv1 = uv1;
+
+	if (v0[0] > v1[0])
+	{
+		swap(&pv0, &pv1);
+		swap(&pc0, &pc1);
+		swap(&puv0, &puv1);
+	}
+
+	float invDy = 1 / (v2[1] - pv0[1]);
+
+	float dxdy0 = (v2[0] - pv0[0]) * invDy;
+	float dxdy1 = (v2[0] - pv1[0]) * invDy;
+
+	float dzdy0 = (v2[2] - pv0[2]) * invDy;
+	float dzdy1 = (v2[2] - pv1[2]) * invDy;
+
+	float dwdy0 = (v2[3] - pv0[3]) * invDy;
+	float dwdy1 = (v2[3] - pv1[3]) * invDy;
+
+	V4 dcdy0;
+	v4_sub_v4_out(c2, pc0, dcdy0);
+	v4_mul_f(dcdy0, invDy);
+
+	V4 dcdy1;
+	v4_sub_v4_out(c2, pc1, dcdy1);
+	v4_mul_f(dcdy1, invDy);
+
+	V2 duvdy0 =
+	{
+		(uv2[0] - puv0[0]) * invDy,
+		(uv2[1] - puv0[1]) * invDy
+	};
+
+	V2 duvdy1 =
+	{
+		(uv2[0] - puv1[0]) * invDy,
+		(uv2[1] - puv1[1]) * invDy
+	};
+
+	V4 start_c = {
+		pc0[0],
+		pc0[1],
+		pc0[2],
+		pc0[3],
+	};
+
+	V4 end_c = {
+		pc1[0],
+		pc1[1],
+		pc1[2],
+		pc1[3],
+	};
+
+	int yStart = (int)(ceil(pv0[1] - 0.5f));
+	int yEnd = (int)(ceil(v2[1] - 0.5f));
+
+	for (int y = yStart; y < yEnd; ++y) {
+		// Must lerp for the vertex attributes to get them accurately.
+		// TODO: Would be nice to find a way to step not lerp.
+		float a = (y + 0.5f - pv0[1]);
+
+		float x0 = pv0[0] + dxdy0 * a;
+		float x1 = pv1[0] + dxdy1 * a;
+
+		float z0 = pv0[2] + dzdy0 * a;
+		float z1 = pv1[2] + dzdy1 * a;
+
+		float wStart = pv0[3] + dwdy0 * a;
+		float wEnd = pv1[3] + dwdy1 * a;
+
+		V4 tempc0;
+		v4_mul_f_out(dcdy0, a, tempc0);
+		v4_add_v4(tempc0, start_c);
+
+		V4 tempc1;
+		v4_mul_f_out(dcdy1, a, tempc1);
+		v4_add_v4(tempc1, end_c);
+
+		V2 temp_uv0 = {
+			puv0[0] + duvdy0[0] * a,
+			puv0[1] + duvdy0[1] * a
+		};
+
+		V2 temp_uv1 = {
+			puv1[0] + duvdy1[0] * a,
+			puv1[1] + duvdy1[1] * a
+		};
+
+		int xStart = (int)(ceil(x0 - 0.5f));
+		int xEnd = (int)(ceil(x1 - 0.5f));
+		draw_textured_scanline(rt, xStart, xEnd, y, z0, z1, wStart, wEnd, tempc0, tempc1, temp_uv0, temp_uv1, texture);
+	}
+}
+
+void draw_textured_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture)
+{
+	// Sort vertices in ascending order.
+	float* pv0 = v0;
+	float* pv1 = v1;
+	float* pv2 = v2;
+	float* pc0 = c0;
+	float* pc1 = c1;
+	float* pc2 = c2;
+	float* puv0 = uv0;
+	float* puv1 = uv1;
+	float* puv2 = uv2;
+
+	if (pv0[1] > pv1[1])
+	{
+		swap(&pv0, &pv1);
+		swap(&pc0, &pc1);
+		swap(&puv0, &puv1);
+	}
+	if (pv0[1] > pv2[1])
+	{
+		swap(&pv0, &pv2);
+		swap(&pc0, &pc2);
+		swap(&puv0, &puv2);
+	}
+	if (pv1[1] > pv2[1])
+	{
+		swap(&pv1, &pv2);
+		swap(&pc1, &pc2);
+		swap(&puv1, &puv2);
+	}
+
+	// Handle if the triangle is already flat.
+	if (pv0[1] == pv1[1])
+	{
+		draw_textured_flat_top_triangle(rt, pv0, pv1, pv2, pc0, pc1, pc2, puv0, puv1, puv2, texture);
+		return;
+	}
+
+	if (pv1[1] == pv2[1])
+	{
+		draw_textured_flat_bottom_triangle(rt, pv0, pv1, pv2, pc0, pc1, pc2, puv0, puv1, puv2, texture);
+		return;
+	}
+
+	// The triangle isn't flat, so split it into two flat triangles.
+
+	// Linear interpolate for v3.
+	float t = (pv1[1] - pv0[1]) / (pv2[1] - pv0[1]);
+
+	V4 v3 = {
+		pv0[0] + (pv2[0] - pv0[0]) * t,
+		pv1[1],
+		pv0[2] + (pv2[2] - pv0[2]) * t,
+		pv0[3] + (pv2[3] - pv0[3]) * t
+	};
+
+	// Lerp for the colour.
+	V4 c3;
+	v4_sub_v4_out(pc2, pc0, c3);
+	v4_mul_f(c3, t);
+	v4_add_v4(c3, pc0);
+
+	// Lerp for the uv
+	V2 uv3 =
+	{
+		puv0[0] + (puv2[0] - puv0[0]) * t,
+		puv0[1] + (puv2[1] - puv0[1]) * t,
+	};
+
+
+	// TODO: UVs
+	// V2 tex4 = tex1 + (tex3 - tex1) * t;
+	draw_textured_flat_top_triangle(rt, pv1, v3, pv2, pc1, c3, pc2, puv1, uv3, puv2, texture);
+	draw_textured_flat_bottom_triangle(rt, pv0, pv1, v3, pc0, pc1, c3, puv0, puv1, uv3, texture);
+}
+
 float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, float a, float b)
 {
 	// TODO: Comments, check maths etc.
@@ -633,7 +1049,7 @@ void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o)
 
 	// Save w' for perspective correct interpolation. This allows us to lerp
 	// between vertex components. 
-	o[3] = v_projected[3];
+	o[3] = inv_w;
 }
 
 void model_to_view_space(Models* models, const M4 view_matrix)
@@ -1235,12 +1651,13 @@ void light_front_faces(Models* models, const PointLights* point_lights)
 	}
 }
 
-void clip_to_view_frustum(
+void clip_to_screen(
 	RenderTarget* rt, 
 	const M4 projection_matrix, 
 	const ViewFrustum* view_frustum, 
 	const M4 view_matrix, 
-	Models* models)
+	Models* models,
+	const Resources* resources)
 {
 	// TODO: Rename this.
 
@@ -1287,7 +1704,7 @@ void clip_to_view_frustum(
 			memcpy(clipped_faces, front_faces + index_face, (size_t)front_faces_count * STRIDE_ENTIRE_FACE * sizeof(float));
 
 			// Draw the clipped face
-			project_and_draw_clipped_triangles(rt, projection_matrix, models, i, front_faces_count);
+			project_and_draw_clipped(rt, projection_matrix, models, i, front_faces_count, resources);
 
 		}
 		else
@@ -1670,8 +2087,10 @@ void clip_to_view_frustum(
 			}
 
 			// Draw the clipped face
-			project_and_draw_clipped_triangles(rt, projection_matrix, models, i, num_faces_to_process);
-
+			if (num_faces_to_process > 0)
+			{
+				project_and_draw_clipped(rt, projection_matrix, models, i, num_faces_to_process, resources);
+			}
 		}
 
 		// Move to the next model instance.
@@ -1679,71 +2098,158 @@ void clip_to_view_frustum(
 	}
 }
 
-void project_and_draw_clipped_triangles(RenderTarget* rt, const M4 projection_matrix, const Models* models, int mi_index, int clipped_face_count)
+void project_and_draw_clipped(
+	RenderTarget* rt, 
+	const M4 projection_matrix, 
+	const Models* models, 
+	int mi_index, 
+	int clipped_face_count,
+	const Resources* resources)
 {
+	// TODO: We don't need normals here. Don't write them in clipping stage.
+
+
 	// TODO: Comments. This function renders out the triangles in the clipped face buffer. 
-
-	// TODO: Drawing only needs the vertex colour and uv. I want the colour to act as a tint on the uv does that mean colour needs an alpha.
-	//		 I would only want the alpha if the vertex had a colour and uv?
-
 	const float* clipped_faces = models->clipped_faces;
-	for (int i = 0; i < clipped_face_count; ++i)
+
+	// TODO: Refactor, how do I get rid of this duplicated code, or at least make it nicer
+	//		 by finally adding read helpers for the buffers?
+
+	const int texture_index = models->mis_texture_ids[mi_index];
+	if (texture_index == -1)
 	{
-		int clipped_face_index = i * STRIDE_ENTIRE_FACE;
+		for (int i = 0; i < clipped_face_count; ++i)
+		{
+			int clipped_face_index = i * STRIDE_ENTIRE_FACE;
 
-		// Project the vertex position.
-		V4 v0 = {
-			clipped_faces[clipped_face_index],
-			clipped_faces[clipped_face_index + 1],
-			clipped_faces[clipped_face_index + 2],
-			1
-		};
+			// Project the vertex position.
+			V4 v0 = {
+				clipped_faces[clipped_face_index],
+				clipped_faces[clipped_face_index + 1],
+				clipped_faces[clipped_face_index + 2],
+				1
+			};
 
-		V4 v1 = {
-			clipped_faces[clipped_face_index + 12],
-			clipped_faces[clipped_face_index + 13],
-			clipped_faces[clipped_face_index + 14],
-			1
-		};
+			V4 v1 = {
+				clipped_faces[clipped_face_index + 12],
+				clipped_faces[clipped_face_index + 13],
+				clipped_faces[clipped_face_index + 14],
+				1
+			};
 
-		V4 v2 = {
-			clipped_faces[clipped_face_index + 24],
-			clipped_faces[clipped_face_index + 25],
-			clipped_faces[clipped_face_index + 26],
-			1
-		};
+			V4 v2 = {
+				clipped_faces[clipped_face_index + 24],
+				clipped_faces[clipped_face_index + 25],
+				clipped_faces[clipped_face_index + 26],
+				1
+			};
 
-		V4 projected_v0, projected_v1, projected_v2;
-		
-		project(&rt->canvas, projection_matrix, v0, projected_v0);
-		project(&rt->canvas, projection_matrix, v1, projected_v1);
-		project(&rt->canvas, projection_matrix, v2, projected_v2);
+			V4 projected_v0, projected_v1, projected_v2;
 
-		
-		V4 colour0 = {
-			clipped_faces[clipped_face_index + 8] * projected_v0[3],
-			clipped_faces[clipped_face_index + 9] * projected_v0[3],
-			clipped_faces[clipped_face_index + 10] * projected_v0[3],
-			clipped_faces[clipped_face_index + 11] * projected_v0[3],
-		};
+			project(&rt->canvas, projection_matrix, v0, projected_v0);
+			project(&rt->canvas, projection_matrix, v1, projected_v1);
+			project(&rt->canvas, projection_matrix, v2, projected_v2);
 
-		V4 colour1 = {
-			clipped_faces[clipped_face_index + 20] * projected_v1[3],
-			clipped_faces[clipped_face_index + 21] * projected_v1[3],
-			clipped_faces[clipped_face_index + 22] * projected_v1[3],
-			clipped_faces[clipped_face_index + 23] * projected_v1[3],
-		};
+			V4 colour0 = {
+				clipped_faces[clipped_face_index + 8] * projected_v0[3],
+				clipped_faces[clipped_face_index + 9] * projected_v0[3],
+				clipped_faces[clipped_face_index + 10] * projected_v0[3],
+				clipped_faces[clipped_face_index + 11] * projected_v0[3],
+			};
 
-		V4 colour2 = {
-			clipped_faces[clipped_face_index + 32] * projected_v2[3],
-			clipped_faces[clipped_face_index + 33] * projected_v2[3],
-			clipped_faces[clipped_face_index + 34] * projected_v2[3],
-			clipped_faces[clipped_face_index + 35] * projected_v2[3],
-		};
+			V4 colour1 = {
+				clipped_faces[clipped_face_index + 20] * projected_v1[3],
+				clipped_faces[clipped_face_index + 21] * projected_v1[3],
+				clipped_faces[clipped_face_index + 22] * projected_v1[3],
+				clipped_faces[clipped_face_index + 23] * projected_v1[3],
+			};
 
+			V4 colour2 = {
+				clipped_faces[clipped_face_index + 32] * projected_v2[3],
+				clipped_faces[clipped_face_index + 33] * projected_v2[3],
+				clipped_faces[clipped_face_index + 34] * projected_v2[3],
+				clipped_faces[clipped_face_index + 35] * projected_v2[3],
+			};
 
-		
-		draw_triangle(rt, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
+			draw_triangle(rt, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
+		}
+	}
+	else
+	{
+		Canvas* texture = &resources->textures[texture_index];
+		for (int i = 0; i < clipped_face_count; ++i)
+		{
+			int clipped_face_index = i * STRIDE_ENTIRE_FACE;
+
+			// Project the vertex position.
+			V4 v0 = {
+				clipped_faces[clipped_face_index],
+				clipped_faces[clipped_face_index + 1],
+				clipped_faces[clipped_face_index + 2],
+				1
+			};
+
+			V4 v1 = {
+				clipped_faces[clipped_face_index + 12],
+				clipped_faces[clipped_face_index + 13],
+				clipped_faces[clipped_face_index + 14],
+				1
+			};
+
+			V4 v2 = {
+				clipped_faces[clipped_face_index + 24],
+				clipped_faces[clipped_face_index + 25],
+				clipped_faces[clipped_face_index + 26],
+				1
+			};
+
+			V4 pv0, pv1, pv2;
+
+			project(&rt->canvas, projection_matrix, v0, pv0);
+			project(&rt->canvas, projection_matrix, v1, pv1);
+			project(&rt->canvas, projection_matrix, v2, pv2);
+
+			V2 uv0 =
+			{
+				clipped_faces[clipped_face_index + 3] * pv0[3],
+				clipped_faces[clipped_face_index + 4] * pv0[3],
+			};
+
+			V4 colour0 = {
+				clipped_faces[clipped_face_index + 8] * pv0[3],
+				clipped_faces[clipped_face_index + 9] * pv0[3],
+				clipped_faces[clipped_face_index + 10] * pv0[3],
+				clipped_faces[clipped_face_index + 11] * pv0[3],
+			};
+
+			V2 uv1 =
+			{
+				clipped_faces[clipped_face_index + 15] * pv1[3],
+				clipped_faces[clipped_face_index + 16] * pv1[3],
+			};
+
+			V4 colour1 = {
+				clipped_faces[clipped_face_index + 20] * pv1[3],
+				clipped_faces[clipped_face_index + 21] * pv1[3],
+				clipped_faces[clipped_face_index + 22] * pv1[3],
+				clipped_faces[clipped_face_index + 23] * pv1[3],
+			};
+
+			V2 uv2 =
+			{
+				clipped_faces[clipped_face_index + 27] * pv2[3],
+				clipped_faces[clipped_face_index + 28] * pv2[3],
+			};
+
+			V4 colour2 = {
+				clipped_faces[clipped_face_index + 32] * pv2[3],
+				clipped_faces[clipped_face_index + 33] * pv2[3],
+				clipped_faces[clipped_face_index + 34] * pv2[3],
+				clipped_faces[clipped_face_index + 35] * pv2[3],
+			};
+
+			draw_textured_triangle(rt, pv0, pv1, pv2, colour0, colour1, colour2, uv0, uv1, uv2, texture);
+		}
 	}
 }
 
@@ -1751,6 +2257,7 @@ void render(
 	RenderTarget* rt, 
 	const RenderSettings* settings, 
 	Scene* scene,
+	const Resources* resources,
 	const M4 view_matrix)
 {
 	// TODO: Make view matrix a part of the renderer, and the camera maybe. Then render should take the renderer i would assume.
@@ -1783,13 +2290,13 @@ void render(
 	//printf("light_front_faces took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
-	// Perform the narrow phase of frustum culling.
-	// TODO: Rename to show we draw here.
-	clip_to_view_frustum(rt, settings->projection_matrix, &settings->view_frustum, view_matrix, &scene->models);
-	//printf("clip_to_view_frustum took: %d\n", timer_get_elapsed(&t));
+	// Draws the front faces by performing the narrow phase of frustum culling
+	// and then projecting and rasterising the faces.
+	clip_to_screen(rt, settings->projection_matrix, &settings->view_frustum, view_matrix, &scene->models, resources);
+	//printf("clip_to_screen took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
-	debug_draw_point_lights(rt, settings, &scene->point_lights);
+	debug_draw_point_lights(&rt->canvas, settings, &scene->point_lights);
 	//printf("debug_draw_point_lights took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 	

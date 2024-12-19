@@ -336,7 +336,7 @@ void create_model_instances(Models* models, int mb_index, int n)
 		models->mis_base_ids[i] = mb_index;
 
 		// TODO: Textures. Should be a parameter?
-		models->mis_texture_ids[i] = -69;
+		models->mis_texture_ids[i] = -1; // Default to no texture.
 
 		models->mis_dirty_bounding_sphere_flags[i] = 1;
 		models->mis_passed_broad_phase_flags[i] = 0;

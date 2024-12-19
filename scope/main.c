@@ -19,6 +19,11 @@ void engine_on_init(Engine* engine)
         log_error("FAiled to load\n");
     }
 
+    if (STATUS_OK != resources_load_texture(&engine->resources, "C:/Users/olive/source/repos/scope/scope/res/textures/fortnite_peter.bmp"))
+    {
+        log_error("FAiled to load\n");
+    }
+
     g_draw_normals = 0;
 
     // Create a scene
@@ -34,14 +39,20 @@ void engine_on_init(Engine* engine)
     ++engine->scenes_count;
     
     // Load models into the scene
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/smooth_cylinder.obj");  
-    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
+    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/smooth_cylinder.obj");  
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/teapot.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
-    int n0 = 1000;
+    int n0 = 2;
+
+    
     
     create_model_instances(&scene->models, 0, n0);
+
+    // Set the first model to use the first texture.
+    scene->models.mis_texture_ids[0] = 0;
+    scene->models.mis_texture_ids[1] = 1;
 
     //create_model_instances(&scene->models, 1, 3);
 
@@ -66,7 +77,6 @@ void engine_on_init(Engine* engine)
         scene->models.mis_transforms[++index_transform] = scale[1];
         scene->models.mis_transforms[++index_transform] = scale[2];
     }
-
 
     V3 pl_pos0 = { -1, 5, -3 };
     V3 pl_col0 = { 1, 0, 0 };

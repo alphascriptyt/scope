@@ -9,6 +9,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+// TODO: Realistically I think these resources could be global.
+// TODO: Or at least figure out a nicer way to pass them around.
 typedef struct
 {
 	Canvas* textures;
@@ -27,10 +29,10 @@ inline Status resources_load_texture(Resources* resources, const char* file)
 	int i = resources->textures_count;
 
 	// Make room for the new texture.
-	Canvas* textures_temp = realloc(resources->textures, (resources->textures_count + 1) * sizeof(Canvas));
+	Canvas* textures_temp = realloc(resources->textures, (size_t)(resources->textures_count + 1) * sizeof(Canvas));
 	if (!textures_temp)
 	{
-		log_error("Failed to resources_load_texture because of %s.\n", status_to_str(STATUS_ALLOC_FAILURE));
+		log_error("Failed to grow textures array in resources_load_texture because of %s.\n", status_to_str(STATUS_ALLOC_FAILURE));
 		return STATUS_ALLOC_FAILURE;
 	}
 	resources->textures = textures_temp;
@@ -39,7 +41,7 @@ inline Status resources_load_texture(Resources* resources, const char* file)
 	Status status = canvas_init_from_bitmap(&textures_temp[i], file);
 	if (STATUS_OK != status)
 	{
-		log_error("Failed to resources_load_texture because of %s.\n", status_to_str(status));
+		log_error("Failed to canvas_init_from_bitmap in resources_load_texture because of %s.\n", status_to_str(status));
 		return status;
 	}
 
