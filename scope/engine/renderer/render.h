@@ -50,7 +50,7 @@ void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c
 void draw_textured_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
 
 // SECTION: Render loop.
-V4 project(const Canvas* canvas, const M4 projection_matrix, V4 v);
+void project(const Canvas* canvas, const M4 projection_matrix, V4 v, V4* out);
 
 void model_to_view_space(Models* models, const M4 view_matrix);
 

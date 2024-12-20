@@ -41,7 +41,8 @@ void debug_draw_point_lights(Canvas* canvas, const RenderSettings* settings, Poi
 			continue;
 		}
 
-		V4 projected = project(canvas, settings->projection_matrix, p);
+		V4 projected;
+		project(canvas, settings->projection_matrix, p, &projected);
 
 		int idx_attr = i * STRIDE_POINT_LIGHT_ATTRIBUTES;
 		int colour = float_rgb_to_int(point_lights->attributes[idx_attr], point_lights->attributes[idx_attr + 1], point_lights->attributes[idx_attr + 2]);
@@ -124,7 +125,8 @@ void debug_draw_world_space_point(Canvas* canvas, const RenderSettings* settings
 		return;
 	}
 
-	V4 ssp = project(canvas, settings->projection_matrix, vsp);
+	V4 ssp;
+	project(canvas, settings->projection_matrix, vsp, &ssp);
 
 	// TODO: Could be a draw 2d rect function.
 	int n = 2;
@@ -147,7 +149,8 @@ void debug_draw_view_space_point(Canvas* canvas, const RenderSettings* settings,
 		return;
 	}
 
-	V4 ssp = project(canvas, settings->projection_matrix, vsp);
+	V4 ssp; 
+	project(canvas, settings->projection_matrix, vsp, &ssp);
 
 	// TODO: Could be a draw 2d rect function.
 	int n = 2;
@@ -199,8 +202,9 @@ void debug_draw_world_space_line(Canvas* canvas, const RenderSettings* settings,
 		vs_v1.z = -settings->near_plane;
 	}
 
-	V4 ss_v0 = project(canvas, settings->projection_matrix, vs_v0);
-	V4 ss_v1 = project(canvas, settings->projection_matrix, vs_v1);
+	V4 ss_v0, ss_v1; 
+	project(canvas, settings->projection_matrix, vs_v0, &ss_v0);
+	project(canvas, settings->projection_matrix, vs_v1, &ss_v1);
 
 	const int colour_int = float_rgb_to_int(colour.x, colour.y, colour.z);
 
@@ -245,8 +249,9 @@ void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const
 			V4 start_v4 = v3_to_v4(start, 1.f);
 			V4 end_v4 = v3_to_v4(end, 1.f);
 
-			V4 ss_start = project(canvas, settings->projection_matrix, start_v4);
-			V4 ss_end = project(canvas, settings->projection_matrix, end_v4);
+			V4 ss_start, ss_end; 
+			project(canvas, settings->projection_matrix, start_v4, &ss_start);
+			project(canvas, settings->projection_matrix, end_v4, &ss_end);
 
 			draw_line(canvas, (int)ss_start.x, (int)ss_start.y, (int)ss_end.x, (int)ss_end.y, COLOUR_LIME);
 		}
@@ -792,7 +797,7 @@ float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, float
 	return dp;
 }
 
-V4 project(const Canvas* canvas, const M4 projection_matrix, V4 v)
+void project(const Canvas* canvas, const M4 projection_matrix, V4 v, V4* out)
 {
 	// Opengl uses a right handed coordinate system, camera looks down the -z axis,
 	// however, NDC space is left handed, from -1 to 1 in all axis. 
@@ -815,37 +820,25 @@ V4 project(const Canvas* canvas, const M4 projection_matrix, V4 v)
 	// Convert from NDC space to screen space.
 	// Convert from [-1:1] to [0:1], then scale to the screen dimensions.
 
+	out->x = (v_projected.x + 1) * 0.5f * canvas->width;
+	out->y = (-v_projected.y + 1) * 0.5f * canvas->height;
 
-	V4 o = {
-		(v_projected.x + 1) * 0.5f * canvas->width,
-		(-v_projected.y + 1) * 0.5f * canvas->height,
+	// Projecting depth z results in z' which encodes a nonlinear transformation
+	// of the depth, just like with x' and y'. So use this to depth test for 
+	// more accurate results closer to the camera. Also, this means we only need
+	// to recover the depth from w' if the depth test passes, saving a divison
+	// per pixel.
+	out->z = (v_projected.z + 1) * 0.5f; // Offset from [-1:1] to [0:1]
 
-		// Projecting depth z results in z' which encodes a nonlinear transformation
-		// of the depth, just like with x' and y'. So use this to depth test for 
-		// more accurate results closer to the camera. Also, this means we only need
-		// to recover the depth from w' if the depth test passes, saving a divison
-		// per pixel.
-		(v_projected.z + 1) * 0.5f, // Offset from [-1:1] to [0:1]
+	// Save inv of w' for perspective correct interpolation. This allows us to lerp
+	// between vertex components. 
+	out->w = inv_w;
 
-		// Save inv of w' for perspective correct interpolation. This allows us to lerp
-		// between vertex components. 
-		inv_w
-	};
-
-	return o;
+	//return o;
 }
 
 void model_to_view_space(Models* models, const M4 view_matrix)
 {
-	// NOTE: Timings Before these changes. 20fps rendering with no changing transforms
-	//							   10 when spinning all. - THIS IS WHAT WE WANT TO BEAT
-
-
-	// AIM: Combine the model/view matrices so we can move meshes at 'no' extra cost.
-
-	// model_to_world_space with spinning takes about 12ms.
-	// world_to_view_space took: 13ms
-
 	// Combines the model and view matrices.
 	// Calculates the new radius of the bounding sphere.
 
@@ -1916,9 +1909,10 @@ void project_and_draw_clipped(
 				1
 			};
 
-			V4 pv0 = project(&rt->canvas, projection_matrix, v0);
-			V4 pv1 = project(&rt->canvas, projection_matrix, v1);
-			V4 pv2 = project(&rt->canvas, projection_matrix, v2);
+			V4 pv0, pv1, pv2;
+			project(&rt->canvas, projection_matrix, v0, &pv0);
+			project(&rt->canvas, projection_matrix, v1, &pv1);
+			project(&rt->canvas, projection_matrix, v2, &pv2);
 
 			V3 colour0 = {
 				clipped_faces[clipped_face_index + 8] * pv0.w,
@@ -1970,9 +1964,10 @@ void project_and_draw_clipped(
 				1
 			};
 
-			V4 pv0 = project(&rt->canvas, projection_matrix, v0);
-			V4 pv1 = project(&rt->canvas, projection_matrix, v1);
-			V4 pv2 = project(&rt->canvas, projection_matrix, v2);
+			V4 pv0, pv1, pv2;
+			project(&rt->canvas, projection_matrix, v0, &pv0);
+			project(&rt->canvas, projection_matrix, v1, &pv1);
+			project(&rt->canvas, projection_matrix, v2, &pv2);
 
 			V2 uv0 =
 			{
