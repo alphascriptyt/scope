@@ -247,7 +247,7 @@ void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const
 
 		for (int j = 0; j < STRIDE_FACE_VERTICES; ++j)
 		{
-			int k = face_index + j * 12;
+			int k = face_index + j * STRIDE_ENTIRE_VERTEX;
 			const V3 start = {
 				models->front_faces[k],
 				models->front_faces[k + 1],
@@ -576,7 +576,6 @@ void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2)
 void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V3 c0, const V3 c1, const V2 uv0, const V2 uv1, const Canvas* texture)
 {
 	// TODO: Refactor function args.
-	// TODO: If not combining with a texture, we don't need the colour alpha.
 
 	// Precalculate deltas.
 	const unsigned int dx = x1 - x0;
@@ -611,8 +610,8 @@ void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, f
 		(uv1[1] - uv0[1]) * inv_dx
 	};
 
-
 	// Render the scanline
+	const unsigned int* texels = texture->pixels;
 	unsigned int* pixels = rt->canvas.pixels + start_x;
 	float* depth_buffer = rt->depth_buffer + start_x;
 
@@ -628,30 +627,24 @@ void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, f
 			// Recover w
 			const float w = 1.0f / inv_w;
 
-			float u = (uv[0] * w);
-			float v = (uv[1] * w);
-
-			// TODO: Could precalculate the 1 - v when loading the texture.
-			// Anything I can do to do less computation here is good.
-			int rows = (int)((v) * texture->height);
-			int cols = (int)(u * texture->width);
-
+			int cols = (int)((uv[0] * w) * texture->width);
+			int rows = (int)((uv[1] * w) * texture->height);
+			
 			// TODO: Could store texels as float[3] to solve this.
-			int tex = texture->pixels[rows * texture->width + cols];
+			int tex = texels[rows * texture->width + cols];
 			float r, g, b;
 			unpack_int_rgb_to_floats(tex, &r, &g, &b);
 
-			float dr = c[0] * w;
-			float dg = c[1] * w;
-			float db = c[2] * w;
-
-			r *= dr;
-			g *= dg;
-			b *= db;
-
-			*pixels = float_rgb_to_int(r, g, b);
+			// Apply the lighting.
+			r *= c[0] * w;
+			g *= c[1] * w;
+			b *= c[2] * w;
 			
-			//*pixels = float_rgb_to_int(r, g, b);
+			// TODO: Try write out the components seperately? Can do this by
+			//		 making the canvas an unsigned char array.
+			// TODO: For interpolation, will have to change t based off of 
+			//		 whatever r0 or r1 is larger as only have range 0-255.
+			*pixels = float_rgb_to_int(r, g, b);
 			*depth_buffer = z;
 		}
 
@@ -2206,7 +2199,7 @@ void render(
 	const Resources* resources,
 	const M4 view_matrix)
 {
-	
+/*
 	Timer temp = timer_start();
 
 	V4 v0 = { 0, 0, 0, 1 };
@@ -2234,7 +2227,7 @@ void render(
 	printf("tooK: %d\n", timer_get_elapsed(&temp));
 	// Before takes like: 4-6ms, getting like 160fps. default resolution.
 	return;
-
+*/
 	// TODO: Make view matrix a part of the renderer, and the camera maybe. Then render should take the renderer i would assume.
 	//		 or maybe these are a part of the settings. Bascially that part needs a refactor.
 	Timer t = timer_start();
