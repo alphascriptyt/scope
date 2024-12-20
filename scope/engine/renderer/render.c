@@ -642,8 +642,7 @@ void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, f
 			
 			// TODO: Try write out the components seperately? Can do this by
 			//		 making the canvas an unsigned char array.
-			// TODO: For interpolation, will have to change t based off of 
-			//		 whatever r0 or r1 is larger as only have range 0-255.
+			// This should save a fair bit on packing the components together.
 			*pixels = float_rgb_to_int(r, g, b);
 			*depth_buffer = z;
 		}
@@ -1591,9 +1590,12 @@ void light_front_faces(Models* models, const PointLights* point_lights)
 					v3_add_v3(diffuse_part, light_colour);
 				}
 
-				diffuse_part[0] = min(diffuse_part[0], 1);
-				diffuse_part[1] = min(diffuse_part[1], 1);
-				diffuse_part[2] = min(diffuse_part[2], 1);
+				// TODO: This should be set by the scene probably.
+				const float ambient_light = 0.1f;
+
+				diffuse_part[0] = max(min(diffuse_part[0], 1), ambient_light);
+				diffuse_part[1] = max(min(diffuse_part[1], 1), ambient_light);
+				diffuse_part[2] = max(min(diffuse_part[2], 1), ambient_light);
 
 				v3_mul_v3(colour, diffuse_part);
 

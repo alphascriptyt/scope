@@ -14,6 +14,7 @@ float* directions;
 
 void engine_on_init(Engine* engine)
 {
+    
     if (STATUS_OK != resources_load_texture(&engine->resources, "C:/Users/olive/source/repos/scope/scope/res/textures/rickreal.bmp"))
     {
         log_error("FAiled to load\n");
