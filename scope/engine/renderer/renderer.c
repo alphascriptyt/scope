@@ -20,8 +20,14 @@ Status renderer_init(Renderer* renderer, int width, int height)
 
 	// Create a camera.
 	memset(&renderer->camera, 0, sizeof(Camera));
-	v3_init(renderer->camera.direction, 0, 0, -1.f);
-	v3_init(renderer->camera.position, 0, 0, 0);
+	renderer->camera.direction.x = 0;
+	renderer->camera.direction.y = 0;
+	renderer->camera.direction.z = -1.f;
+
+	renderer->camera.position.x = 0;
+	renderer->camera.position.y = 0;
+	renderer->camera.position.z = 0;
+
 	renderer->camera.yaw = PI; // TODO: Gotta be able to set one or the other or have them update together...
 
 	// Create the view frustum.

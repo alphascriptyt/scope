@@ -5,13 +5,6 @@
 
 #include <stdlib.h>
 
-inline void swap(float** a, float** b)
-{
-	float* temp = *a;
-	*a = *b;
-	*b = temp;
-}
-
 inline float random_float()
 {
 	return (float)rand() / (float)RAND_MAX;

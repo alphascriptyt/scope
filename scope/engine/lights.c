@@ -9,7 +9,7 @@ void point_lights_init(PointLights* point_lights)
 	memset(point_lights, 0, sizeof(PointLights));
 }
 
-void point_lights_create(PointLights* point_lights, const V3 position, const V3 colour, float strength)
+void point_lights_create(PointLights* point_lights, V3 position, V3 colour, float strength)
 {
 	const int new_count = point_lights->count + 1;
 
@@ -20,18 +20,18 @@ void point_lights_create(PointLights* point_lights, const V3 position, const V3 
 
 	// Copy the lights position.
 	int i = point_lights->count * 3;
-	point_lights->world_space_positions[i] = position[0];
-	point_lights->world_space_positions[++i] = position[1];
-	point_lights->world_space_positions[++i] = position[2];
+	point_lights->world_space_positions[i] = position.x;
+	point_lights->world_space_positions[++i] = position.y;
+	point_lights->world_space_positions[++i] = position.z;
 
 	// Resize the point lights buffer.
 	int old_size = point_lights->count * STRIDE_POINT_LIGHT_ATTRIBUTES;
 	resize_float_buffer(&point_lights->attributes, old_size + STRIDE_POINT_LIGHT_ATTRIBUTES);
 
 	// Copy the point light's attributes across.
-	point_lights->attributes[old_size] = colour[0];
-	point_lights->attributes[++old_size] = colour[1];
-	point_lights->attributes[++old_size] = colour[2];
+	point_lights->attributes[old_size] = colour.x;
+	point_lights->attributes[++old_size] = colour.y;
+	point_lights->attributes[++old_size] = colour.z;
 	point_lights->attributes[++old_size] = strength;
 
 	point_lights->count = new_count;

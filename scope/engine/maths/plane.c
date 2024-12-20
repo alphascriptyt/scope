@@ -11,11 +11,10 @@ float signed_distance(const Plane* plane, const V3 point)
 	return dot(point, plane->normal) + d;
 }
 
-float line_intersect_plane(const V3 v0, const V3 v1, const Plane* plane, V3 out)
+float line_intersect_plane(const V3 v0, const V3 v1, const Plane* plane, V3* out)
 {
 	// This uses the fact that a plane can be expressed as the set of points p for which Dot((p - p0), n) = 0
-	V3 ray;
-	v3_sub_v3_out(v1, v0, ray);
+	V3 ray = v3_sub_v3(v1, v0);
 
 	float normalDotRay = dot(plane->normal, ray);
 
@@ -28,15 +27,14 @@ float line_intersect_plane(const V3 v0, const V3 v1, const Plane* plane, V3 out)
 		return 0;
 	}
 
-	V3 v0_to_plane_point;
-	v3_sub_v3_out(v0, plane->point, v0_to_plane_point);
+	V3 v0_to_plane_point = v3_sub_v3(v0, plane->point);
 
 	// Calculate the time of intersection.
 	float t = -(dot(plane->normal, v0_to_plane_point)) / normalDotRay;
 	
 	// Interpolate for the point of intersection.
-	v3_mul_f_out(ray, t, out);
-	v3_add_v3(out, v0);
+	*out = v3_mul_f(ray, t);
+	v3_add_eq_v3(out, v0);
 
 	return t;
 }

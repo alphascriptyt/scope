@@ -110,6 +110,11 @@ void engine_run(Engine* engine)
     engine->ui.text[engine->ui.text_count++] = text_create(display_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
     engine->ui.text[engine->ui.text_count++] = text_create(update_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
 
+    float total_fps = 0;
+    int frames = 0;
+
+    Timer elapsed_timer = timer_start();
+
     engine->running = 1;
     while (engine->running)
     {
@@ -170,15 +175,22 @@ void engine_run(Engine* engine)
         startTime = endTime;
 
         fps = (int)(1.0f / dt);
-
+        total_fps += fps;
+        frames++;
         if (dt_counter > 2)
         {
             snprintf(fps_str, sizeof(fps_str), "FPS: %d", fps);
             dt_counter = 0;
         }
 
-        snprintf(dir_str, sizeof(dir_str), "DIR: %.2f %.2f %.2f", engine->renderer.camera.direction[0], engine->renderer.camera.direction[1], engine->renderer.camera.direction[2]);
-        snprintf(pos_str, sizeof(pos_str), "POS: %.2f %.2f %.2f", engine->renderer.camera.position[0], engine->renderer.camera.position[1], engine->renderer.camera.position[2]);
+        snprintf(dir_str, sizeof(dir_str), "DIR: %.2f %.2f %.2f", engine->renderer.camera.direction.x, engine->renderer.camera.direction.y, engine->renderer.camera.direction.z);
+        snprintf(pos_str, sizeof(pos_str), "POS: %.2f %.2f %.2f", engine->renderer.camera.position.x, engine->renderer.camera.position.y, engine->renderer.camera.position.z);
+
+        if (timer_get_elapsed(&elapsed_timer) > 30000)
+        {
+            printf("Average fps: %f\n", total_fps / frames);
+            break;
+        }
     }
 }
 
@@ -246,10 +258,10 @@ void engine_handle_input(Engine* engine, float dt)
     float cosPitch = cosf(camera->pitch);
 
     // Calculate the camera's direction.
-    camera->direction[0] = sinf(camera->yaw) * cosPitch;
-    camera->direction[1] = sinf(camera->pitch);
-    camera->direction[2] = cosf(camera->yaw) * cosPitch;
-    normalise(camera->direction);
+    camera->direction.x = sinf(camera->yaw) * cosPitch;
+    camera->direction.y = sinf(camera->pitch);
+    camera->direction.z = cosf(camera->yaw) * cosPitch;
+    normalise(&camera->direction);
 
 
     // TODO: How do I make the engine actually m/s?
@@ -271,41 +283,33 @@ void engine_handle_input(Engine* engine, float dt)
 
     if (keys['W'] & KeyDown)
     {
-        V3 offset;
-        v3_mul_f_out(camera->direction, meters_per_second, offset);
-        v3_add_v3(camera->position, offset);
+        v3_add_eq_v3(&camera->position, v3_mul_f(camera->direction, meters_per_second));
     }
     if (keys['S'] & KeyDown)
     {
-        V3 offset;
-        v3_mul_f_out(camera->direction, meters_per_second, offset);
-        v3_sub_v3(camera->position, offset);
+        v3_sub_eq_v3(&camera->position, v3_mul_f(camera->direction, meters_per_second));
     }
     if (keys['A'] & KeyDown)
     {
         V3 up = { 0, 1, 0 };
-        V3 right;
-        cross(camera->direction, up, right);
-        normalise(right);
-        v3_mul_f(right, meters_per_second);
-        v3_sub_v3(camera->position, right);
+        V3 right = normalised(cross(camera->direction, up));
+
+        v3_sub_eq_v3(&camera->position, v3_mul_f(right, meters_per_second));
     }
     if (keys['D'] & KeyDown)
     {
         V3 up = { 0, 1, 0 };
-        V3 right;
-        cross(camera->direction, up, right);
-        normalise(right);
-        v3_mul_f(right, meters_per_second);
-        v3_add_v3(camera->position, right);
+        V3 right = normalised(cross(camera->direction, up));
+
+        v3_add_eq_v3(&camera->position, v3_mul_f(right, meters_per_second));
     }
     if (keys[VK_LSHIFT] & KeyDown)
     {
-        camera->position[1] -= meters_per_second;
+        camera->position.y -= meters_per_second;
     }
     if (keys[VK_SPACE] & KeyDown)
     {
-        camera->position[1] += meters_per_second;
+        camera->position.y += meters_per_second;
     }
 }
 

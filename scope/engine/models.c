@@ -183,9 +183,9 @@ void load_model_base_from_obj(Models* models, const char* filename)
 			};
 
 			// Store the object space position.
-			models->mbs_object_space_positions[positions_offset++] = v[0];
-			models->mbs_object_space_positions[positions_offset++] = v[1];
-			models->mbs_object_space_positions[positions_offset++] = v[2];
+			models->mbs_object_space_positions[positions_offset++] = v.x;
+			models->mbs_object_space_positions[positions_offset++] = v.y;
+			models->mbs_object_space_positions[positions_offset++] = v.z;
 		}
 
 		else if (strcmp(tokens[0], "vn") == 0)
@@ -292,15 +292,15 @@ void load_model_base_from_obj(Models* models, const char* filename)
 			models->mbs_object_space_positions[++index],
 			models->mbs_object_space_positions[++index]
 		};
-		v3_add_v3(centre, position);
+		v3_add_eq_v3(&centre, position);
 	}
 
-	v3_mul_f(centre, 1.0f / positions_count);
+	v3_mul_eq_f(&centre, 1.0f / positions_count);
 
 	int index_centre = models->mbs_count * STRIDE_POSITION;
-	models->mbs_object_space_centres[index_centre] = centre[0];
-	models->mbs_object_space_centres[++index_centre] = centre[1];
-	models->mbs_object_space_centres[++index_centre] = centre[2];
+	models->mbs_object_space_centres[index_centre] = centre.x;
+	models->mbs_object_space_centres[++index_centre] = centre.y;
+	models->mbs_object_space_centres[++index_centre] = centre.z;
 
 	// Close the file.
 	if (fclose(file) != 0)

@@ -32,12 +32,14 @@ void m4_mul_m4(const M4 m0, const M4 m1, M4 out)
 	}
 }
 
-void m4_mul_v4(const M4 m, const V4 v, V4 out)
+// TODO: Rename out? Any performance critical code 
+//		 can't be returning, takes too long.
+void m4_mul_v4(const M4 m, V4 v, V4* out)
 {
-	out[0] = m[0] * v[0] + m[4] * v[1] + m[8]  * v[2] + m[12] * v[3];
-	out[1] = m[1] * v[0] + m[5] * v[1] + m[9]  * v[2] + m[13] * v[3];
-	out[2] = m[2] * v[0] + m[6] * v[1] + m[10] * v[2] + m[14] * v[3];
-	out[3] = m[3] * v[0] + m[7] * v[1] + m[11] * v[2] + m[15] * v[3];
+	out->x = m[0] * v.x + m[4] * v.y + m[8] * v.z + m[12] * v.w;
+	out->y = m[1] * v.x + m[5] * v.y + m[9] * v.z + m[13] * v.w;
+	out->z = m[2] * v.x + m[6] * v.y + m[10] * v.z + m[14] * v.w;
+	out->w = m[3] * v.x + m[7] * v.y + m[11] * v.z + m[15] * v.w;
 }
 
 void m4_identity(M4 out)
@@ -60,12 +62,13 @@ void m4_identity(M4 out)
 	out[15] = 1;
 }
 
-void m4_translation(const V3 position, M4 out)
+// TODO: Order of in/out?
+void m4_translation(V3 position, M4 out)
 {
 	m4_identity(out);
-	out[12] = position[0];
-	out[13] = position[1];
-	out[14] = position[2];
+	out[12] = position.x;
+	out[13] = position.y;
+	out[14] = position.z;
 }
 
 void m4_rotation(const float pitch, const float yaw, const float roll, M4 out)
@@ -133,26 +136,23 @@ void look_at(const V3 position, const V3 direction, M4 out)
 	V3 world_up = { 0, 1, 0 };
 
 	// Calculate the other axis by using the z axis as the direction.
-	V3 x_axis;
-	cross(world_up, direction, x_axis);
-	normalise(x_axis);
+	V3 x_axis = normalised(cross(world_up, direction));
 	
-	V3 y_axis;
-	cross(direction, x_axis, y_axis);
+	V3 y_axis = cross(direction, x_axis);
 
 	// Set the out matrix to the combined translation and rotation matrix.
 	m4_identity(out);
 
-	out[0] = x_axis[0]; out[1] = y_axis[0]; out[2] = direction[0];
-	out[4] = x_axis[1]; out[5] = y_axis[1]; out[6] = direction[1];
-	out[8] = x_axis[2]; out[9] = y_axis[2]; out[10] = direction[2];
+	out[0] = x_axis.x; out[1] = y_axis.x; out[2] = direction.x;
+	out[4] = x_axis.y; out[5] = y_axis.y; out[6] = direction.y;
+	out[8] = x_axis.z; out[9] = y_axis.z; out[10] = direction.z;
 
 	out[12] = dot(x_axis, position);
 	out[13] = dot(y_axis, position);
 	out[14] = dot(direction, position);
 }
 
-void m4_model_matrix(const V3 position, const V3 eulers, const V3 scale, M4 out)
+void m4_model_matrix(V3 position, V3 eulers, V3 scale, M4 out)
 {
 	// TODO: Eventually gonna switch to quarternions for rotations.
 
@@ -163,13 +163,13 @@ void m4_model_matrix(const V3 position, const V3 eulers, const V3 scale, M4 out)
 	m4_translation(position, translation_m4);
 
 	M4 rotation_m4;
-	m4_rotation(eulers[0], eulers[1], eulers[2], rotation_m4);
+	m4_rotation(eulers.x, eulers.y, eulers.z, rotation_m4);
 	
 	M4 scale_m4;
 	m4_identity(scale_m4);
-	scale_m4[0] = scale[0];
-	scale_m4[5] = scale[1];
-	scale_m4[10] = scale[2];
+	scale_m4[0] = scale.x;
+	scale_m4[5] = scale.y;
+	scale_m4[10] = scale.z;
 	scale_m4[15] = 1;
 
 	// We have to define an output matrix each time.
@@ -182,18 +182,18 @@ void m4_model_matrix(const V3 position, const V3 eulers, const V3 scale, M4 out)
 	m4_mul_m4(translation_rotation_m4, scale_m4, out);
 }
 
-void m4_normal_matrix(const V3 eulers, const V3 scale, M4 out)
+void m4_normal_matrix(V3 eulers, V3 scale, M4 out)
 {
 	// Create a normal matrix from the given eulers and scale.
 	// Essentially no translation, keep the rotation, and inverse scale.
 	M4 rotation_m4;
-	m4_rotation(eulers[0], eulers[1], eulers[2], rotation_m4);
+	m4_rotation(eulers.x, eulers.y, eulers.z, rotation_m4);
 
 	M4 scale_m4;
 	m4_identity(scale_m4);
-	scale_m4[0] = 1.f / scale[0];
-	scale_m4[5] = 1.f / scale[1];
-	scale_m4[10] = 1.f / scale[2];
+	scale_m4[0] = 1.f / scale.x;
+	scale_m4[5] = 1.f / scale.y;
+	scale_m4[10] = 1.f / scale.z;
 
 	m4_mul_m4(rotation_m4, scale_m4, out);
 }
