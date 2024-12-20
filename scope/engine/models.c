@@ -368,11 +368,9 @@ void create_model_instances(Models* models, int mb_index, int n)
 	// Initialise all vertex diffuse colours to white so they absorb all light.
 	for (int i = old_total_faces * STRIDE_FACE_VERTICES * STRIDE_COLOUR; i < new_total_vertices * STRIDE_COLOUR; i += STRIDE_COLOUR)
 	{
-		// RGBA
 		models->mis_vertex_colours[i]     = 1.f;
 		models->mis_vertex_colours[i + 1] = 1.f;
 		models->mis_vertex_colours[i + 2] = 1.f;
-		models->mis_vertex_colours[i + 3] = 1.f;
 	}
 
 	// Resize buffers used for indexed rendering.

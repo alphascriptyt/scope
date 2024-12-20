@@ -44,7 +44,7 @@ void engine_on_init(Engine* engine)
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/teapot.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
     //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
-    int n0 = 2;
+    int n0 = 4;
 
     
     

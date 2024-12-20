@@ -284,7 +284,7 @@ void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const
 	}
 }
 
-void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V4 c0, const V4 c1)
+void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V3 c0, const V3 c1)
 {
 	// TODO: Refactor function args.
 	// TODO: If not combining with a texture, we don't need the colour alpha.
@@ -301,15 +301,14 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 	int start_x = x0 + row_offset;
 	int end_x = x1 + row_offset;
 
-	V4 c_step;
-	v4_sub_v4_out(c1, c0, c_step);
-	v4_mul_f(c_step, inv_dx);
+	V3 c_step;
+	v3_sub_v3_out(c1, c0, c_step);
+	v3_mul_f(c_step, inv_dx);
 
-	V4 c = {
+	V3 c = {
 		c0[0],
 		c0[1],
-		c0[2],
-		c0[3],
+		c0[2]
 	};
 
 	// Render the scanline
@@ -351,11 +350,11 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 		// Step per pixel values.
 		z += z_step;
 		inv_w += w_step;
-		v4_add_v4(c, c_step);
+		v3_add_v3(c, c_step);
 	}
 }
 
-void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
+void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2)
 {
 	// Sort the flat vertices left to right.
 	float* pv1 = v1;
@@ -381,27 +380,25 @@ void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 
 	float dwdy0 = (pv1[3] - v0[3]) * invDy;
 	float dwdy1 = (pv2[3] - v0[3]) * invDy;
 
-	V4 dcdy0;
-	v4_sub_v4_out(pc1, c0, dcdy0);
-	v4_mul_f(dcdy0, invDy);
+	V3 dcdy0;
+	v3_sub_v3_out(pc1, c0, dcdy0);
+	v3_mul_f(dcdy0, invDy);
 
-	V4 dcdy1;
-	v4_sub_v4_out(pc2, c0, dcdy1);
-	v4_mul_f(dcdy1, invDy);
+	V3 dcdy1;
+	v3_sub_v3_out(pc2, c0, dcdy1);
+	v3_mul_f(dcdy1, invDy);
 
 	// Do I need 
-	V4 start_c = {
+	V3 start_c = {
 		c0[0],
 		c0[1],
-		c0[2],
-		c0[3],
+		c0[2]
 	};
 
-	V4 end_c = {
+	V3 end_c = {
 		c0[0],
 		c0[1],
-		c0[2],
-		c0[3],
+		c0[2]
 	};
 
 	int yStart = (int)(ceil(v0[1] - 0.5f));
@@ -422,13 +419,13 @@ void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 
 		float wStart = v0[3] + dwdy0 * a;
 		float wEnd = v0[3] + dwdy1 * a;
 
-		V4 tempc0;
-		v4_mul_f_out(dcdy0, a, tempc0);
-		v4_add_v4(tempc0, start_c);
+		V3 tempc0;
+		v3_mul_f_out(dcdy0, a, tempc0);
+		v3_add_v3(tempc0, start_c);
 
-		V4 tempc1;
-		v4_mul_f_out(dcdy1, a, tempc1);
-		v4_add_v4(tempc1, start_c);
+		V3 tempc1;
+		v3_mul_f_out(dcdy1, a, tempc1);
+		v3_add_v3(tempc1, start_c);
 
 		int xStart = (int)(ceilf(x0 - 0.5f));
 		int xEnd = (int)(ceilf(x1 - 0.5f));
@@ -437,7 +434,7 @@ void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 
 	}
 }
 
-void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
+void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2)
 {
 	// Sort the flat vertices left to right.
 	float* pv0 = v0;
@@ -462,26 +459,24 @@ void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1,
 	float dwdy0 = (v2[3] - pv0[3]) * invDy;
 	float dwdy1 = (v2[3] - pv1[3]) * invDy;
 
-	V4 dcdy0;
-	v4_sub_v4_out(c2, pc0, dcdy0);
-	v4_mul_f(dcdy0, invDy);
+	V3 dcdy0;
+	v3_sub_v3_out(c2, pc0, dcdy0);
+	v3_mul_f(dcdy0, invDy);
 
-	V4 dcdy1;
-	v4_sub_v4_out(c2, pc1, dcdy1);
-	v4_mul_f(dcdy1, invDy);
+	V3 dcdy1;
+	v3_sub_v3_out(c2, pc1, dcdy1);
+	v3_mul_f(dcdy1, invDy);
 
-	V4 start_c = { 
+	V3 start_c = { 
 		pc0[0],
 		pc0[1],
-		pc0[2],
-		pc0[3],
+		pc0[2]
 	};
 
-	V4 end_c = {
+	V3 end_c = {
 		pc1[0],
 		pc1[1],
-		pc1[2],
-		pc1[3],
+		pc1[2]
 	};
 
 	int yStart = (int)(ceil(pv0[1] - 0.5f));
@@ -501,13 +496,13 @@ void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1,
 		float wStart = pv0[3] + dwdy0 * a;
 		float wEnd = pv1[3] + dwdy1 * a;
 
-		V4 tempc0;
-		v4_mul_f_out(dcdy0, a, tempc0);
-		v4_add_v4(tempc0, start_c);
+		V3 tempc0;
+		v3_mul_f_out(dcdy0, a, tempc0);
+		v3_add_v3(tempc0, start_c);
 
-		V4 tempc1;
-		v4_mul_f_out(dcdy1, a, tempc1);
-		v4_add_v4(tempc1, end_c);
+		V3 tempc1;
+		v3_mul_f_out(dcdy1, a, tempc1);
+		v3_add_v3(tempc1, end_c);
 
 		int xStart = (int)(ceil(x0 - 0.5f));
 		int xEnd = (int)(ceil(x1 - 0.5f));
@@ -515,7 +510,7 @@ void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1,
 	}
 }
 
-void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
+void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2)
 {
 	// Sort vertices in ascending order.
 	float* pv0 = v0;
@@ -567,10 +562,10 @@ void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
 	};
 
 	// Lerp for the new colour of the vertex.
-	V4 pc3;
-	v4_sub_v4_out(pc2, pc0, pc3);
-	v4_mul_f(pc3, t);
-	v4_add_v4(pc3, pc0);
+	V3 pc3;
+	v3_sub_v3_out(pc2, pc0, pc3);
+	v3_mul_f(pc3, t);
+	v3_add_v3(pc3, pc0);
 
 	// TODO: UVs
 	// V2 tex4 = tex1 + (tex3 - tex1) * t;
@@ -578,7 +573,7 @@ void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2)
 	draw_flat_bottom_triangle(rt, pv0, pv1, pv3, pc0, pc1, pc3);
 }
 
-void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V4 c0, const V4 c1, const V2 uv0, const V2 uv1, const Canvas* texture)
+void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V3 c0, const V3 c1, const V2 uv0, const V2 uv1, const Canvas* texture)
 {
 	// TODO: Refactor function args.
 	// TODO: If not combining with a texture, we don't need the colour alpha.
@@ -595,15 +590,14 @@ void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, f
 	int start_x = x0 + row_offset;
 	int end_x = x1 + row_offset;
 
-	V4 c_step;
-	v4_sub_v4_out(c1, c0, c_step);
-	v4_mul_f(c_step, inv_dx);
+	V3 c_step;
+	v3_sub_v3_out(c1, c0, c_step);
+	v3_mul_f(c_step, inv_dx);
 
-	V4 c = {
+	V3 c = {
 		c0[0],
 		c0[1],
-		c0[2],
-		c0[3],
+		c0[2]
 	};
 
 	V2 uv = {
@@ -653,14 +647,14 @@ void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, f
 			float v = (uv[1] * w);
 
 			// TODO: Why is this needed?
-			if (u > 1) u = 1;
-			if (v > 1) v = 1;
-			if (u < 0) u = 0;
-			if (v < 0) v = 0;
+			//if (u > 1) u = 1;
+			//if (v > 1) v = 1;
+			//if (u < 0) u = 0;
+			//if (v < 0) v = 0;
 
-			int rows = (1 - v) * texture->height;
+			int rows = (int)((1 - v) * texture->height);
 
-			int cols = u * texture->width;
+			int cols = (int)(u * texture->width);
 
 			// TODO: Could store texels as float[3] to solve this.
 			int tex = texture->pixels[rows * texture->width + cols];
@@ -697,11 +691,11 @@ void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, f
 		uv[0] += uv_step[0];
 		uv[1] += uv_step[1];
 
-		v4_add_v4(c, c_step);
+		v3_add_v3(c, c_step);
 	}
 }
 
-void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture)
+void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture)
 {
 	// Sort the flat vertices left to right.
 	float* pv1 = v1;
@@ -730,13 +724,13 @@ void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V
 	float dwdy0 = (pv1[3] - v0[3]) * invDy;
 	float dwdy1 = (pv2[3] - v0[3]) * invDy;
 
-	V4 dcdy0;
-	v4_sub_v4_out(pc1, c0, dcdy0);
-	v4_mul_f(dcdy0, invDy);
+	V3 dcdy0;
+	v3_sub_v3_out(pc1, c0, dcdy0);
+	v3_mul_f(dcdy0, invDy);
 
-	V4 dcdy1;
-	v4_sub_v4_out(pc2, c0, dcdy1);
-	v4_mul_f(dcdy1, invDy);
+	V3 dcdy1;
+	v3_sub_v3_out(pc2, c0, dcdy1);
+	v3_mul_f(dcdy1, invDy);
 
 	V2 duvdy0 =
 	{
@@ -753,18 +747,16 @@ void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V
 
 	// TODO: Should be able to just lerp this stuff by 'incrementing' as we won't notice a difference,
 	//		 right?
-	V4 start_c = {
+	V3 start_c = {
 		c0[0],
 		c0[1],
-		c0[2],
-		c0[3],
+		c0[2]
 	};
 
-	V4 end_c = {
+	V3 end_c = {
 		c0[0],
 		c0[1],
-		c0[2],
-		c0[3],
+		c0[2]
 	};
 
 	int yStart = (int)(ceil(v0[1] - 0.5f));
@@ -785,13 +777,13 @@ void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V
 		float wStart = v0[3] + dwdy0 * a;
 		float wEnd = v0[3] + dwdy1 * a;
 
-		V4 tempc0;
-		v4_mul_f_out(dcdy0, a, tempc0);
-		v4_add_v4(tempc0, start_c);
+		V3 tempc0;
+		v3_mul_f_out(dcdy0, a, tempc0);
+		v3_add_v3(tempc0, start_c);
 
-		V4 tempc1;
-		v4_mul_f_out(dcdy1, a, tempc1);
-		v4_add_v4(tempc1, start_c);
+		V3 tempc1;
+		v3_mul_f_out(dcdy1, a, tempc1);
+		v3_add_v3(tempc1, start_c);
 
 		int xStart = (int)(ceilf(x0 - 0.5f));
 		int xEnd = (int)(ceilf(x1 - 0.5f));
@@ -810,7 +802,7 @@ void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V
 	}
 }
 
-void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture)
+void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture)
 {
 	// Sort the flat vertices left to right.
 	float* pv0 = v0;
@@ -838,13 +830,13 @@ void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c
 	float dwdy0 = (v2[3] - pv0[3]) * invDy;
 	float dwdy1 = (v2[3] - pv1[3]) * invDy;
 
-	V4 dcdy0;
-	v4_sub_v4_out(c2, pc0, dcdy0);
-	v4_mul_f(dcdy0, invDy);
+	V3 dcdy0;
+	v3_sub_v3_out(c2, pc0, dcdy0);
+	v3_mul_f(dcdy0, invDy);
 
-	V4 dcdy1;
-	v4_sub_v4_out(c2, pc1, dcdy1);
-	v4_mul_f(dcdy1, invDy);
+	V3 dcdy1;
+	v3_sub_v3_out(c2, pc1, dcdy1);
+	v3_mul_f(dcdy1, invDy);
 
 	V2 duvdy0 =
 	{
@@ -858,18 +850,16 @@ void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c
 		(uv2[1] - puv1[1]) * invDy
 	};
 
-	V4 start_c = {
+	V3 start_c = {
 		pc0[0],
 		pc0[1],
-		pc0[2],
-		pc0[3],
+		pc0[2]
 	};
 
-	V4 end_c = {
+	V3 end_c = {
 		pc1[0],
 		pc1[1],
-		pc1[2],
-		pc1[3],
+		pc1[2]
 	};
 
 	int yStart = (int)(ceil(pv0[1] - 0.5f));
@@ -889,13 +879,14 @@ void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c
 		float wStart = pv0[3] + dwdy0 * a;
 		float wEnd = pv1[3] + dwdy1 * a;
 
-		V4 tempc0;
-		v4_mul_f_out(dcdy0, a, tempc0);
-		v4_add_v4(tempc0, start_c);
+		// TODO: Should make a lerp v3/v4.
+		V3 tempc0;
+		v3_mul_f_out(dcdy0, a, tempc0);
+		v3_add_v3(tempc0, start_c);
 
-		V4 tempc1;
-		v4_mul_f_out(dcdy1, a, tempc1);
-		v4_add_v4(tempc1, end_c);
+		V3 tempc1;
+		v3_mul_f_out(dcdy1, a, tempc1);
+		v3_add_v3(tempc1, end_c);
 
 		V2 temp_uv0 = {
 			puv0[0] + duvdy0[0] * a,
@@ -913,7 +904,7 @@ void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c
 	}
 }
 
-void draw_textured_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture)
+void draw_textured_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture)
 {
 	// Sort vertices in ascending order.
 	float* pv0 = v0;
@@ -971,10 +962,10 @@ void draw_textured_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1,
 	};
 
 	// Lerp for the colour.
-	V4 c3;
-	v4_sub_v4_out(pc2, pc0, c3);
-	v4_mul_f(c3, t);
-	v4_add_v4(c3, pc0);
+	V3 c3;
+	v3_sub_v3_out(pc2, pc0, c3);
+	v3_mul_f(c3, t);
+	v3_add_v3(c3, pc0);
 
 	// Lerp for the uv
 	V2 uv3 =
@@ -1461,6 +1452,7 @@ void cull_backfaces(Models* models)
 				// Copy all the face vertex data.
 				// We copy the attributes over here as well because when clipping we need the data
 				// all together for lerping.
+				// TODO: Make some defines for writing to the buffers i think.
 				front_faces[front_face_out++] = v0[0];
 				front_faces[front_face_out++] = v0[1];
 				front_faces[front_face_out++] = v0[2];
@@ -1475,7 +1467,6 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_out++] = vertex_colours[index_parts_c0];
 				front_faces[front_face_out++] = vertex_colours[index_parts_c0 + 1];
 				front_faces[front_face_out++] = vertex_colours[index_parts_c0 + 2];
-				front_faces[front_face_out++] = vertex_colours[index_parts_c0 + 3];
 
 				front_faces[front_face_out++] = v1[0];
 				front_faces[front_face_out++] = v1[1];
@@ -1491,7 +1482,6 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_out++] = vertex_colours[index_parts_c1];
 				front_faces[front_face_out++] = vertex_colours[index_parts_c1 + 1];
 				front_faces[front_face_out++] = vertex_colours[index_parts_c1 + 2];
-				front_faces[front_face_out++] = vertex_colours[index_parts_c1 + 3];
 
 				front_faces[front_face_out++] = v2[0];
 				front_faces[front_face_out++] = v2[1];
@@ -1507,7 +1497,6 @@ void cull_backfaces(Models* models)
 				front_faces[front_face_out++] = vertex_colours[index_parts_c2];
 				front_faces[front_face_out++] = vertex_colours[index_parts_c2 + 1];
 				front_faces[front_face_out++] = vertex_colours[index_parts_c2 + 2];
-				front_faces[front_face_out++] = vertex_colours[index_parts_c2 + 3];
 
 				++front_face_count;
 			}
@@ -1573,7 +1562,7 @@ void light_front_faces(Models* models, const PointLights* point_lights)
 
 			// For each vertex apply lighting directly to the colour.
 			// 12 attributes per vertex. TODO: STRIDE for this?
-			for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += 12)
+			for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += STRIDE_ENTIRE_VERTEX)
 			{
 				const V3 pos = {
 					front_faces[k],
@@ -1736,7 +1725,6 @@ void clip_to_screen(
 
 			for (int j = 0; j < num_planes_to_clip_against; ++j)
 			{
-				//printf("clip against: %d\n", intersected_planes[intersected_planes_index]);
 				const Plane* plane = &view_frustum->planes[intersected_planes[intersected_planes_index++]];
 				
 				// Reset the index to write out to.
@@ -1782,15 +1770,15 @@ void clip_to_screen(
 					};
 
 					const V3 v1 = {
-						temp_clipped_faces_in[index_face + 12],
-						temp_clipped_faces_in[index_face + 13],
-						temp_clipped_faces_in[index_face + 14]
+						temp_clipped_faces_in[index_face + STRIDE_ENTIRE_VERTEX],
+						temp_clipped_faces_in[index_face + STRIDE_ENTIRE_VERTEX + 1],
+						temp_clipped_faces_in[index_face + STRIDE_ENTIRE_VERTEX + 2]
 					};
 
 					const V3 v2 = {
-						temp_clipped_faces_in[index_face + 24],
-						temp_clipped_faces_in[index_face + 25],
-						temp_clipped_faces_in[index_face + 26]
+						temp_clipped_faces_in[index_face + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX],
+						temp_clipped_faces_in[index_face + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 1],
+						temp_clipped_faces_in[index_face + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 2]
 					};
 
 					float d0 = signed_distance(plane, v0);
@@ -1808,19 +1796,19 @@ void clip_to_screen(
 					}
 					if (d1 >= 0)
 					{
-						inside_points_indices[num_inside_points++] = index_face + 12; // index_v1
+						inside_points_indices[num_inside_points++] = index_face + STRIDE_ENTIRE_VERTEX; // index_v1
 					}
 					else
 					{
-						outside_points_indices[num_outside_points++] = index_face + 12; // index_v1
+						outside_points_indices[num_outside_points++] = index_face + STRIDE_ENTIRE_VERTEX; // index_v1
 					}
 					if (d2 >= 0)
 					{
-						inside_points_indices[num_inside_points++] = index_face + 24; // index_v2
+						inside_points_indices[num_inside_points++] = index_face + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX; // index_v2
 					}
 					else
 					{
-						outside_points_indices[num_outside_points++] = index_face + 24; // index_v2
+						outside_points_indices[num_outside_points++] = index_face + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX; // index_v2
 					}
 
 					if (num_inside_points == 3)
@@ -1872,7 +1860,6 @@ void clip_to_screen(
 						const float r0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_R], temp_clipped_faces_in[index_op0 + INDEX_R], t);
 						const float g0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_G], temp_clipped_faces_in[index_op0 + INDEX_G], t);
 						const float b0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_B], temp_clipped_faces_in[index_op0 + INDEX_B], t);
-						const float a0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_A], temp_clipped_faces_in[index_op0 + INDEX_A], t);
 
 						V3 p1;
 						t = line_intersect_plane(ip0, op1, plane, p1);
@@ -1886,11 +1873,10 @@ void clip_to_screen(
 						const float r1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_R], temp_clipped_faces_in[index_op1 + INDEX_R], t);
 						const float g1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_G], temp_clipped_faces_in[index_op1 + INDEX_G], t);
 						const float b1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_B], temp_clipped_faces_in[index_op1 + INDEX_B], t);
-						const float a1 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_A], temp_clipped_faces_in[index_op1 + INDEX_A], t);
 
 						// Copy the attributes into the new face.
+						// TODO: Must make helpers for writing these out, or just memcpy? Memcpy seems just as fast.
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[index_ip0];
-						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip0];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip0];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip0];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip0];
@@ -1913,7 +1899,6 @@ void clip_to_screen(
 						temp_clipped_faces_out[index_out++] = r0;
 						temp_clipped_faces_out[index_out++] = g0;
 						temp_clipped_faces_out[index_out++] = b0;
-						temp_clipped_faces_out[index_out++] = a0;
 
 						temp_clipped_faces_out[index_out++] = p1[0];
 						temp_clipped_faces_out[index_out++] = p1[1];
@@ -1926,7 +1911,6 @@ void clip_to_screen(
 						temp_clipped_faces_out[index_out++] = r1;
 						temp_clipped_faces_out[index_out++] = g1;
 						temp_clipped_faces_out[index_out++] = b1;
-						temp_clipped_faces_out[index_out++] = a1;
 
 						++temp_visible_faces_count;
 					}
@@ -1969,11 +1953,9 @@ void clip_to_screen(
 						const float r0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_R], temp_clipped_faces_in[index_op0 + INDEX_R], t);
 						const float g0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_G], temp_clipped_faces_in[index_op0 + INDEX_G], t);
 						const float b0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_B], temp_clipped_faces_in[index_op0 + INDEX_B], t);
-						const float a0 = lerp(temp_clipped_faces_in[index_ip0 + INDEX_A], temp_clipped_faces_in[index_op0 + INDEX_A], t);
 
 						// Copy the attributes into the new face.
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[index_ip0];
-						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip0];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip0];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip0];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip0];
@@ -1998,7 +1980,6 @@ void clip_to_screen(
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip1];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip1];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip1];
-						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip1];
 
 						temp_clipped_faces_out[index_out++] = p0[0];
 						temp_clipped_faces_out[index_out++] = p0[1];
@@ -2011,7 +1992,6 @@ void clip_to_screen(
 						temp_clipped_faces_out[index_out++] = r0;
 						temp_clipped_faces_out[index_out++] = g0;
 						temp_clipped_faces_out[index_out++] = b0;
-						temp_clipped_faces_out[index_out++] = a0;
 
 						++temp_visible_faces_count;
 
@@ -2027,7 +2007,6 @@ void clip_to_screen(
 						const float r1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_R], temp_clipped_faces_in[index_op0 + INDEX_R], t);
 						const float g1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_G], temp_clipped_faces_in[index_op0 + INDEX_G], t);
 						const float b1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_B], temp_clipped_faces_in[index_op0 + INDEX_B], t);
-						const float a1 = lerp(temp_clipped_faces_in[index_ip1_copy + INDEX_A], temp_clipped_faces_in[index_op0 + INDEX_A], t);
 
 						// Copy the attributes into the new face.
 						temp_clipped_faces_out[index_out++] = p0[0];
@@ -2041,7 +2020,6 @@ void clip_to_screen(
 						temp_clipped_faces_out[index_out++] = r0;
 						temp_clipped_faces_out[index_out++] = g0;
 						temp_clipped_faces_out[index_out++] = b0;
-						temp_clipped_faces_out[index_out++] = a0;
 
 						temp_clipped_faces_out[index_out++] = p1[0];
 						temp_clipped_faces_out[index_out++] = p1[1];
@@ -2054,11 +2032,9 @@ void clip_to_screen(
 						temp_clipped_faces_out[index_out++] = r1;
 						temp_clipped_faces_out[index_out++] = g1;
 						temp_clipped_faces_out[index_out++] = b1;
-						temp_clipped_faces_out[index_out++] = a1;
 
 						// TODO: Memcpy?
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[index_ip1_copy];
-						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip1_copy];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip1_copy];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip1_copy];
 						temp_clipped_faces_out[index_out++] = temp_clipped_faces_in[++index_ip1_copy];
@@ -2122,7 +2098,7 @@ void project_and_draw_clipped(
 		{
 			int clipped_face_index = i * STRIDE_ENTIRE_FACE;
 
-			// Project the vertex position.
+			// Project the vertex positions.
 			V4 v0 = {
 				clipped_faces[clipped_face_index],
 				clipped_faces[clipped_face_index + 1],
@@ -2131,16 +2107,16 @@ void project_and_draw_clipped(
 			};
 
 			V4 v1 = {
-				clipped_faces[clipped_face_index + 12],
-				clipped_faces[clipped_face_index + 13],
-				clipped_faces[clipped_face_index + 14],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 1],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 2],
 				1
 			};
 
 			V4 v2 = {
-				clipped_faces[clipped_face_index + 24],
-				clipped_faces[clipped_face_index + 25],
-				clipped_faces[clipped_face_index + 26],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 1],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 2],
 				1
 			};
 
@@ -2150,25 +2126,22 @@ void project_and_draw_clipped(
 			project(&rt->canvas, projection_matrix, v1, projected_v1);
 			project(&rt->canvas, projection_matrix, v2, projected_v2);
 
-			V4 colour0 = {
+			V3 colour0 = {
 				clipped_faces[clipped_face_index + 8] * projected_v0[3],
 				clipped_faces[clipped_face_index + 9] * projected_v0[3],
-				clipped_faces[clipped_face_index + 10] * projected_v0[3],
-				clipped_faces[clipped_face_index + 11] * projected_v0[3],
+				clipped_faces[clipped_face_index + 10] * projected_v0[3]
 			};
 
-			V4 colour1 = {
-				clipped_faces[clipped_face_index + 20] * projected_v1[3],
-				clipped_faces[clipped_face_index + 21] * projected_v1[3],
-				clipped_faces[clipped_face_index + 22] * projected_v1[3],
-				clipped_faces[clipped_face_index + 23] * projected_v1[3],
+			V3 colour1 = {
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 8] * projected_v1[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 9] * projected_v1[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 10] * projected_v1[3]
 			};
 
-			V4 colour2 = {
-				clipped_faces[clipped_face_index + 32] * projected_v2[3],
-				clipped_faces[clipped_face_index + 33] * projected_v2[3],
-				clipped_faces[clipped_face_index + 34] * projected_v2[3],
-				clipped_faces[clipped_face_index + 35] * projected_v2[3],
+			V3 colour2 = {
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 8] * projected_v2[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 9] * projected_v2[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 10] * projected_v2[3]
 			};
 
 			draw_triangle(rt, projected_v0, projected_v1, projected_v2, colour0, colour1, colour2);
@@ -2181,7 +2154,7 @@ void project_and_draw_clipped(
 		{
 			int clipped_face_index = i * STRIDE_ENTIRE_FACE;
 
-			// Project the vertex position.
+			// Project the vertex positions.
 			V4 v0 = {
 				clipped_faces[clipped_face_index],
 				clipped_faces[clipped_face_index + 1],
@@ -2190,16 +2163,16 @@ void project_and_draw_clipped(
 			};
 
 			V4 v1 = {
-				clipped_faces[clipped_face_index + 12],
-				clipped_faces[clipped_face_index + 13],
-				clipped_faces[clipped_face_index + 14],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 1],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 2],
 				1
 			};
 
 			V4 v2 = {
-				clipped_faces[clipped_face_index + 24],
-				clipped_faces[clipped_face_index + 25],
-				clipped_faces[clipped_face_index + 26],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 1],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 2],
 				1
 			};
 
@@ -2215,37 +2188,34 @@ void project_and_draw_clipped(
 				clipped_faces[clipped_face_index + 4] * pv0[3],
 			};
 
-			V4 colour0 = {
+			V3 colour0 = {
 				clipped_faces[clipped_face_index + 8] * pv0[3],
 				clipped_faces[clipped_face_index + 9] * pv0[3],
-				clipped_faces[clipped_face_index + 10] * pv0[3],
-				clipped_faces[clipped_face_index + 11] * pv0[3],
+				clipped_faces[clipped_face_index + 10] * pv0[3]
 			};
 
 			V2 uv1 =
 			{
-				clipped_faces[clipped_face_index + 15] * pv1[3],
-				clipped_faces[clipped_face_index + 16] * pv1[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 3] * pv1[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 4] * pv1[3],
 			};
 
-			V4 colour1 = {
-				clipped_faces[clipped_face_index + 20] * pv1[3],
-				clipped_faces[clipped_face_index + 21] * pv1[3],
-				clipped_faces[clipped_face_index + 22] * pv1[3],
-				clipped_faces[clipped_face_index + 23] * pv1[3],
+			V3 colour1 = {
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 8] * pv1[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 9] * pv1[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 10] * pv1[3]
 			};
 
 			V2 uv2 =
 			{
-				clipped_faces[clipped_face_index + 27] * pv2[3],
-				clipped_faces[clipped_face_index + 28] * pv2[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 3] * pv2[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 4] * pv2[3],
 			};
 
-			V4 colour2 = {
-				clipped_faces[clipped_face_index + 32] * pv2[3],
-				clipped_faces[clipped_face_index + 33] * pv2[3],
-				clipped_faces[clipped_face_index + 34] * pv2[3],
-				clipped_faces[clipped_face_index + 35] * pv2[3],
+			V3 colour2 = {
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 8] * pv2[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 9] * pv2[3],
+				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 10] * pv2[3]
 			};
 
 			draw_textured_triangle(rt, pv0, pv1, pv2, colour0, colour1, colour2, uv0, uv1, uv2, texture);

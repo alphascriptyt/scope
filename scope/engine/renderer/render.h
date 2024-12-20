@@ -38,16 +38,16 @@ float calculate_diffuse_factor(const V3 v, const V3 n, const V3 light_pos, float
 
 // SECTION: Triangle rasterisation.
 // TODO: Could have a vertex struct for all these.
-void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V4 c0, const V4 c1);
-void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2);
-void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2);
-void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2);
+void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V3 c0, const V3 c1);
+void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2);
+void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2);
+void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2);
 
 // TODO: Rename?
-void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V4 c0, const V4 c1, const V2 uv0, const V2 uv1, const Canvas* texture);
-void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
-void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
-void draw_textured_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V4 c1, V4 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
+void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V3 c0, const V3 c1, const V2 uv0, const V2 uv1, const Canvas* texture);
+void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
+void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
+void draw_textured_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V4 c0, V3 c1, V3 c2, V3 uv0, V2 uv1, V2 uv2, const Canvas* texture);
 
 // SECTION: Render loop.
 void project(const Canvas* canvas, const M4 projection_matrix, const V4 v, V4 o);

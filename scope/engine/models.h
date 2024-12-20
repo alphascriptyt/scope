@@ -7,20 +7,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// TODO: Make some defines for writing to the buffers i think.
+
 // Define the size of strides for the arrays.
+// TODO: SPecifiy these are vertex strides?
 #define STRIDE_FACE_VERTICES	3
-#define STRIDE_FACE_ATTRIBUTES	18	// u, v, r, g, b, a - per vertex
-#define STRIDE_COLOUR	4			// RGBA so we can have colour and texture.
+#define STRIDE_COLOUR	3			// RGB, will need to increase this if we want to add transparency. Which I would like to do one day if performance is okay.
 #define STRIDE_POSITION 3
 #define STRIDE_NORMAL	3
 #define STRIDE_UV		2
 #define STRIDE_SPHERE	4			// Center (x,y,z), Radius	
-#define STRIDE_ENTIRE_FACE 36		// x, y, z, u, v, nx, ny, nz, r, g, b, a - per vertex TODO: Could think about this more.
+// TODO: Not sure on the ENTIRE naming conventions. Could make this better.
+#define STRIDE_ENTIRE_VERTEX 11 // x, y, z, u, v, nx, ny, nz, r, g, b - TODO: Could think about this a bit more.
+#define STRIDE_ENTIRE_FACE (STRIDE_ENTIRE_VERTEX * STRIDE_FACE_VERTICES)
 #define STRIDE_MI_TRANSFORM 9		// Position, Eulers, Scale
-
-// TODO: Need to think if i will differentiate between textures and no textures for this. With textures we would need the extra u,v.
-
-#define STRIDE_PROJECTED_FACE 24	// x,y,z,w,r,g,b,a per vertex
 
 // Define indices for the components of a vertex of an ENTIRE_FACE.
 // Not sure if this is necessary but could be helpful.
@@ -36,7 +36,6 @@
 #define INDEX_R 8
 #define INDEX_G 9
 #define INDEX_B 10
-#define INDEX_A 11
 
 /*
 

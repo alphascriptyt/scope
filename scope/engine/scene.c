@@ -1,5 +1,7 @@
 #include "scene.h"
 
+#include "utils/logger.h"
+
 #include <string.h>
 
 Status scene_init(Scene* scene)
@@ -15,4 +17,6 @@ Status scene_init(Scene* scene)
 Status scene_destroy(Scene* scene)
 {
 	// TODO: Cleanup
+	log_warn("Need to implement scene_destroy.");
+	return STATUS_OK;
 }
