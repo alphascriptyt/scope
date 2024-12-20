@@ -198,7 +198,10 @@ void load_model_base_from_obj(Models* models, const char* filename)
 		else if (strcmp(tokens[0], "vt") == 0)
 		{
 			models->mbs_uvs[uvs_offset++] = (float)atof(tokens[1]);
-			models->mbs_uvs[uvs_offset++] = (float)atof(tokens[2]);
+			
+			// Invert the v component so we don't have to do it per pixel.
+			// Not sure if this will cause any confusion if we ever want to edit them.
+			models->mbs_uvs[uvs_offset++] = 1.f - (float)atof(tokens[2]);
 		}
 
 		else if (strcmp(tokens[0], "f") == 0)

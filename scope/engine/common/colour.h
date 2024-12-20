@@ -32,4 +32,11 @@ inline void unpack_int_rgb_to_floats(int colour, float* r, float* g, float* b)
 	*b = (colour & 0xFF) * n;
 }
 
+inline void unpack_int_rgb_to_ints(int colour, int* r, int* g, int* b)
+{
+	*r = (colour >> 16) & 0xFF;
+	*g = (colour >> 8) & 0xFF;
+	*b = colour & 0xFF;
+}
+
 #endif

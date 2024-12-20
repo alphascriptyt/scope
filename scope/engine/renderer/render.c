@@ -628,37 +628,16 @@ void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, f
 			// Recover w
 			const float w = 1.0f / inv_w;
 
-			
-			/*
-			// Render as depth buffer, testing depth values
-			V3 white = { 1,1,1 };
-			float r = (white[0] * (1.f - z));
-			float g = (white[1] * (1.f - z));
-			float b = (white[2] * (1.f - z));
-			*/
-
-
-			// TODO: For now just render the texture.
-			//const float r = (c[0] * w);
-			//const float g = (c[1] * w);
-			//const float b = (c[2] * w);
-
 			float u = (uv[0] * w);
 			float v = (uv[1] * w);
 
-			// TODO: Why is this needed?
-			//if (u > 1) u = 1;
-			//if (v > 1) v = 1;
-			//if (u < 0) u = 0;
-			//if (v < 0) v = 0;
-
-			int rows = (int)((1 - v) * texture->height);
-
+			// TODO: Could precalculate the 1 - v when loading the texture.
+			// Anything I can do to do less computation here is good.
+			int rows = (int)((v) * texture->height);
 			int cols = (int)(u * texture->width);
 
 			// TODO: Could store texels as float[3] to solve this.
 			int tex = texture->pixels[rows * texture->width + cols];
-
 			float r, g, b;
 			unpack_int_rgb_to_floats(tex, &r, &g, &b);
 
@@ -666,15 +645,12 @@ void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, f
 			float dg = c[1] * w;
 			float db = c[2] * w;
 
-
-
 			r *= dr;
 			g *= dg;
 			b *= db;
 
-			int out_colour = float_rgb_to_int(r, g, b);
-
-			*pixels = out_colour;
+			*pixels = float_rgb_to_int(r, g, b);
+			
 			//*pixels = float_rgb_to_int(r, g, b);
 			*depth_buffer = z;
 		}
@@ -2230,6 +2206,35 @@ void render(
 	const Resources* resources,
 	const M4 view_matrix)
 {
+	
+	Timer temp = timer_start();
+
+	V4 v0 = { 0, 0, 0, 1 };
+	V4 v1 = { rt->canvas.width, 0, 0, 1 };
+	V4 v2 = { rt->canvas.width, rt->canvas.height, 0, 1 };
+	V4 v3 = { 0, rt->canvas.height, 0, 1 };
+
+	V3 c0 = { 1,0,0 };
+	V3 c1 = { 0,1,0 };
+	V3 c2 = { 0,0,1 };
+	V3 c3 = { 1,1,1 };
+
+	V2 uv0 = { 0,0 };
+	V2 uv1 = { 1,0 };
+	V2 uv2 = { 0,1 };
+	V2 uv3 = { 1,1 };
+
+	Canvas* texture = &resources->textures[0];
+
+	draw_textured_triangle(rt, v0, v1, v2, c0, c1, c2, uv0, uv1, uv2, texture);
+	draw_textured_triangle(rt, v0, v3, v2, c0, c3, c2, uv0, uv3, uv2, texture);
+
+	//draw_triangle(rt, v0, v1, v2, c0, c1, c2);
+	//draw_triangle(rt, v0, v3, v2, c0, c3, c2);
+	printf("tooK: %d\n", timer_get_elapsed(&temp));
+	// Before takes like: 4-6ms, getting like 160fps. default resolution.
+	return;
+
 	// TODO: Make view matrix a part of the renderer, and the camera maybe. Then render should take the renderer i would assume.
 	//		 or maybe these are a part of the settings. Bascially that part needs a refactor.
 	Timer t = timer_start();
