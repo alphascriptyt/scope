@@ -4,6 +4,8 @@
 #include "models.h"
 #include "lights.h"
 
+#include "maths/vector3.h"
+
 #include "common/status.h"
 
 // A scene is essentially a wrapper for models and lights.
@@ -11,6 +13,7 @@ typedef struct
 {
 	Models models;
 	PointLights point_lights;
+	V3 ambient_light;
 
 } Scene;
 

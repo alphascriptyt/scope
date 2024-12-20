@@ -60,7 +60,7 @@ void broad_phase_frustum_culling(Models* models, const ViewFrustum* view_frustum
 
 void cull_backfaces(Models* models);
 
-void light_front_faces(Models* models, const PointLights* point_lights);
+void light_front_faces(Scene* scene);
 
 void clip_to_screen(RenderTarget* rt, const M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Models* models, const Resources* resources);
 

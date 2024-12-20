@@ -1480,37 +1480,34 @@ void cull_backfaces(Models* models)
 	}
 }
 
-void light_front_faces(Models* models, const PointLights* point_lights)
+void light_front_faces(Scene* scene)
 {
-	/*
-	TODO: Why doens't the per vertex seem to work?
-
-	looks more like per face?
-
-	for some reason it worked perfectly with mb loading issue when uvs werent defined
-	and we were loading a different obj utah teapot (diff to the one we have now) 
-	then having the light inside the mesh. No idea what happened but was smooth
-
-
-	it will be something stupid but 5am now bed time :D
-	
-	
-	*/
-
-
 	// TODO: For optimising this, some sort of broad phase could be implemented.
 	//		 Potentially when we 
 
 	// Apply lighting to all the front faces.
 	// We do this before clipping so if we don't get inconsistent results. 
-	float* front_faces = models->front_faces;
-	const int* front_faces_counts = models->front_faces_counts;
+	float* front_faces = scene->models.front_faces;
+	const int* front_faces_counts = scene->models.front_faces_counts;
 
 	int face_offset = 0;
 
-	const int mis_count = models->mis_count;
+	const int mis_count = scene->models.mis_count;
 
-	const int* passed_broad_phase_flags = models->mis_passed_broad_phase_flags;
+	const int* passed_broad_phase_flags = scene->models.mis_passed_broad_phase_flags;
+
+	const int point_lights_count = scene->point_lights.count;
+
+	const float* pls_view_space_positions = scene->point_lights.view_space_positions;
+	const float* pls_attributes = scene->point_lights.attributes;
+
+	// TODO: Once I stop using float[3] for these I won't have to do dumb stuff like this
+	//		 hopefully.
+	V3 ambient_light = {
+		scene->ambient_light[0],
+		scene->ambient_light[1],
+		scene->ambient_light[2]
+	};
 
 	for (int i = 0; i < mis_count; ++i)
 	{
@@ -1558,26 +1555,26 @@ void light_front_faces(Models* models, const PointLights* point_lights)
 				V3 diffuse_part = { 0, 0, 0 };
 
 				// For each light
-				for (int i_light = 0; i_light < point_lights->count; ++i_light)
+				for (int i_light = 0; i_light < point_lights_count; ++i_light)
 				{
 					int i_light_pos = i_light * STRIDE_POSITION;
 					int i_light_attr = i_light * STRIDE_POINT_LIGHT_ATTRIBUTES;
 
 					const V3 light_pos =
 					{
-						point_lights->view_space_positions[i_light_pos],
-						point_lights->view_space_positions[i_light_pos + 1],
-						point_lights->view_space_positions[i_light_pos + 2]
+						pls_view_space_positions[i_light_pos],
+						pls_view_space_positions[i_light_pos + 1],
+						pls_view_space_positions[i_light_pos + 2]
 					};
 
 					V3 light_colour =
 					{
-						point_lights->attributes[i_light_attr],
-						point_lights->attributes[i_light_attr + 1],
-						point_lights->attributes[i_light_attr + 2]
+						pls_attributes[i_light_attr],
+						pls_attributes[i_light_attr + 1],
+						pls_attributes[i_light_attr + 2]
 					};
 
-					float strength = point_lights->attributes[3];
+					float strength = pls_attributes[3];
 
 					// TODO: Could cache this? Then the user can also set
 					//		 the attenuation?
@@ -1590,12 +1587,9 @@ void light_front_faces(Models* models, const PointLights* point_lights)
 					v3_add_v3(diffuse_part, light_colour);
 				}
 
-				// TODO: This should be set by the scene probably.
-				const float ambient_light = 0.1f;
-
-				diffuse_part[0] = max(min(diffuse_part[0], 1), ambient_light);
-				diffuse_part[1] = max(min(diffuse_part[1], 1), ambient_light);
-				diffuse_part[2] = max(min(diffuse_part[2], 1), ambient_light);
+				diffuse_part[0] = max(min(diffuse_part[0], 1), ambient_light[0]);
+				diffuse_part[1] = max(min(diffuse_part[1], 1), ambient_light[1]);
+				diffuse_part[2] = max(min(diffuse_part[2], 1), ambient_light[2]);
 
 				v3_mul_v3(colour, diffuse_part);
 

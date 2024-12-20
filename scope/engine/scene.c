@@ -11,6 +11,10 @@ Status scene_init(Scene* scene)
 	models_init(&scene->models);
 	point_lights_init(&scene->point_lights);
 
+	scene->ambient_light[0] = 0.1f;
+	scene->ambient_light[1] = 0.1f;
+	scene->ambient_light[2] = 0.1f;
+
 	return STATUS_OK;
 }
 
