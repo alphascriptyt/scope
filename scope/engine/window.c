@@ -48,8 +48,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             // Update the dimensions.
             window->width = width;
             window->height = height;
-            window->bitmap.bmiHeader.biWidth = width;
-            window->bitmap.bmiHeader.biHeight = -height;
+            
+            // TODO: The engine updates the canvas size, which sets the window bitmap
+            //       dimensions. Feels off. Not sure.
 
             // Fire the resize callback.
             window->on_resize(window->ctx);

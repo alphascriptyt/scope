@@ -53,7 +53,7 @@ Status engine_init(Engine* engine, int window_width, int window_height)
     // Initialise the resources.
     resources_init(&engine->resources);
 
-    // Initialise a random seed
+    // Initialise a random seed. TODO: Might not want this for testing.
     srand((unsigned int)time(NULL));
     
     log_info("Fired engine_on_init event.");
@@ -319,7 +319,15 @@ void engine_on_resize(void* ctx)
     Engine* engine = (Engine*)ctx;
 
     Status status = renderer_resize(&engine->renderer, 
-        engine->window.width, engine->window.height);
+        (int)(engine->window.width / engine->upscaling_factor), 
+        (int)(engine->window.height / engine->upscaling_factor));
+
+    // TODO: Feels wrong setting the window bitmap dimensions here instead
+    //       of in the window. But need the upscaling information. Maybe
+    //       the window could handle the upscaling factor instead?
+
+    engine->window.bitmap.bmiHeader.biWidth = engine->renderer.target.canvas.width;
+    engine->window.bitmap.bmiHeader.biHeight = -engine->renderer.target.canvas.height;
 
     if (STATUS_OK != status)
     {
