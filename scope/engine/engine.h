@@ -32,7 +32,7 @@ typedef struct
 	int running;
 
 	// TODO: Move these somewhere?
-	int lock_mouse;
+	int handle_input;
 	float upscaling_factor;
 
 	// TODO: Allow the user to set callbacks just like the window class.

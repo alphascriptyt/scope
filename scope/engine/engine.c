@@ -20,7 +20,7 @@ Status engine_init(Engine* engine, int window_width, int window_height)
     // Set some default settings.
     engine->current_scene_id = -1;
     engine->upscaling_factor = 1;
-    engine->lock_mouse = 0;
+    engine->handle_input = 0;
 
     // Initialise the renderer.
     Status status = renderer_init(&engine->renderer, (int)(window_width / engine->upscaling_factor), (int)(window_height / engine->upscaling_factor));
@@ -98,7 +98,7 @@ void engine_run(Engine* engine)
     int y = 10;
     int h = 30;
 
-    // TODO: This can be an add text function. Was thinking about 'draw_text()' but then something like this would be annoying.
+    // TODO: This can be a ui add text function
     engine->ui.text[engine->ui.text_count++] = text_create(fps_str, 10, engine->ui.text_count * h + 10, COLOUR_LIME, 3);
     engine->ui.text[engine->ui.text_count++] = text_create(dir_str, 10, engine->ui.text_count * h + 10, COLOUR_RED, 3);
     engine->ui.text[engine->ui.text_count++] = text_create(pos_str, 10, engine->ui.text_count * h + 10, COLOUR_RED, 3);
@@ -123,6 +123,7 @@ void engine_run(Engine* engine)
         // Process the application window messages.
         if (!window_process_messages())
         {
+            // Break on WM_QUIT.
             break;
         }
 
@@ -213,9 +214,7 @@ void engine_handle_input(Engine* engine, float dt)
 {
     Camera* camera = &engine->renderer.camera;
 
-    // TODO: Need to refactor all this input stuff,
-    // lock mouse should be handling input maybe.
-    if (!engine->lock_mouse)
+    if (!engine->handle_input)
     {
         return;
     }
@@ -339,13 +338,16 @@ void engine_process_keyup(void* ctx, WPARAM wParam)
 {
     Engine* engine = (Engine*)ctx;
 
-    // TODO: Switch.
-    if (VK_TAB == wParam)
-    {   
-        ShowCursor(engine->lock_mouse);
-        engine->lock_mouse = !engine->lock_mouse;
-        
-        if (engine->lock_mouse)
+    // Handle any engine specific keybinds, if
+    // not engine specific, pass to user callback.
+    switch (wParam)
+    {
+    case VK_TAB:
+    {
+        ShowCursor(engine->handle_input);
+        engine->handle_input = !engine->handle_input;
+
+        if (engine->handle_input)
         {
             RECT rect = { 0 };
             GetClientRect(engine->window.hwnd, &rect);
@@ -368,7 +370,7 @@ void engine_process_keyup(void* ctx, WPARAM wParam)
             cursor_area.top = center.y;
             cursor_area.right = center.x;
             cursor_area.bottom = center.y;
-            
+
             ClipCursor(&cursor_area);
         }
         else
@@ -376,14 +378,21 @@ void engine_process_keyup(void* ctx, WPARAM wParam)
             // Release the cursor so it can move freely..
             ClipCursor(NULL);
         }
+
+        break;
     }
-    else if (VK_ESCAPE == wParam)
+    case VK_ESCAPE:
     {
         engine->running = 0;
         PostQuitMessage(0);
-    }
 
-    // Fire the engine callback.
-    // TODO: Would be nice to not use WPARAM.
-    engine_on_keyup(engine, wParam);
+        break;
+    }
+    default:
+    {
+        // Fire the user defined callback.
+        // TODO: Could be nice to not use WPARAM for this.
+        engine_on_keyup(engine, wParam);
+    }
+    }
 }
