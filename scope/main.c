@@ -89,18 +89,6 @@ void engine_on_init(Engine* engine)
 
 void engine_on_update(Engine* engine, float dt)
 {
-    /*
-    Canvas* t = &engine->resources.textures[0];
-    // TODO: Just copy the bitmap to test first.
-    for (int y = 0; y < t->height; ++y)
-    {
-        for (int x = 0; x < t->width; ++x)
-        {
-            engine->renderer.target.canvas.pixels[y * engine->renderer.target.canvas.width + x] = t->pixels[y * t->width + x];
-        }
-    }*/
-
-
     return;
     Scene* scene = &engine->scenes[engine->current_scene_id];
     
@@ -165,7 +153,7 @@ void engine_on_update(Engine* engine, float dt)
     v3_init(pos, scene->models.mis_transforms[0], scene->models.mis_transforms[1], scene->models.mis_transforms[2]);
 
     V3 dir;
-    v3_sub_v3_out(pos, engine->renderer.camera.position, dir);
+    v3_sub_v3_out(pos, engine->renderer.camera.position, dir);ww
     normalise(dir);
     printf("dir: %s\n", v3_to_str(dir));
 

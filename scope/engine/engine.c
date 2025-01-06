@@ -110,11 +110,6 @@ void engine_run(Engine* engine)
     engine->ui.text[engine->ui.text_count++] = text_create(display_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
     engine->ui.text[engine->ui.text_count++] = text_create(update_str, 10, engine->ui.text_count * h + 10, COLOUR_WHITE, 3);
 
-    float total_fps = 0;
-    int frames = 0;
-
-    Timer elapsed_timer = timer_start();
-
     engine->running = 1;
     while (engine->running)
     {
@@ -176,8 +171,7 @@ void engine_run(Engine* engine)
         startTime = endTime;
 
         fps = (int)(1.0f / dt);
-        total_fps += fps;
-        frames++;
+        
         if (dt_counter > 2)
         {
             snprintf(fps_str, sizeof(fps_str), "FPS: %d", fps);
@@ -186,12 +180,6 @@ void engine_run(Engine* engine)
 
         snprintf(dir_str, sizeof(dir_str), "DIR: %.2f %.2f %.2f", engine->renderer.camera.direction.x, engine->renderer.camera.direction.y, engine->renderer.camera.direction.z);
         snprintf(pos_str, sizeof(pos_str), "POS: %.2f %.2f %.2f", engine->renderer.camera.position.x, engine->renderer.camera.position.y, engine->renderer.camera.position.z);
-
-        if (timer_get_elapsed(&elapsed_timer) > 30000)
-        {
-            printf("Average fps: %f\n", total_fps / frames);
-            break;
-        }
     }
 }
 
@@ -219,7 +207,8 @@ void engine_handle_input(Engine* engine, float dt)
         return;
     }
 
-    // TODO: Could move this to an input handler or something.
+    // TODO: Could move this to an input handler or something. 
+    //       Not sure if necessary.
     POINT mouse_position;
     GetCursorPos(&mouse_position);
 
@@ -231,7 +220,8 @@ void engine_handle_input(Engine* engine, float dt)
     engine->window.mouse_dy = 0;
 
     // Calculate the camera movement in radians.
-    float sens = 0.05f;
+    float sens = 0.05f; // TODO: Set this somewhere. 
+                        //       Maybe this is where the input manager comes in. If this is to be an actual game engine, user needs control.
     float dy = radians(rel_x * sens);
     float dp = radians(rel_y * sens);
 
@@ -267,7 +257,7 @@ void engine_handle_input(Engine* engine, float dt)
 
     // Direct position changes must be multipled by dt.
     const float SPEED = 10.f;
-    float meters_per_second = 10 * dt;
+    float meters_per_second = SPEED * dt;
 
     // Process keyboard input.
     BYTE keys[256];
