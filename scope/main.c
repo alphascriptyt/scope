@@ -12,14 +12,8 @@
 float* directions;
 
 void engine_on_init(Engine* engine)
-{
-    
+{    
     if (STATUS_OK != resources_load_texture(&engine->resources, "C:/Users/olive/source/repos/scope/scope/res/textures/rickreal.bmp"))
-    {
-        log_error("FAiled to load\n");
-    }
-
-    if (STATUS_OK != resources_load_texture(&engine->resources, "C:/Users/olive/source/repos/scope/scope/res/textures/fortnite_peter.bmp"))
     {
         log_error("FAiled to load\n");
     }
@@ -38,53 +32,24 @@ void engine_on_init(Engine* engine)
     engine->current_scene_id = 0;
     ++engine->scenes_count;
     
-    // Load models into the scene
-    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/smooth_cylinder.obj");  
-    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
-    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/teapot.obj");
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/monkey.obj");
-    //load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/axis.obj");
-    int n0 = 1;
+    // Setup scene for shadow testing.
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
+    create_model_instances(&scene->models, 0, 3);
 
-    
-    
-    create_model_instances(&scene->models, 0, n0);
-
-    // Set the first model to use the first texture.
-    //scene->models.mis_texture_ids[0] = 0;
-    //scene->models.mis_texture_ids[1] = 1;
-
-    //create_model_instances(&scene->models, 1, 3);
-
-    log_info("Created model instances.");
-    V3 pos = { 0, 0, 0 };
+    V3 pos0 = { -1, 3, 3 };
+    V3 pos1 = { 1, 3, 3 };
     V3 eulers = { 0,0, 0};
-    V3 scale = { 1, 1, 1 };
+    V3 scale = { 0.5, 1, 0.5 };
+    mi_set_transform(&scene->models, 0, pos0, eulers, scale);
+    mi_set_transform(&scene->models, 1, pos1, eulers, scale);
 
+    V3 plane_pos = { 0, 0, 0 };
+    V3 plane_scale = { 5, 0.1, 5 };
+    mi_set_transform(&scene->models, 2, plane_pos, eulers, plane_scale);
 
-    
-    for (int i = 0; i < n0; ++i)
-    {
-        int index_transform = i * STRIDE_MI_TRANSFORM;
-
-        scene->models.mis_transforms[index_transform] = pos.x;
-        scene->models.mis_transforms[++index_transform] = pos.y;
-        scene->models.mis_transforms[++index_transform] = pos.z - (i + 1) * 3;
-        scene->models.mis_transforms[++index_transform] = eulers.x;
-        scene->models.mis_transforms[++index_transform] = eulers.y;
-        scene->models.mis_transforms[++index_transform] = eulers.z;
-        scene->models.mis_transforms[++index_transform] = scale.x;
-        scene->models.mis_transforms[++index_transform] = scale.y;
-        scene->models.mis_transforms[++index_transform] = scale.z;
-    }
-
-    V3 pl_pos0 = { -1, 5, -3 };
+    V3 pl_pos0 = { 0, 5, 6 };
     V3 pl_col0 = { 1, 0, 0 };
     point_lights_create(&scene->point_lights, pl_pos0, pl_col0, 1.f);
-
-    V3 pl_pos1 = { 1, 5, -3 };
-    V3 pl_col1 = { 0, 0, 1 };
-    //point_lights_create(&scene->point_lights, pl_pos1, pl_col1, 1.f);
 }
 
 void engine_on_update(Engine* engine, float dt)

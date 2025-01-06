@@ -64,7 +64,7 @@ void parse_obj_counts(FILE* file, int* num_positions, int* num_uvs, int* num_nor
 	printf("Faces: %d\n", *num_faces);
 }
 
-void load_model_base_from_obj(Models* models, const char* filename)
+Status load_model_base_from_obj(Models* models, const char* filename)
 {
 	// TODO: Eventually could check the filetype.
 	FILE* file = fopen(filename, "r");
@@ -75,8 +75,7 @@ void load_model_base_from_obj(Models* models, const char* filename)
 		log_error(msg);
 		free(msg);
 
-		// TODO: Return error code. Could make a file for this.
-		return;
+		return STATUS_FILE_FAILURE;
 	}
 
 	// Read the sizes that we will need to allocate to accomodate for.
@@ -305,8 +304,8 @@ void load_model_base_from_obj(Models* models, const char* filename)
 	// Close the file.
 	if (fclose(file) != 0)
 	{
-		// TODO: Error closing.
 		log_error("Failed to close file after loading .obj file.");
+		return STATUS_FILE_FAILURE;
 	}
 
 	// Update totals.
@@ -315,6 +314,8 @@ void load_model_base_from_obj(Models* models, const char* filename)
 	models->mbs_total_positions = new_total_positions;
 	models->mbs_total_normals = new_total_normals;
 	models->mbs_total_uvs = new_total_uvs;
+
+	return STATUS_OK;
 }
 
 void create_model_instances(Models* models, int mb_index, int n)
@@ -424,6 +425,23 @@ void free_models(Models* models)
 
 	free(models->temp_clipped_faces_in);
 	free(models->temp_clipped_faces_out);
+}
+
+void mi_set_transform(Models* models, int mi_index, V3 position, V3 eulers, V3 scale)
+{
+	const int ti = mi_index * STRIDE_MI_TRANSFORM;
+
+	models->mis_transforms[ti + 0] = position.x;
+	models->mis_transforms[ti + 1] = position.y;
+	models->mis_transforms[ti + 2] = position.z;
+
+	models->mis_transforms[ti + 3] = eulers.x;
+	models->mis_transforms[ti + 4] = eulers.y;
+	models->mis_transforms[ti + 5] = eulers.z;
+
+	models->mis_transforms[ti + 6] = scale.x;
+	models->mis_transforms[ti + 7] = scale.y;
+	models->mis_transforms[ti + 8] = scale.z;
 }
 
 #undef _CRT_SECURE_NO_WARNINGS

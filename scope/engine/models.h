@@ -141,7 +141,7 @@ void models_init(Models* models);
 // Parses the obj file for the number of each component.
 void parse_obj_counts(FILE* file, int* num_vertices, int* num_uvs, int* num_normals, int* num_faces);
 
-void load_model_base_from_obj(Models* models, const char* filename);
+Status load_model_base_from_obj(Models* models, const char* filename);
 
 // TODO: It would be nice to be able to create different model
 //		 instances without memory allocating each time. I think
@@ -156,5 +156,10 @@ void load_model_base_from_obj(Models* models, const char* filename);
 void create_model_instances(Models* models, int mb_index, int n);
 
 void free_models(Models* models);
+
+// Helpers
+void mi_set_transform(Models* models, int mi_index, V3 position, V3 eulers, V3 scale);
+
+
 
 #endif
