@@ -248,6 +248,34 @@ void m4_copy_m3(const M4 in, M4 out)
 	out[15] = 1; // TODO: Not sure about this
 }
 
+void m4_projection(float fov, float aspect_ratio, float near_plane, float far_plane, M4 out)
+{
+	// TODO: Fov is vertical fov here.
+	// TODO: Comment all this properly to show I actually understand it all.
+
+	// Currently the opengl perspective projection matrix.
+
+	float y_scale = 1.f / tanf(radians(fov) / 2.f);
+	float x_scale = y_scale / aspect_ratio;
+
+	out[0] = x_scale;
+	out[1] = 0;
+	out[2] = 0;
+	out[3] = 0;
+	out[4] = 0;
+	out[5] = y_scale;
+	out[6] = 0;
+	out[7] = 0;
+	out[8] = 0;
+	out[9] = 0;
+	out[10] = -(far_plane + near_plane) / (far_plane - near_plane);
+	out[11] = -1; // This negation our right handed coordinate system into a left handed coordinate system in ndc space?
+	out[12] = 0;
+	out[13] = 0;
+	out[14] = -2 * far_plane * near_plane / (far_plane - near_plane);
+	out[15] = 0;
+}
+
 char* m4_to_str(const M4 m)
 {
 	return format_str("%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n",

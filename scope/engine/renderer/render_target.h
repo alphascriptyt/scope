@@ -28,6 +28,7 @@ inline Status render_target_init(RenderTarget* rt, const int width, const int he
         return status;
     }
 
+    // TODO: Refactor to be a DepthBuffer.
     rt->depth_buffer = malloc((size_t)width * height * sizeof(float));
 
     if (!rt->depth_buffer)

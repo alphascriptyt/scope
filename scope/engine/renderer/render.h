@@ -11,6 +11,7 @@
 #include "render_target.h"
 #include "render_settings.h"
 #include "canvas.h"
+#include "depth_buffer.h"
 
 #include "frustum_culling.h"
 
@@ -30,18 +31,21 @@ void debug_draw_view_space_point(Canvas* canvas, const RenderSettings* settings,
 void debug_draw_world_space_line(Canvas* canvas, const RenderSettings* settings, const M4 view_matrix, V3 v0, V3 v1, V3 colour);
 void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const Models* models, int mi_index);
 
-// TODO: Not sure where to put this?
+
 
 // TODO: Split these functions into sections.
 
+// TODO: Not sure where to put this?
 float calculate_diffuse_factor(V3 v, V3 n, V3 light_pos, float a, float b);
 
 // SECTION: Triangle rasterisation.
 // TODO: Could have a vertex struct for all these.
-void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, V3 c0, V3 c1);
-void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2);
-void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2);
-void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2);
+
+// TODO: Should some of this stuff be global? RenderTarget, depth maps?
+void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, V3 c0, V3 c1, float* lsp0, float* lsp1, int lights_count, DepthBuffer* depth_maps);
+void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps);
+void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps);
+void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps);
 
 // TODO: Rename?
 void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, V3 c0, V3 c1, const V2 uv0, const V2 uv1, const Canvas* texture);
@@ -49,7 +53,13 @@ void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V
 void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
 void draw_textured_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
 
-// SECTION: Render loop.
+// TODO: TEMP
+void draw_depth_scanline(DepthBuffer* db, int x0, int x1, int y, float z0, float z1);
+void draw_depth_flat_bottom_triangle(DepthBuffer* db, V4 v0, V4 v1, V4 v2);
+void draw_depth_flat_top_triangle(DepthBuffer* db, V4 v0, V4 v1, V4 v2);
+void draw_depth_triangle(DepthBuffer* db, V4 v0, V4 v1, V4 v2);
+
+// SECTION: Rendering Pipeline.
 void project(const Canvas* canvas, const M4 projection_matrix, V4 v, V4* out);
 
 void model_to_view_space(Models* models, const M4 view_matrix);
@@ -62,10 +72,16 @@ void cull_backfaces(Models* models);
 
 void light_front_faces(Scene* scene);
 
-void clip_to_screen(RenderTarget* rt, const M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Models* models, const Resources* resources);
+void clip_to_screen(RenderTarget* rt, const M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Scene* scene, const Resources* resources);
 
-void project_and_draw_clipped(RenderTarget* rt, const M4 projection_matrix, const Models* models, int mi_index, int clipped_face_count, const Resources* resources);
+void project_and_draw_clipped(RenderTarget* rt, const M4 projection_matrix, Scene* scene, int mi_index, int clipped_face_count, const Resources* resources);
 
 void render(RenderTarget* rt, const RenderSettings* settings, Scene* scene, const Resources* resources, const M4 view_matrix);
+
+// TEMP
+
+
+void update_depth_maps(Scene* scene);
+
 
 #endif

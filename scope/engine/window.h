@@ -38,7 +38,7 @@ typedef struct
 	
 } Window;
 
-Status window_init(Window* window, const Canvas* canvas, void* ctx, int width, int height);
+Status window_init(Window* window, Canvas* canvas, void* ctx, int width, int height);
 
 void window_display(Window* window);
 

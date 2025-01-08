@@ -109,11 +109,11 @@ typedef struct
 	int mis_total_positions;
 	int mis_total_normals;
 
-	int* mis_base_ids;					// The id of the model base.
-	int* mis_texture_ids;				// The id of the texture.
+	int* mis_base_ids;						// The id of the model base.
+	int* mis_texture_ids;					// The id of the texture.
 	int* mis_dirty_bounding_sphere_flags;	// If a mi's scale has changed, the bounding sphere centre needs to be recalculated.
-	int* mis_intersected_planes;		// For each mi, the number of planes intersected, then the indices of the planes.
-	int* mis_passed_broad_phase_flags;	// Whether the mi is visible after broad phase culling. TODO: Name.
+	int* mis_intersected_planes;			// For each mi, the number of planes intersected, then the indices of the planes.
+	int* mis_passed_broad_phase_flags;		// Whether the mi is visible after broad phase culling. TODO: Name.
 
 	float* mis_vertex_colours;			// Per vertex colours for the instances.
 	float* mis_transforms;				// The instance world space transforms: [ Position, Direction, Scale ]
@@ -132,6 +132,17 @@ typedef struct
 	float* clipped_faces;			// An invertleaved buffer of {x, y, z, u, v, x, y, z, r, g, b, a} for each vertex of each face after frustum culling.
 	float* temp_clipped_faces_in;	// Used for temporarily storing the faces whilst clipping against multiple planes.
 	float* temp_clipped_faces_out;	// Used for temporarily storing the faces whilst clipping against multiple planes.
+
+
+
+	// TODO: TEMP: Shadow map buffers.
+	// TODO: Doesn't feel like these should be here, these are like shared renderer buffers.
+	float* light_space_positions;
+	float* front_face_light_space_positions;
+
+	float* temp_light_space_positions; 
+
+
 
 } Models;
 

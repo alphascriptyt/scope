@@ -3,6 +3,7 @@
 #include "common/status.h"
 
 #include "utils/logger.h"
+#include "utils/memory_utils.h"
 
 #include <Windows.h>
 
@@ -143,6 +144,17 @@ void canvas_fill(Canvas* canvas, const unsigned int colour)
 		--i;
 		++ptr;
 	}
+}
+
+void canvas_draw(const Canvas* source, Canvas* target, int x_offset, int y_offset)
+{
+    for (int y = 0; y < source->height; ++y)
+    {
+        for (int x = 0; x < source->height; ++x)
+        {
+            target->pixels[(y + y_offset) * target->width + x + x_offset] = source->pixels[y * source->width + x];
+        }
+    }
 }
 
 void canvas_destroy(Canvas* canvas)

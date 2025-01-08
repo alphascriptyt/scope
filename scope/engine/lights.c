@@ -34,5 +34,13 @@ void point_lights_create(PointLights* point_lights, V3 position, V3 colour, floa
 	point_lights->attributes[++old_size] = colour.z;
 	point_lights->attributes[++old_size] = strength;
 
+	// TODO: Create shadow maps.
+	//		 All temporary for now.
+	// TODO: No idea what size would be best.
+	const int RES = 256;
+	depth_buffer_init(&point_lights->depth_maps[0], RES, RES);
+	depth_buffer_fill(&point_lights->depth_maps[0], 1.f);
+
+
 	point_lights->count = new_count;
 }

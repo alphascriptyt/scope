@@ -31,30 +31,8 @@ typedef struct
 
 inline void update_projection_m4(RenderSettings* rs, float aspect_ratio)
 {
-	// TODO: Fov is vertical fov here.
-	// TODO: Comment all this properly to show I actually understand it all.
-
-	// Currently the opengl perspective projection matrix.
-
-	float y_scale = 1.f / tanf(radians(rs->fov) / 2.f);
-	float x_scale = y_scale / aspect_ratio;
-
-	rs->projection_matrix[0] = x_scale;
-	rs->projection_matrix[1] = 0;
-	rs->projection_matrix[2] = 0;
-	rs->projection_matrix[3] = 0;
-	rs->projection_matrix[4] = 0;
-	rs->projection_matrix[5] = y_scale;
-	rs->projection_matrix[6] = 0;
-	rs->projection_matrix[7] = 0;
-	rs->projection_matrix[8] = 0;
-	rs->projection_matrix[9] = 0;
-	rs->projection_matrix[10] = -(rs->far_plane + rs->near_plane) / (rs->far_plane - rs->near_plane);
-	rs->projection_matrix[11] = -1; // This negation our right handed coordinate system into a left handed coordinate system in ndc space?
-	rs->projection_matrix[12] = 0;
-	rs->projection_matrix[13] = 0;
-	rs->projection_matrix[14] = -2 * rs->far_plane * rs->near_plane / (rs->far_plane - rs->near_plane);
-	rs->projection_matrix[15] = 0;
+	// TODO: Get rid of this helper function.
+	m4_projection(rs->fov, aspect_ratio, rs->near_plane, rs->far_plane, rs->projection_matrix);
 }
 
 #endif

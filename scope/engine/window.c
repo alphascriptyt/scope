@@ -107,7 +107,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-Status window_init(Window* window, const Canvas* canvas, void* ctx, int width, int height)
+Status window_init(Window* window, Canvas* canvas, void* ctx, int width, int height)
 {
 	log_info("Initialising the window.");
 	memset(window, 0, sizeof(Window));
@@ -217,6 +217,9 @@ int window_process_messages()
     // TODO: Some heap is corrupted so i keep getting an error here......
     // TODO: The issue comes when we close the window sometimes and sometimes on startup.
     //       Potentially something to do with storing the window pointer.
+
+    // TODO: The stupid error has to be from some array allocation right? Check the new temp shadow ones. 
+    // Error triggered by events.
 
     // Processes all messages and sends them to WindowProc
     MSG msg;

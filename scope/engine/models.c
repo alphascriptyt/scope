@@ -56,12 +56,6 @@ void parse_obj_counts(FILE* file, int* num_positions, int* num_uvs, int* num_nor
 			++*num_faces;
 		}
 	}
-
-	// Temp debugging information.
-	printf("Positions: %d\n", *num_positions);
-	printf("Normals: %d\n", *num_normals);
-	printf("UVS: %d\n", *num_uvs);
-	printf("Faces: %d\n", *num_faces);
 }
 
 Status load_model_base_from_obj(Models* models, const char* filename)
@@ -143,6 +137,13 @@ Status load_model_base_from_obj(Models* models, const char* filename)
 		resize_float_buffer(&models->temp_clipped_faces_in, max_clipped_tris);
 		resize_float_buffer(&models->temp_clipped_faces_out, max_clipped_tris);
 		resize_float_buffer(&models->clipped_faces, max_clipped_tris);
+
+		// TODO: Surely this is gonna take too much memory. May have to refactor some of the rendering code.
+		const int NUM_LIGHTS = 1;
+
+		// TEMP: 4 for 4 vertices, allowing for space when we split triangles for v4.
+		// TODO: TEMP: Also 4 for x,y,z,w
+		resize_float_buffer(&models->temp_light_space_positions, max_tris_factor * face_count * 4 * 4 * NUM_LIGHTS); 
 	}
 
 	// Move to the start of the file again so we can read it.
@@ -387,6 +388,18 @@ void create_model_instances(Models* models, int mb_index, int n)
 	
 	// Update the number of instances.
 	models->mis_count = new_instances_count;
+
+
+
+
+	// TODO: TEMP: This stuff is again shared between renderer and lights.
+	const int NUM_LIGHTS = 1;
+	resize_float_buffer(&models->light_space_positions, new_total_vertices * 4 * NUM_LIGHTS); // TODO: TEMP: x,y,z,w
+
+	// NEED THE EXTRA 1 FOR THE V4 LATER... SO SCUFFED.
+	// For each face, need space for 4 vertices per light....
+	resize_float_buffer(&models->front_face_light_space_positions, models->mis_total_faces * 4 * 4 * NUM_LIGHTS); // TODO: TEMP: x,y,z,w
+	
 }
 
 void free_models(Models* models)

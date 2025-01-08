@@ -48,6 +48,8 @@ void m4_transposed(const M4 in, M4 out);
 
 void m4_copy_m3(const M4 in, M4 out);
 
+void m4_projection(float fov, float aspect_ratio, float near_plane, float far_plane, M4 out);
+
 char* m4_to_str(const M4 m);
 
 #endif

@@ -21,6 +21,7 @@ add_executable (scope "main.c"
 "engine/maths/matrix4.h" "engine/maths/matrix4.c"
 "engine/maths/plane.h" "engine/maths/plane.c"
 "engine/maths/utils.h"
+"engine/maths/vector2.h"
 "engine/maths/vector3.h" 
 "engine/maths/vector4.h"
 
@@ -31,6 +32,7 @@ add_executable (scope "main.c"
 "engine/renderer/render_target.h"
 "engine/renderer/renderer.h" "engine/renderer/renderer.c"
 "engine/renderer/draw_2d.h" "engine/renderer/draw_2d.c"
+"engine/renderer/depth_buffer.h" "engine/renderer/depth_buffer.c"
 
 "engine/ui/font.h" "engine/ui/font.c"
 "engine/ui/text.h" "engine/ui/text.c"
@@ -42,7 +44,8 @@ add_executable (scope "main.c"
 "engine/utils/str_utils.h" "engine/utils/str_utils.c"
 "engine/utils/timer.h"
 "engine/globals.h" 
-  "engine/resources.h" "engine/maths/vector2.h")
+"engine/resources.h" 
+)
 
 include_directories ("engine")
 include_directories ("engine/common")

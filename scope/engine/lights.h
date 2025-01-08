@@ -1,6 +1,8 @@
 #ifndef LIGHTS_H
 #define LIGHTS_H
 
+#include "renderer/depth_buffer.h"
+
 #include "maths/vector3.h"
 
 #define STRIDE_POINT_LIGHT_ATTRIBUTES 4 // r,g,b,n
@@ -19,10 +21,6 @@ a red colour.
 A light does not need an alpha.
 
 */
-
-
-// TODO: When I have scenes, I think this will just be in the scene.
-//		 Will we have a single models/lights struct per scene?
  
 typedef struct
 {
@@ -39,6 +37,8 @@ typedef struct
 	// Cache the point light's view space position.
 	float* view_space_positions; 
 
+	DepthBuffer depth_maps[1];
+
 } PointLights;
 
 
@@ -46,6 +46,7 @@ void point_lights_init(PointLights* point_lights);
 
 void point_lights_create(PointLights* point_lights, V3 position, V3 colour, float strength);
 
+// TODO: Destroy.
 
 
 #endif

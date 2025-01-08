@@ -6,9 +6,6 @@
 
 #include "canvas.h"
 
-
-// TODO: Look into switching to an actual c compiler, not sure how to check that its compiled with c or if it even matters.
-
 float* directions;
 
 void engine_on_init(Engine* engine)
@@ -43,20 +40,24 @@ void engine_on_init(Engine* engine)
     mi_set_transform(&scene->models, 0, pos0, eulers, scale);
     mi_set_transform(&scene->models, 1, pos1, eulers, scale);
 
-    V3 plane_pos = { 0, 0, 0 };
-    V3 plane_scale = { 5, 0.1, 5 };
+    V3 plane_pos = { 0, 0, -4 };
+    V3 plane_scale = { 5.f, 0.1f, 10.f };
     mi_set_transform(&scene->models, 2, plane_pos, eulers, plane_scale);
 
-    V3 pl_pos0 = { 0, 5, 6 };
-    V3 pl_col0 = { 1, 0, 0 };
-    point_lights_create(&scene->point_lights, pl_pos0, pl_col0, 1.f);
+    V3 pl_pos0 = { 0, 5, 15 };
+    V3 pl_col0 = { 1, 1, 1 };
+    point_lights_create(&scene->point_lights, pl_pos0, pl_col0, 50.f);
+
+    engine->renderer.camera.position.z = 20;
 }
 
 void engine_on_update(Engine* engine, float dt)
 {
-    return;
+ 
     Scene* scene = &engine->scenes[engine->current_scene_id];
-    
+ 
+    return;
+
     /*
     int c = 3;
 
@@ -192,9 +193,18 @@ void engine_on_keyup(Engine* engine, WPARAM wParam)
         g_draw_normals = !g_draw_normals;
         break;
     }
+    case VK_F3:
+    {
+        Scene* scene = &engine->scenes[engine->current_scene_id];
+        engine->renderer.camera.position.x = scene->point_lights.world_space_positions[0];
+        engine->renderer.camera.position.y = scene->point_lights.world_space_positions[1];
+        engine->renderer.camera.position.z = scene->point_lights.world_space_positions[2];
+
+
+
+    }
     }
 }
-
 
 int main()
 {
