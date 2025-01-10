@@ -16,6 +16,7 @@ void engine_on_init(Engine* engine)
     }
 
     g_draw_normals = 0;
+    g_debug_shadows = 0;
 
     // Create a scene
     Scene* scene = &engine->scenes[0];
@@ -31,19 +32,43 @@ void engine_on_init(Engine* engine)
     
     // Setup scene for shadow testing.
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
-    create_model_instances(&scene->models, 0, 3);
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/sphere.obj");
+    
+    
 
-    V3 pos0 = { -1, 1, 3 };
-    V3 pos1 = { 1, 1, 3 };
-    V3 eulers = { 0,0, 0};
-    V3 scale = { 0.5, 1, 0.5 };
-    mi_set_transform(&scene->models, 0, pos0, eulers, scale);
-    mi_set_transform(&scene->models, 1, pos1, eulers, scale);
+    V3 eulers = { 0,0, 0 };
 
+    create_model_instances(&scene->models, 0, 1);
     V3 plane_pos = { 0, 0, -4 };
     V3 plane_scale = { 5.f, 0.1f, 10.f };
-    mi_set_transform(&scene->models, 2, plane_pos, eulers, plane_scale);
+    mi_set_transform(&scene->models, 0, plane_pos, eulers, plane_scale);
+
+    if (0)
+    {
+
+        create_model_instances(&scene->models, 0, 2);
+        V3 pos0 = { -1, 1, 3 };
+        V3 pos1 = { 1, 1, 3 };
+        
+        V3 scale = { 0.5, 1, 0.5 };
+        mi_set_transform(&scene->models, 1, pos0, eulers, scale);
+        mi_set_transform(&scene->models, 2, pos1, eulers, scale);
+
+    }
+    else
+    {
+        
+        create_model_instances(&scene->models, 1, 1);
+        V3 pos = { 0, 1, 0 };
+
+        V3 scale = { 1, 1, 1 };
+        mi_set_transform(&scene->models, 1, pos, eulers, scale);
+        
+    }
+    
+
+
+    
 
     V3 pl_pos0 = { 0, 2, 14 };
     V3 pl_col0 = { 1, 1, 1 };
@@ -202,9 +227,12 @@ void engine_on_keyup(Engine* engine, WPARAM wParam)
         engine->renderer.camera.position.x = scene->point_lights.world_space_positions[0];
         engine->renderer.camera.position.y = scene->point_lights.world_space_positions[1];
         engine->renderer.camera.position.z = scene->point_lights.world_space_positions[2];
-
-
-
+        break;
+    }
+    case VK_F4:
+    {
+        g_debug_shadows = !g_debug_shadows;
+        break;
     }
     }
 }

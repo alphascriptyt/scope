@@ -302,6 +302,9 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 	// TODO: Trying not accessing by pointer
 	DepthBuffer db = depth_maps[0];
 
+	const float hw = 0.5f * db.width;
+	const float hh = 0.5f * db.height;
+
 	for (unsigned int i = 0; i < dx; ++i)
 	{
 		// Depth test, only draw closer values.
@@ -314,25 +317,10 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 			const float g = (c.y * w);
 			const float b = (c.z * w);
 
-			// TODO: FIX SHADOWS SPILLING OVER SIDES
+			// TODO: FIX SHADOWS SPILLING OVER SIDES - is it actually a glitch or not.
 
-			/*
-			
-			Gotta actually think about this.........
-
-
-			
-			We've saved the light space coordinates - which have not been divided by the light.w as we cannot interpolate them correctly
-			in ndc space.
-
-			We've then divided these by the cameras w to interpolate them perspectively correct.
-
-			So we must recover the 
-			
-			
-			*/
-
-			// Recover projected values.
+			// Perform perspective correction to handle the perspective of the
+			// camera? 
 			V4 projected = {
 				lsp_start[0] * w,
 				lsp_start[1] * w,
@@ -340,22 +328,17 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 				lsp_start[3] * w
 			};
 
-			// TODO: Why cant we lerp 1/w???
-			float light_w = 1.f/ projected.w;
-			float light_invw = light_w;
+			//https://www.youtube.com/watch?v=3FMONJ1O39U
 
+			// Perspective divide to convert the light clip space to light NDC.
+			float light_w = 1.f / projected.w;
+
+			// Calculate the 
 			V3 shadow_coords = {
-				(projected.x * light_invw + 1) * 0.5f * db.width,
-				(-projected.y * light_invw + 1) * 0.5f * db.height,
-				(projected.z * light_invw + 1) * 0.5f
+				(projected.x * light_w + 1) * hw,
+				(-projected.y * light_w + 1) * hh,
+				(projected.z * light_w + 1) * 0.5f
 			};
-
-
-			// TODO: I think all of this stuff is pretty much working but more testing is needed
-			//		 and need to understand resolution etc more so I acn get a better example,
-			//		 also clipping etc is needed.
-
-			// Essentially x/y 
 			
 
 			int cols = (int)((shadow_coords.x));
@@ -365,20 +348,19 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 			// the -1 test for lsp0 is temporary as we don't have clipping.
 			// TODO: Although, what should be the default value if something is not on the map?
 			//		 what if one vertex is and another isn't?
-			if (cols < 0 || cols > db.width-1 || rows < 0 || rows > db.height - 1)
+			if (cols < 0 || cols > db.width - 1 || rows < 0 || rows > db.height - 1)
 			{
 				// Light pixel because off the shadow map.
 				*pixels = float_rgb_to_int(r, g, b);
-				//*pixels = COLOUR_RED;
+
+				if (g_debug_shadows)
+				{
+					*pixels = COLOUR_RED;
+				}
+					
 			}
 			else
 			{
-
-
-
-				// TODO: DRAW THE OUTLINE OF THE SHADOWS ON THE DEPTH MAP SO I CAN VISUALISE IT
-
-
 				int xo = rt->canvas.width - db.width;
 
 				int index = (int)(rows * rt->canvas.width + xo + cols);
@@ -395,17 +377,26 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 				float pixel_light_depth = shadow_coords.z;
 
 				//printf("%f %f\n", pixel_light_depth, light_min_depth);
-				if (pixel_light_depth > light_min_depth + 0.001) // Constant bias to avoid peter panning.
+				if (pixel_light_depth > light_min_depth + 0.002f) // Constant bias to avoid peter panning.
 				{
-					rt->canvas.pixels[index] = COLOUR_LIME;
-					// TODO: SHADOW!
-					*pixels = COLOUR_LIME;
-					//*pixels = float_rgb_to_int(0.1,0.1,0.1); // TODO: Ambient/ combine all lights.
-					//printf("%f %f\n", pixel_light_depth, light_min_depth);
+					if (g_debug_shadows)
+					{
+						rt->canvas.pixels[index] = COLOUR_LIME;
+						*pixels = COLOUR_LIME;
+					}
+					else
+					{
+						*pixels = float_rgb_to_int(0.1f, 0.1f, 0.1f); // TODO: Ambient/ combine all lights.
+						//printf("%f %f\n", pixel_light_depth, light_min_depth);
+					}
 				}
 				else
 				{
-					rt->canvas.pixels[index] = COLOUR_BLUE;
+					if (g_debug_shadows)
+					{
+						rt->canvas.pixels[index] = COLOUR_BLUE;
+					}
+					
 					*pixels = float_rgb_to_int(r, g, b);
 				}
 			}
@@ -2388,6 +2379,7 @@ void project_and_draw_clipped(
 			printf("\n");
 			*/
 
+
 				// TEMP: HARDCODED PERSPECTIVE DIVIDE
 			lsp0[0] *= pv0.w;
 			lsp0[1] *= pv0.w;
@@ -2498,7 +2490,7 @@ void render(
 
 	// Draw the depth map temporarily.
 	depth_buffer_draw(&scene->point_lights.depth_maps[0], &rt->canvas, rt->canvas.width - scene->point_lights.depth_maps[0].width, 0);
-	
+
 
 
 
@@ -2708,45 +2700,90 @@ void update_depth_maps(Scene* scene)
 					// Now the vertex values for front faces are undefined?
 					// TODO: What do we do here?
 
+					/*
+					const int index_lsp_parts_v0 = (models->mbs_face_position_indices[face_index] + positions_offset) * 4;
+					const int index_lsp_parts_v1 = (models->mbs_face_position_indices[face_index + 1] + positions_offset) * 4;
+					const int index_lsp_parts_v2 = (models->mbs_face_position_indices[face_index + 2] + positions_offset) * 4;
+
+					models->light_space_positions[index_lsp_parts_v0] = -100;
+					models->light_space_positions[index_lsp_parts_v0 + 1] = -100;
+					models->light_space_positions[index_lsp_parts_v0 + 2] = -100;
+					models->light_space_positions[index_lsp_parts_v0 + 3] = -100;
+
+					models->light_space_positions[index_lsp_parts_v1] = -100;
+					models->light_space_positions[index_lsp_parts_v1 + 1] = -100;
+					models->light_space_positions[index_lsp_parts_v1 + 2] = -100;
+					models->light_space_positions[index_lsp_parts_v1 + 3] = -100;
+
+					models->light_space_positions[index_lsp_parts_v2] = -100;
+					models->light_space_positions[index_lsp_parts_v2 + 1] = -100;
+					models->light_space_positions[index_lsp_parts_v2 + 2] = -100;
+					models->light_space_positions[index_lsp_parts_v2 + 3] = -100;
+					*/
 
 					continue;
 				}
 
 
 
+				// These coordinates are in clip space, before the perspective divide.
 				V4 projected0, projected1, projected2;
 				m4_mul_v4(proj, vsp0, &projected0);
 				m4_mul_v4(proj, vsp1, &projected1);
 				m4_mul_v4(proj, vsp2, &projected2);
 
 				// Do perspective divide etc manually...
+				const float inv_w0 = 1.0f / projected0.w;
+				const float inv_w1 = 1.0f / projected1.w;
+				const float inv_w2 = 1.0f / projected2.w;
 
-				const float inv_w0 = 1.0f / projected0.w; // Precalculate the perspective divide.
-				const float inv_w1 = 1.0f / projected1.w; // Precalculate the perspective divide.
+				
 
-				const float inv_w2 = 1.0f / projected2.w; // Precalculate the perspective divide.
 
-				// TODO: These aren't NDC because we multiply by the depth map dimensions, these are sceen space.......
+
+				// TODO: This is not realllyyy ndc space although kind of is because projection is the same.
+				// NDC space is -1:1 for x,y,z.
 				V4 ndc0 = {
-					((projected0.x * inv_w0) + 1) * 0.5f * depth_map->width,
-					((-projected0.y * inv_w0) + 1) * 0.5f * depth_map->height,
-					((projected0.z * inv_w0) + 1) * 0.5f,
+					projected0.x * inv_w0,
+					projected0.y * inv_w0,
+					projected0.z * inv_w0,
 					inv_w0
 				};
 
-				
 				V4 ndc1 = {
-					((projected1.x * inv_w1) + 1) * 0.5f * depth_map->width,
-					((-projected1.y * inv_w1) + 1) * 0.5f * depth_map->height,
-					((projected1.z * inv_w1) + 1) * 0.5f,
+					projected1.x * inv_w1,
+					projected1.y * inv_w1,
+					projected1.z * inv_w1,
 					inv_w1
 				};
 
-				
 				V4 ndc2 = {
-					((projected2.x * inv_w2) + 1) * 0.5f * depth_map->width,
-					((-projected2.y * inv_w2) + 1) * 0.5f * depth_map->height,
-					((projected2.z * inv_w2) + 1) * 0.5f,
+					projected2.x * inv_w2,
+					projected2.y * inv_w2,
+					projected2.z * inv_w2,
+					inv_w2
+				};
+
+
+				// Convert NDC to screen space by first converting to 0-1 in all axis.
+				V4 ssp0 = {
+					(ndc0.x + 1) * 0.5f * depth_map->width,
+					(-ndc0.y + 1) * 0.5f * depth_map->height,
+					(ndc0.z + 1) * 0.5f,
+					inv_w0
+				};
+
+				V4 ssp1 = {
+					(ndc1.x + 1) * 0.5f * depth_map->width,
+					(-ndc1.y + 1) * 0.5f * depth_map->height,
+					(ndc1.z + 1) * 0.5f,
+					inv_w1
+				};
+
+				V4 ssp2 = {
+					(ndc2.x + 1) * 0.5f * depth_map->width,
+					(-ndc2.y + 1) * 0.5f * depth_map->height,
+					(ndc2.z + 1) * 0.5f,
 					inv_w2
 				};
 				
@@ -2769,42 +2806,24 @@ void update_depth_maps(Scene* scene)
 				const int index_lsp_parts_v1 = (models->mbs_face_position_indices[face_index + 1] + positions_offset) * 4;
 				const int index_lsp_parts_v2 = (models->mbs_face_position_indices[face_index + 2] + positions_offset) * 4;
 
-				// TODO: DO we need a bias to avoid shadow acne.
-				const float BIAS = 0; // 0.001 DO WE NEED A BIAS?
-
-				/*
-				models->light_space_positions[index_lsp_parts_v0] = ndc0.x;
-				models->light_space_positions[index_lsp_parts_v0 + 1] = ndc0.y;
-				models->light_space_positions[index_lsp_parts_v0 + 2] = ndc0.z - BIAS;
-				models->light_space_positions[index_lsp_parts_v0 + 3] = ndc0.w;
-
-				models->light_space_positions[index_lsp_parts_v1] = ndc1.x;
-				models->light_space_positions[index_lsp_parts_v1 + 1] = ndc1.y;
-				models->light_space_positions[index_lsp_parts_v1 + 2] = ndc1.z - BIAS;
-				models->light_space_positions[index_lsp_parts_v1 + 3] = ndc1.w;
-
-				models->light_space_positions[index_lsp_parts_v2] = ndc2.x;
-				models->light_space_positions[index_lsp_parts_v2 + 1] = ndc2.y;
-				models->light_space_positions[index_lsp_parts_v2 + 2] = ndc2.z - BIAS;
-				models->light_space_positions[index_lsp_parts_v2 + 3] = ndc2.w;
-				*/
-
+				// Perspective-correct intertpolation of values that have undergone perspective divide dont work?
 				models->light_space_positions[index_lsp_parts_v0] = projected0.x;
 				models->light_space_positions[index_lsp_parts_v0 + 1] = projected0.y;
-				models->light_space_positions[index_lsp_parts_v0 + 2] = projected0.z - BIAS;
-				models->light_space_positions[index_lsp_parts_v0 + 3] =  projected0.w;
+				models->light_space_positions[index_lsp_parts_v0 + 2] = projected0.z;
+				models->light_space_positions[index_lsp_parts_v0 + 3] = projected0.w; 
 
 				models->light_space_positions[index_lsp_parts_v1] = projected1.x;
 				models->light_space_positions[index_lsp_parts_v1 + 1] = projected1.y;
-				models->light_space_positions[index_lsp_parts_v1 + 2] = projected1.z - BIAS;
+				models->light_space_positions[index_lsp_parts_v1 + 2] = projected1.z;
 				models->light_space_positions[index_lsp_parts_v1 + 3] = projected1.w;
 
 				models->light_space_positions[index_lsp_parts_v2] = projected2.x;
 				models->light_space_positions[index_lsp_parts_v2 + 1] = projected2.y;
-				models->light_space_positions[index_lsp_parts_v2 + 2] = projected2.z - BIAS;
+				models->light_space_positions[index_lsp_parts_v2 + 2] = projected2.z;
 				models->light_space_positions[index_lsp_parts_v2 + 3] = projected2.w;
+				
 
-				draw_depth_triangle(depth_map, ndc0, ndc1, ndc2);
+				draw_depth_triangle(depth_map, ssp0, ssp1, ssp2);
 			}
 		
 			positions_offset += models->mbs_positions_counts[mb_index];
