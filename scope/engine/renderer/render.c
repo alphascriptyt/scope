@@ -2792,10 +2792,16 @@ void update_depth_maps(Scene* scene)
 				// TODO: Think about how this works. If the vectors are perpendicular, dot product returns 1,
 				//		 then the 0.001f ends up being the constant factor.
 
+
 				// TODO: This will have to be changed for each scene i think.
-				float constant_bias = 0.00001f;
-				float slope_bias = constant_bias * sqrtf(1.f - cos_angle * cos_angle) / cos_angle;
+				const float constant_bias = 0.00001f;
+
+				// Clamp the cos_angle to a value near 0 so we don't divide by 0.
+				cos_angle = max(cos_angle, 0.00001f); 
 				
+				// We want a large bias when the light dir and surface dir are perpendicular
+				// because shadow acne is most common there.
+				float slope_bias = constant_bias * sqrtf(1.f - cos_angle * cos_angle) / cos_angle;
 				ssp0.z += slope_bias;
 				ssp1.z += slope_bias;
 				ssp2.z += slope_bias;

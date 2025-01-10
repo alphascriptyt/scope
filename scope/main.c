@@ -32,7 +32,7 @@ void engine_on_init(Engine* engine)
     
     // Setup scene for shadow testing.
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
-    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/sphere.obj");
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/smooth_sphere.obj");
     
     
 
