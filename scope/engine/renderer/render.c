@@ -2786,16 +2786,14 @@ void update_depth_maps(Scene* scene)
 				float z1 = ssp1.z;
 				float z2 = ssp2.z;
 
-				// sqrt(1 - something ^ 2) / something
-
-				// Both 
+				// Don't allow the cos angle to be negative, the bias should push the shadow away from the camera.
 				float cos_angle = fabsf(dot(face_normal, v3_mul_f(dir, -1.f)));
 
 				// TODO: Think about how this works. If the vectors are perpendicular, dot product returns 1,
 				//		 then the 0.001f ends up being the constant factor.
 
-				// This will ha
-				float constant_bias = 0.0001f;
+				// TODO: This will have to be changed for each scene i think.
+				float constant_bias = 0.00001f;
 				float slope_bias = constant_bias * sqrtf(1.f - cos_angle * cos_angle) / cos_angle;
 				
 				ssp0.z += slope_bias;
