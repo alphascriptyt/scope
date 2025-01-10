@@ -43,7 +43,7 @@ void engine_on_init(Engine* engine)
     V3 plane_scale = { 5.f, 0.1f, 10.f };
     mi_set_transform(&scene->models, 0, plane_pos, eulers, plane_scale);
 
-    if (0)
+    if (1)
     {
 
         create_model_instances(&scene->models, 0, 2);

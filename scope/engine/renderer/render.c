@@ -377,7 +377,7 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 				float pixel_light_depth = shadow_coords.z;
 
 				//printf("%f %f\n", pixel_light_depth, light_min_depth);
-				if (pixel_light_depth > light_min_depth + 0.002f) // Constant bias to avoid peter panning.
+				if (pixel_light_depth > light_min_depth) // Constant bias to avoid peter panning.
 				{
 					if (g_debug_shadows)
 					{
@@ -2489,7 +2489,7 @@ void render(
 	update_depth_maps(scene);
 
 	// Draw the depth map temporarily.
-	depth_buffer_draw(&scene->point_lights.depth_maps[0], &rt->canvas, rt->canvas.width - scene->point_lights.depth_maps[0].width, 0);
+	//depth_buffer_draw(&scene->point_lights.depth_maps[0], &rt->canvas, rt->canvas.width - scene->point_lights.depth_maps[0].width, 0);
 
 
 
@@ -2572,8 +2572,7 @@ void update_depth_maps(Scene* scene)
 		};
 		
 		// TODO: TEMP, hardcoded.
-		V3 dir = { 0, -0.5, -1 };
-		normalise(&dir);
+		V3 dir = { 0, 0, -1 };
 
 		// Create MVP matrix for light.
 		M4 view;
@@ -2694,36 +2693,31 @@ void update_depth_maps(Scene* scene)
 				V3 vsp1_v3 = { vsp1.x, vsp1.y, vsp1.z };
 				V3 vsp2_v3 = { vsp2.x, vsp2.y, vsp2.z };
 
+
+
+				V3 face_normal = normalised(cross(v3_sub_v3(vsp1_v3, vsp0_v3), v3_sub_v3(vsp2_v3, vsp0_v3)));
+
+				
+				/*
 				// Only fill depth map from back faces.
 				if (is_front_face(vsp0_v3, vsp1_v3, vsp2_v3))
 				{
 					// Now the vertex values for front faces are undefined?
 					// TODO: What do we do here?
 
-					/*
-					const int index_lsp_parts_v0 = (models->mbs_face_position_indices[face_index] + positions_offset) * 4;
-					const int index_lsp_parts_v1 = (models->mbs_face_position_indices[face_index + 1] + positions_offset) * 4;
-					const int index_lsp_parts_v2 = (models->mbs_face_position_indices[face_index + 2] + positions_offset) * 4;
+					
+				}
+				*/
 
-					models->light_space_positions[index_lsp_parts_v0] = -100;
-					models->light_space_positions[index_lsp_parts_v0 + 1] = -100;
-					models->light_space_positions[index_lsp_parts_v0 + 2] = -100;
-					models->light_space_positions[index_lsp_parts_v0 + 3] = -100;
-
-					models->light_space_positions[index_lsp_parts_v1] = -100;
-					models->light_space_positions[index_lsp_parts_v1 + 1] = -100;
-					models->light_space_positions[index_lsp_parts_v1 + 2] = -100;
-					models->light_space_positions[index_lsp_parts_v1 + 3] = -100;
-
-					models->light_space_positions[index_lsp_parts_v2] = -100;
-					models->light_space_positions[index_lsp_parts_v2 + 1] = -100;
-					models->light_space_positions[index_lsp_parts_v2 + 2] = -100;
-					models->light_space_positions[index_lsp_parts_v2 + 3] = -100;
-					*/
-
+				// Only fill depth map from back faces, need the normal so doing this manually.
+				if (dot(vsp0_v3, face_normal) <= 0)
+				{
 					continue;
 				}
 
+				//v4_add_eq_f(&vsp0, bias);
+				//v4_add_eq_f(&vsp1, bias);
+				//v4_add_eq_f(&vsp2, bias);
 
 
 				// These coordinates are in clip space, before the perspective divide.
@@ -2786,7 +2780,29 @@ void update_depth_maps(Scene* scene)
 					(ndc2.z + 1) * 0.5f,
 					inv_w2
 				};
+
+				// Triangle vertices in screen space
+				float z0 = ssp0.z;
+				float z1 = ssp1.z;
+				float z2 = ssp2.z;
+
+				// sqrt(1 - something ^ 2) / something
+
+				// Both 
+				float cos_angle = fabsf(dot(face_normal, v3_mul_f(dir, -1.f)));
+
+				// TODO: Think about how this works. If the vectors are perpendicular, dot product returns 1,
+				//		 then the 0.001f ends up being the constant factor.
+
+				// This will ha
+				float constant_bias = 0.0001f;
+				float slope_bias = constant_bias * sqrtf(1.f - cos_angle * cos_angle) / cos_angle;
 				
+				ssp0.z += slope_bias;
+				ssp1.z += slope_bias;
+				ssp2.z += slope_bias;
+
+
 				/*
 				if (projected0.x < -1 || projected0.x > 1 || projected0.y < -1 || projected0.y > 1 || projected0.z < -1 || projected0.z > 1)
 				{
