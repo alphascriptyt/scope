@@ -31,10 +31,11 @@ void engine_on_init(Engine* engine)
     
     // Setup scene for shadow testing.
     load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
+    load_model_base_from_obj(&scene->models, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
     create_model_instances(&scene->models, 0, 3);
 
-    V3 pos0 = { -1, 3, 3 };
-    V3 pos1 = { 1, 3, 3 };
+    V3 pos0 = { -1, 1, 3 };
+    V3 pos1 = { 1, 1, 3 };
     V3 eulers = { 0,0, 0};
     V3 scale = { 0.5, 1, 0.5 };
     mi_set_transform(&scene->models, 0, pos0, eulers, scale);
@@ -44,7 +45,7 @@ void engine_on_init(Engine* engine)
     V3 plane_scale = { 5.f, 0.1f, 10.f };
     mi_set_transform(&scene->models, 2, plane_pos, eulers, plane_scale);
 
-    V3 pl_pos0 = { 0, 5, 15 };
+    V3 pl_pos0 = { 0, 2, 14 };
     V3 pl_col0 = { 1, 1, 1 };
     point_lights_create(&scene->point_lights, pl_pos0, pl_col0, 50.f);
 
@@ -56,6 +57,8 @@ void engine_on_update(Engine* engine, float dt)
  
     Scene* scene = &engine->scenes[engine->current_scene_id];
  
+    //scene->point_lights.world_space_positions[2] += dt;
+
     return;
 
     /*

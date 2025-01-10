@@ -41,7 +41,8 @@ float calculate_diffuse_factor(V3 v, V3 n, V3 light_pos, float a, float b);
 // SECTION: Triangle rasterisation.
 // TODO: Could have a vertex struct for all these.
 
-// TODO: Should some of this stuff be global? RenderTarget, depth maps?
+// TODO: Should some of this stuff be global? RenderTarget, depth maps? Probably not. 
+// TODO: Could use a triangle/face struct for passing args easier, but at the same time, is there any point?? Not that deep.
 void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, V3 c0, V3 c1, float* lsp0, float* lsp1, int lights_count, DepthBuffer* depth_maps);
 void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps);
 void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps);

@@ -252,7 +252,6 @@ void engine_handle_input(Engine* engine, float dt)
     camera->direction.z = cosf(camera->yaw) * cosPitch;
     normalise(&camera->direction);
 
-
     // TODO: How do I make the engine actually m/s?
 
     // Direct position changes must be multipled by dt.
