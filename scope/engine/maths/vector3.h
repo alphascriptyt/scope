@@ -1,8 +1,6 @@
 #ifndef VECTOR3_H
 #define VECTOR3_H
 
-#include "vector4.h"
-
 #include "utils/str_utils.h"
 
 #include <math.h>
@@ -31,13 +29,7 @@ typedef struct
 
 inline V3 cross(V3 v0, V3 v1)
 {
-	V3 out = {
-		v0.y * v1.z - v0.z * v1.y,
-		v0.z * v1.x - v0.x * v1.z,
-		v0.x * v1.y - v0.y * v1.x
-	};
-
-	return out;
+	return (V3) { v0.y * v1.z - v0.z * v1.y, v0.z * v1.x - v0.x * v1.z, v0.x * v1.y - v0.y * v1.x };
 }
 
 inline float size(V3 v)
@@ -61,13 +53,8 @@ inline void normalise(V3* v)
 inline V3 normalised(V3 v)
 {
 	const float inv_size = 1.f / size(v);
-	V3 unit = {
-		v.x * inv_size,
-		v.y * inv_size,
-		v.z * inv_size,
-	};
 
-	return unit;
+	return (V3) { v.x * inv_size, v.y * inv_size, v.z * inv_size, };
 }
 
 inline float dot(V3 v0, V3 v1)
@@ -84,13 +71,7 @@ inline void v3_mul_eq_v3(V3* v0, V3 v1)
 
 inline V3 v3_mul_v3(V3 v0, V3 v1)
 {
-	V3 out = {
-		v0.x * v1.x,
-		v0.y * v1.y,
-		v0.z * v1.z
-	};
-
-	return out;
+	return (V3) { v0.x * v1.x, v0.y * v1.y, v0.z * v1.z };
 }
 
 inline void v3_mul_eq_f(V3* v, float f)
@@ -102,13 +83,7 @@ inline void v3_mul_eq_f(V3* v, float f)
 
 inline V3 v3_mul_f(V3 v, float f)
 {
-	V3 out = {
-		v.x * f,
-		v.y * f,
-		v.z * f
-	};
-
-	return out;
+	return (V3) { v.x * f, v.y * f, v.z * f };
 }
 
 inline void v3_add_eq_f(V3* v, float f)
@@ -127,12 +102,7 @@ inline void v3_add_eq_v3(V3* v0, V3 v1)
 
 inline V3 v3_add_v3(V3 v0, V3 v1)
 {
-	V3 out = {
-		v0.x + v1.x,
-		v0.y + v1.y,
-		v0.z + v1.z
-	};
-	return out;
+	return (V3) { v0.x + v1.x, v0.y + v1.y, v0.z + v1.z };
 }
 
 inline void v3_sub_eq_f(V3* v, float f)
@@ -151,28 +121,7 @@ inline void v3_sub_eq_v3(V3* v0, V3 v1)
 
 inline V3 v3_sub_v3(V3 v0, V3 v1)
 {
-	V3 out = {
-		v0.x - v1.x,
-		v0.y - v1.y,
-		v0.z - v1.z
-	};
-	return out;
-}
-
-inline V4 v3_to_v4(V3 in, float w)
-{
-	V4 out = {
-		in.x,
-		in.y,
-		in.z,
-		w
-	};
-	return out;
-}
-
-inline char* v3_to_str(V3 v)
-{
-	return format_str("%f %f %f", v.x, v.y, v.z);
+	return (V3) { v0.x - v1.x, v0.y - v1.y, v0.z - v1.z };
 }
 
 inline void v3_swap(V3* v0, V3* v1)
@@ -180,6 +129,23 @@ inline void v3_swap(V3* v0, V3* v1)
 	V3 temp = *v0;
 	*v0 = *v1;
 	*v1 = temp;
+}
+
+inline void v3_write(float* out, V3 v)
+{
+	out[0] = v.x;
+	out[1] = v.y;
+	out[2] = v.z;
+}
+
+inline V3 v3_read(const float* in)
+{
+	return (V3) {in[0], in[1], in[2] };
+}
+
+inline char* v3_to_str(V3 v)
+{
+	return format_str("%f %f %f", v.x, v.y, v.z);
 }
 
 // TODO: This shouldn't be in V3.

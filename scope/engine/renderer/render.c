@@ -6,8 +6,7 @@
 #include "common/colour.h"
 
 #include "maths/matrix4.h"
-#include "maths/vector4.h"
-#include "maths/vector3.h"
+#include "maths/vector_maths.h"
 #include "maths/utils.h"
 
 #include "frustum_culling.h"
@@ -302,8 +301,15 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 	// TODO: Trying not accessing by pointer
 	DepthBuffer db = depth_maps[0];
 
+	// Precalculate screen space scaling factors.
 	const float hw = 0.5f * db.width;
 	const float hh = 0.5f * db.height;
+
+	// TODO: Potentially. Could Calculating things in one go be faster? For example, loop through each and 
+	//		 calculate w, then loop through each one and calculate the shadow coords for each? No idea.
+	//		 NOTE: This could make querying multiple shadow maps faster as only reading one buffer at a time?
+	//		 Only think about this if multiple shadow maps cause a performance issue.
+	
 
 	for (unsigned int i = 0; i < dx; ++i)
 	{
@@ -344,6 +350,8 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 			int cols = (int)((shadow_coords.x));
 			int rows = (int)((shadow_coords.y));
 			//printf("%d %d\n", cols, rows);
+
+			
 
 			// the -1 test for lsp0 is temporary as we don't have clipping.
 			// TODO: Although, what should be the default value if something is not on the map?
@@ -423,18 +431,15 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 
 void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps)
 {
-	float* plsp1 = lsp1;
-	float* plsp2 = lsp2;
-
 	// Sort the flat vertices left to right.
 	if (v1.x > v2.x) 
 	{  
 		v4_swap(&v1, &v2);
 		v3_swap(&c1, &c2);
 
-		float* temp = plsp1;
-		plsp1 = plsp2;
-		plsp2 = temp;
+		float* temp = lsp1;
+		lsp1 = lsp2;
+		lsp2 = temp;
 	}
 
 	float inv_dy = 1 / (v2.y - v0.y);
@@ -455,17 +460,17 @@ void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 
 	int yEnd = (int)(ceil(v2.y - 0.5f));
 
 	float lsp0dy[4] = {
-		(plsp1[0] - lsp0[0]) * inv_dy,
-		(plsp1[1] - lsp0[1]) * inv_dy,
-		(plsp1[2] - lsp0[2]) * inv_dy,
-		(plsp1[3] - lsp0[3]) * inv_dy
+		(lsp1[0] - lsp0[0]) * inv_dy,
+		(lsp1[1] - lsp0[1]) * inv_dy,
+		(lsp1[2] - lsp0[2]) * inv_dy,
+		(lsp1[3] - lsp0[3]) * inv_dy
 	};
 
 	float lsp1dy[4] = {
-		(plsp2[0] - lsp0[0]) * inv_dy,
-		(plsp2[1] - lsp0[1]) * inv_dy,
-		(plsp2[2] - lsp0[2]) * inv_dy,
-		(plsp2[3] - lsp0[3]) * inv_dy
+		(lsp2[0] - lsp0[0]) * inv_dy,
+		(lsp2[1] - lsp0[1]) * inv_dy,
+		(lsp2[2] - lsp0[2]) * inv_dy,
+		(lsp2[3] - lsp0[3]) * inv_dy
 	};
 
 	for (int y = yStart; y < yEnd; ++y) {
@@ -508,9 +513,6 @@ void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 
 
 void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps)
 {
-	float* plsp0 = lsp0;
-	float* plsp1 = lsp1;
-
 	// Sort the flat vertices left to right.
 	if (v0.x > v1.x) 
 	{	
@@ -518,8 +520,8 @@ void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1,
 		v3_swap(&c0, &c1);
 
 		float* temp = lsp0;
-		plsp0 = plsp1;
-		plsp1 = temp;
+		lsp0 = lsp1;
+		lsp1 = temp;
 	}
 
 	float inv_dy = 1 / (v2.y - v0.y);
@@ -544,17 +546,17 @@ void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1,
 
 	// TODO: TEMP: For now just processing one light rather than lerp loop.
 	float lsp0dy[4] = {
-		(lsp2[0] - plsp0[0]) * inv_dy,
-		(lsp2[1] - plsp0[1]) * inv_dy,
-		(lsp2[2] - plsp0[2]) * inv_dy,
-		(lsp2[3] - plsp0[3]) * inv_dy
+		(lsp2[0] - lsp0[0]) * inv_dy,
+		(lsp2[1] - lsp0[1]) * inv_dy,
+		(lsp2[2] - lsp0[2]) * inv_dy,
+		(lsp2[3] - lsp0[3]) * inv_dy
 	};
 
 	float lsp1dy[4] = {
-		(lsp2[0] - plsp1[0]) * inv_dy,
-		(lsp2[1] - plsp1[1]) * inv_dy,
-		(lsp2[2] - plsp1[2]) * inv_dy,
-		(lsp2[3] - plsp1[3]) * inv_dy
+		(lsp2[0] - lsp1[0]) * inv_dy,
+		(lsp2[1] - lsp1[1]) * inv_dy,
+		(lsp2[2] - lsp1[2]) * inv_dy,
+		(lsp2[3] - lsp1[3]) * inv_dy
 	};
 
 	for (int y = yStart; y < yEnd; ++y) {
@@ -578,16 +580,16 @@ void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1,
 		int xEnd = (int)(ceil(x1 - 0.5f));
 
 		float lsp_temp0[4] = { 
-			plsp0[0] + lsp0dy[0] * a, 
-			plsp0[1] + lsp0dy[1] * a, 
-			plsp0[2] + lsp0dy[2] * a, 
-			plsp0[3] + lsp0dy[3] * a };
+			lsp0[0] + lsp0dy[0] * a, 
+			lsp0[1] + lsp0dy[1] * a, 
+			lsp0[2] + lsp0dy[2] * a, 
+			lsp0[3] + lsp0dy[3] * a };
 
 		float lsp_temp1[4] = { 
-			plsp1[0] + lsp1dy[0] * a, 
-			plsp1[1] + lsp1dy[1] * a, 
-			plsp1[2] + lsp1dy[2] * a, 
-			plsp1[3] + lsp1dy[3] * a };
+			lsp1[0] + lsp1dy[0] * a, 
+			lsp1[1] + lsp1dy[1] * a, 
+			lsp1[2] + lsp1dy[2] * a, 
+			lsp1[3] + lsp1dy[3] * a };
 
 		draw_scanline(rt, xStart, xEnd, y, z0, z1, wStart, wEnd, tempc0, tempc1, lsp_temp0, lsp_temp1, lights_count, depth_maps);
 	}
@@ -599,49 +601,45 @@ void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, f
 	// need x,y,z,w.
 	float* lsp3 = lsp0 + lights_count * 3 * 4;
 
-	float* plsp0 = lsp0;
-	float* plsp1 = lsp1;
-	float* plsp2 = lsp2;
-
 	// Sort vertices in ascending order.
 	if (v0.y > v1.y) 
 	{ 
 		v4_swap(&v0, &v1);
 		v3_swap(&c0, &c1);
 
-		float* temp = plsp0;
-		plsp0 = plsp1;
-		plsp1 = temp;
+		float* temp = lsp0;
+		lsp0 = lsp1;
+		lsp1 = temp;
 	}
 	if (v0.y > v2.y)
 	{
 		v4_swap(&v0, &v2);
 		v3_swap(&c0, &c2);
 
-		float* temp = plsp0;
-		plsp0 = plsp2;
-		plsp2 = temp;
+		float* temp = lsp0;
+		lsp0 = lsp2;
+		lsp2 = temp;
 	}
 	if (v1.y > v2.y) 
 	{ 
 		v4_swap(&v1, &v2);
 		v3_swap(&c1, &c2);
 
-		float* temp = plsp1;
-		plsp1 = plsp2;
-		plsp2 = temp;
+		float* temp = lsp1;
+		lsp1 = lsp2;
+		lsp2 = temp;
 	}
 	
 	// Handle if the triangle is already flat.
 	if (v0.y == v1.y)
 	{
-		draw_flat_top_triangle(rt, v0, v1, v2, c0, c1, c2, plsp0, plsp1, plsp2, lights_count, depth_maps);
+		draw_flat_top_triangle(rt, v0, v1, v2, c0, c1, c2, lsp0, lsp1, lsp2, lights_count, depth_maps);
 		return;
 	}
 
 	if (v1.y == v2.y)
 	{
-		draw_flat_bottom_triangle(rt, v0, v1, v2, c0, c1, c2, plsp0, plsp1, plsp2, lights_count, depth_maps);
+		draw_flat_bottom_triangle(rt, v0, v1, v2, c0, c1, c2, lsp0, lsp1, lsp2, lights_count, depth_maps);
 		return;
 	}
 	
@@ -667,13 +665,13 @@ void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, f
 	
 	// TODO: TEMP HARDCODED FOR 1
 	
-	lsp3[0] = plsp0[0] + (plsp2[0] - plsp0[0]) * t;
-	lsp3[1] = plsp0[1] + (plsp2[1] - plsp0[1]) * t;
-	lsp3[2] = plsp0[2] + (plsp2[2] - plsp0[2]) * t;
-	lsp3[3] = plsp0[3] + (plsp2[3] - plsp0[3]) * t;
+	lsp3[0] = lsp0[0] + (lsp2[0] - lsp0[0]) * t;
+	lsp3[1] = lsp0[1] + (lsp2[1] - lsp0[1]) * t;
+	lsp3[2] = lsp0[2] + (lsp2[2] - lsp0[2]) * t;
+	lsp3[3] = lsp0[3] + (lsp2[3] - lsp0[3]) * t;
 
-	draw_flat_top_triangle(rt, v1, v3, v2, c1, c3, c2, plsp1, lsp3, plsp2, lights_count, depth_maps);
-	draw_flat_bottom_triangle(rt, v0, v1, v3, c0, c1, c3, plsp0, plsp1, lsp3, lights_count, depth_maps);
+	draw_flat_top_triangle(rt, v1, v3, v2, c1, c3, c2, lsp1, lsp3, lsp2, lights_count, depth_maps);
+	draw_flat_bottom_triangle(rt, v0, v1, v3, c0, c1, c3, lsp0, lsp1, lsp3, lights_count, depth_maps);
 }
 
 void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V3 c0, const V3 c1, const V2 uv0, const V2 uv1, const Canvas* texture)
@@ -1250,23 +1248,9 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 		// Calculate the new model/normal matrix from the mi's transform.
 		int transform_index = i * STRIDE_MI_TRANSFORM;
 
-		const V3 position = {
-			mis_transforms[transform_index],
-			mis_transforms[++transform_index],
-			mis_transforms[++transform_index]
-		};
-
-		const V3 eulers = {
-			mis_transforms[++transform_index],
-			mis_transforms[++transform_index],
-			mis_transforms[++transform_index]
-		};
-
-		const V3 scale = {
-			mis_transforms[++transform_index],
-			mis_transforms[++transform_index],
-			mis_transforms[++transform_index]
-		};
+		V3 position = v3_read(mis_transforms + transform_index);
+		V3 eulers = v3_read(mis_transforms + transform_index + 3);
+		V3 scale = v3_read(mis_transforms + transform_index + 6);
 
 		M4 model_matrix;
 		m4_model_matrix(position, eulers, scale, model_matrix);
@@ -1292,20 +1276,11 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 		{
 			int index_object_space_position = (j + mb_positions_offset) * STRIDE_POSITION;
 
-			// TODO: A function like inline read_v4(float* out, float* in, int offset);
-			// V4 object_space_position;
-			// v4_read(object_space_position, object_space_positions, index_object_space_position)
-			V4 object_space_position = {
-				object_space_positions[index_object_space_position],
-				object_space_positions[index_object_space_position + 1],
-				object_space_positions[index_object_space_position + 2],
-				1
-			};
+			V4 object_space_position = v3_read_to_v4(object_space_positions + index_object_space_position, 1.f);
 
 			V4 view_space_position; 
 			m4_mul_v4(model_view_matrix, object_space_position, &view_space_position);
 
-			// TODO: inline v4_write()? or DEFINE?
 			view_space_positions[vsp_out_index++] = view_space_position.x;
 			view_space_positions[vsp_out_index++] = view_space_position.y;
 			view_space_positions[vsp_out_index++] = view_space_position.z;
@@ -1321,48 +1296,24 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 		{
 			int index_object_space_normals = (j + mb_normals_offset) * STRIDE_NORMAL;
 
-			V4 object_space_normal = {
-				object_space_normals[index_object_space_normals],
-				object_space_normals[index_object_space_normals + 1],
-				object_space_normals[index_object_space_normals + 2],
-				0 // No translation
-			};
+			V4 object_space_normal = v3_read_to_v4(object_space_normals + index_object_space_normals, 0.f);
 
-			// TODO: Messy.
+			// TODO: Kinda messy.
 			V4 view_space_normal;
 			m4_mul_v4(view_normal_matrix, object_space_normal, &view_space_normal);
 
-			V3 vsn_v3 = {
-				view_space_normal.x,
-				view_space_normal.y,
-				view_space_normal.z
-			};
-			normalise(&vsn_v3);
-
-			view_space_normals[vsn_out_index++] = vsn_v3.x;
-			view_space_normals[vsn_out_index++] = vsn_v3.y;
-			view_space_normals[vsn_out_index++] = vsn_v3.z;
+			v3_write(view_space_normals + vsn_out_index, normalised(v4_xyz(view_space_normal)));
+			vsn_out_index += 3;
 		}
 
 		// Update the mi's bounding sphere.
-		const int centre_index = mb_index * STRIDE_POSITION;
-		V4 centre =
-		{
-			object_space_centres[centre_index],
-			object_space_centres[centre_index + 1],
-			object_space_centres[centre_index + 2],
-			1
-		};
+		V4 centre = v3_read_to_v4(object_space_centres + mb_index * STRIDE_POSITION, 1.f);
 
 		// Convert the model base centre to view space for the instance.
 		V4 vs_centre;
 		m4_mul_v4(model_view_matrix, centre, &vs_centre);
-		V3 vs_centre_v3 = {
-			vs_centre.x,
-			vs_centre.y,
-			vs_centre.z
-		};
-
+		V3 vs_centre_v3 = v4_xyz(vs_centre);
+		
 		const int bs_index = i * STRIDE_SPHERE;
 		mis_bounding_spheres[bs_index] = vs_centre.x;
 		mis_bounding_spheres[bs_index + 1] = vs_centre.y;
@@ -1379,12 +1330,7 @@ void model_to_view_space(Models* models, const M4 view_matrix)
 
 			for (int j = start_vsp_out_index; j < vsp_out_index; j += STRIDE_POSITION)
 			{
-				V3 v =
-				{
-					view_space_positions[j],
-					view_space_positions[j + 1],
-					view_space_positions[j + 2],
-				};
+				V3 v = v3_read(view_space_positions + j);
 
 				V3 between = v3_sub_v3(v, vs_centre_v3);
 
@@ -1407,21 +1353,14 @@ void lights_world_to_view_space(PointLights* point_lights, const M4 view_matrix)
 	const int num_position_components = point_lights->count * STRIDE_POSITION;
 	for (int i = 0; i < num_position_components; i += STRIDE_POSITION)
 	{
-		V4 v = {
-			world_space_positions[i],
-			world_space_positions[i + 1],
-			world_space_positions[i + 2],
-			1
-		};
+		V4 v_world_space = v3_read_to_v4(world_space_positions + i, 1.f);
 
 		V4 v_view_space;
-		m4_mul_v4(view_matrix, v, &v_view_space);
+		m4_mul_v4(view_matrix, v_world_space, &v_view_space);
 
 		// There is no need to save the w component as it is always 1 until 
 		// after projection.
-		view_space_positions[i] = v_view_space.x;
-		view_space_positions[i + 1] = v_view_space.y;
-		view_space_positions[i + 2] = v_view_space.z;
+		v4_write_xyz(view_space_positions + i, v_view_space);
 	}
 }
 
@@ -1577,23 +1516,9 @@ void cull_backfaces(Models* models)
 			const int index_parts_v2 = index_v2 * STRIDE_POSITION;
 
 			// Get the vertices from the face indices.
-			const V3 v0 = {
-				view_space_positions[index_parts_v0],
-				view_space_positions[index_parts_v0 + 1],
-				view_space_positions[index_parts_v0 + 2]
-			};
-
-			const V3 v1 = {
-				view_space_positions[index_parts_v1],
-				view_space_positions[index_parts_v1 + 1],
-				view_space_positions[index_parts_v1 + 2]
-			};
-
-			const V3 v2 = {
-				view_space_positions[index_parts_v2],
-				view_space_positions[index_parts_v2 + 1],
-				view_space_positions[index_parts_v2 + 2]
-			};
+			const V3 v0 = v3_read(view_space_positions + index_parts_v0);
+			const V3 v1 = v3_read(view_space_positions + index_parts_v1);
+			const V3 v2 = v3_read(view_space_positions + index_parts_v2);
 
 			// If the face is front facing, we can possibly see it.
 			if (is_front_face(v0, v1, v2))
@@ -1764,29 +1689,12 @@ void light_front_faces(Scene* scene)
 			// 12 attributes per vertex. TODO: STRIDE for this?
 			for (int k = index_face; k < index_face + STRIDE_ENTIRE_FACE; k += STRIDE_ENTIRE_VERTEX)
 			{
-				const V3 pos = {
-					front_faces[k],
-					front_faces[k + 1],
-					front_faces[k + 2],
-				};
+				const V3 pos = v3_read(front_faces + k);
+				const V3 normal = v3_read(front_faces + k + 5);
 
-				const V3 normal = {
-					front_faces[k + 5],
-					front_faces[k + 6],
-					front_faces[k + 7],
-				};
-
-				// Only need RGB, only need A for combining with texture???
-
-				// This is how much light it absorbs?
-				V3 colour = {
-					front_faces[k + 8],
-					front_faces[k + 9],
-					front_faces[k + 10]
-				};
-
-				// TODO: I'm pretty sure the per pixel interpolation is broken or maybe that's just the lighting.
-
+				// Alebdo? This is how much light it absorbs?
+				V3 colour = v3_read(front_faces + k + 8);
+				
 				V3 diffuse_part = { 0, 0, 0 };
 
 				// For each light
@@ -1795,24 +1703,11 @@ void light_front_faces(Scene* scene)
 					int i_light_pos = i_light * STRIDE_POSITION;
 					int i_light_attr = i_light * STRIDE_POINT_LIGHT_ATTRIBUTES;
 
-					const V3 light_pos =
-					{
-						pls_view_space_positions[i_light_pos],
-						pls_view_space_positions[i_light_pos + 1],
-						pls_view_space_positions[i_light_pos + 2]
-					};
+					const V3 light_pos = v3_read(pls_view_space_positions + i_light_pos);
 
-					V3 light_colour =
-					{
-						pls_attributes[i_light_attr],
-						pls_attributes[i_light_attr + 1],
-						pls_attributes[i_light_attr + 2]
-					};
-
+					V3 light_colour = v3_read(pls_attributes + i_light_attr);
 					float strength = pls_attributes[3];
 
-					// TODO: Could cache this? Then the user can also set
-					//		 the attenuation?
 					float a = 0.1f / strength;
 					float b = 0.01f / strength;
 
@@ -1822,17 +1717,14 @@ void light_front_faces(Scene* scene)
 					v3_add_eq_v3(&diffuse_part, light_colour);
 				}
 
-				diffuse_part.x = max(min(diffuse_part.x, 1), ambient_light.x);
-				diffuse_part.y = max(min(diffuse_part.y, 1), ambient_light.y);
-				diffuse_part.z = max(min(diffuse_part.z, 1), ambient_light.z);
+				diffuse_part.x = max(min(diffuse_part.x, 1.f), ambient_light.x);
+				diffuse_part.y = max(min(diffuse_part.y, 1.f), ambient_light.y);
+				diffuse_part.z = max(min(diffuse_part.z, 1.f), ambient_light.z);
 
 				v3_mul_eq_v3(&colour, diffuse_part);
 
-				// TODO: Add Ambient too.
-
-				front_faces[k + 8] = colour.x;
-				front_faces[k + 9] = colour.y;
-				front_faces[k + 10] = colour.z;
+				// Write out the calculated colour of the vertex.
+				v3_write(front_faces + k + 8, colour);
 			}
 		}
 	
@@ -2312,26 +2204,9 @@ void project_and_draw_clipped(
 			int clipped_face_index = i * STRIDE_ENTIRE_FACE;
 
 			// Project the vertex positions.
-			V4 v0 = {
-				clipped_faces[clipped_face_index],
-				clipped_faces[clipped_face_index + 1],
-				clipped_faces[clipped_face_index + 2],
-				1
-			};
-
-			V4 v1 = {
-				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX],
-				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 1],
-				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + 2],
-				1
-			};
-
-			V4 v2 = {
-				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX],
-				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 1],
-				clipped_faces[clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX + 2],
-				1
-			};
+			const V4 v0 = v3_read_to_v4(clipped_faces + clipped_face_index, 1.f);
+			const V4 v1 = v3_read_to_v4(clipped_faces + clipped_face_index + STRIDE_ENTIRE_VERTEX, 1.f);
+			const V4 v2 = v3_read_to_v4(clipped_faces + clipped_face_index + STRIDE_ENTIRE_VERTEX + STRIDE_ENTIRE_VERTEX, 1.f);
 
 			V4 pv0, pv1, pv2;
 			project(&rt->canvas, projection_matrix, v0, &pv0);
@@ -2371,16 +2246,7 @@ void project_and_draw_clipped(
 			float* lsp1 = light_space + LIGHTS * 4; // per light there there is a x,y,z,w
 			float* lsp2 = light_space + LIGHTS * 4 * 2;
 
-			/*
-			printf("draw\n");
-			printf("%f %f %f %f\n", lsp0[0], lsp0[1], lsp0[2], lsp0[3]);
-			printf("%f %f %f %f\n", lsp1[0], lsp1[1], lsp1[2], lsp1[3]);
-			printf("%f %f %f %f\n", lsp2[0], lsp2[1], lsp2[2], lsp2[3]);
-			printf("\n");
-			*/
-
-
-				// TEMP: HARDCODED PERSPECTIVE DIVIDE
+			// TEMP: HARDCODED PERSPECTIVE DIVIDE
 			lsp0[0] *= pv0.w;
 			lsp0[1] *= pv0.w;
 			lsp0[2] *= pv0.w;
@@ -2396,11 +2262,6 @@ void project_and_draw_clipped(
 			lsp2[2] *= pv2.w;
 			lsp2[3] *= pv2.w;
 
-			// TODO: Why are z/w always so equal??????????? Might not be a problem. but something defintiely wrong..........
-
-			
-
-			// TODO: Pretty sure we're having lerp problems/issues when swapping?
 			draw_triangle(rt, pv0, pv1, pv2, colour0, colour1, colour2, lsp0, lsp1, lsp2, LIGHTS, point_lights->depth_maps);
 		}
 	}
@@ -2565,11 +2426,7 @@ void update_depth_maps(Scene* scene)
 
 		int pos_i = i * STRIDE_POSITION;
 
-		V3 pos = {
-			pls->world_space_positions[pos_i],
-			pls->world_space_positions[pos_i + 1],
-			pls->world_space_positions[pos_i + 2]
-		};
+		V3 pos = v3_read(pls->world_space_positions + pos_i);
 		
 		// TODO: TEMP, hardcoded.
 		V3 dir = { 0, 0, -1 };
@@ -2585,7 +2442,7 @@ void update_depth_maps(Scene* scene)
 		// TODO: TEMP: Hardcoded settings
 
 		float near_plane = 1.f;
-		float far_plane = 100.f; // TODO: Defined from strength of point light?
+		float far_plane = 100.f; // TODO: Defined from strength of point light? with attenuation taken into account?
 
 		M4 proj;
 		m4_projection(fov, aspect_ratio, near_plane, far_plane, proj);
@@ -2616,23 +2473,9 @@ void update_depth_maps(Scene* scene)
 			// Calculate the new model/normal matrix from the mi's transform.
 			int transform_index = j * STRIDE_MI_TRANSFORM;
 
-			const V3 position = {
-				mis_transforms[transform_index],
-				mis_transforms[++transform_index],
-				mis_transforms[++transform_index]
-			};
-
-			const V3 eulers = {
-				mis_transforms[++transform_index],
-				mis_transforms[++transform_index],
-				mis_transforms[++transform_index]
-			};
-
-			const V3 scale = {
-				mis_transforms[++transform_index],
-				mis_transforms[++transform_index],
-				mis_transforms[++transform_index]
-			};
+			const V3 position = v3_read(mis_transforms + transform_index);
+			const V3 eulers = v3_read(mis_transforms + transform_index + 3);
+			const V3 scale = v3_read(mis_transforms + transform_index + 6);
 
 			M4 model_matrix;
 			m4_model_matrix(position, eulers, scale, model_matrix);
@@ -2654,27 +2497,9 @@ void update_depth_maps(Scene* scene)
 				const int index_parts_v2 = index_v2 * STRIDE_POSITION;
 
 				// Get the vertices from the face indices.
-				V4 osp0 = {
-					object_space_positions[index_parts_v0],
-					object_space_positions[index_parts_v0 + 1],
-					object_space_positions[index_parts_v0 + 2],
-					1
-				};
-
-				V4 osp1 = {
-					object_space_positions[index_parts_v1],
-					object_space_positions[index_parts_v1 + 1],
-					object_space_positions[index_parts_v1 + 2],
-					1
-				};
-
-				V4 osp2 = {
-					object_space_positions[index_parts_v2],
-					object_space_positions[index_parts_v2 + 1],
-					object_space_positions[index_parts_v2 + 2],
-					1
-				};
-
+				V4 osp0 = v3_read_to_v4(object_space_positions + index_parts_v0, 1.f);
+				V4 osp1 = v3_read_to_v4(object_space_positions + index_parts_v1, 1.f);
+				V4 osp2 = v3_read_to_v4(object_space_positions + index_parts_v2, 1.f);
 
 				// TODO: For this, refactor to do model view transformation first per vertex
 				//		 so we're not doing it multiple times with the indexed rendering. 
@@ -2689,11 +2514,9 @@ void update_depth_maps(Scene* scene)
 				m4_mul_v4(model_view, osp1, &vsp1);
 				m4_mul_v4(model_view, osp2, &vsp2);
 
-				V3 vsp0_v3 = { vsp0.x, vsp0.y, vsp0.z };
-				V3 vsp1_v3 = { vsp1.x, vsp1.y, vsp1.z };
-				V3 vsp2_v3 = { vsp2.x, vsp2.y, vsp2.z };
-
-
+				V3 vsp0_v3 = v4_xyz(vsp0);
+				V3 vsp1_v3 = v4_xyz(vsp1);
+				V3 vsp2_v3 = v4_xyz(vsp2);
 
 				V3 face_normal = normalised(cross(v3_sub_v3(vsp1_v3, vsp0_v3), v3_sub_v3(vsp2_v3, vsp0_v3)));
 
@@ -2827,21 +2650,10 @@ void update_depth_maps(Scene* scene)
 				const int index_lsp_parts_v2 = (models->mbs_face_position_indices[face_index + 2] + positions_offset) * 4;
 
 				// Perspective-correct intertpolation of values that have undergone perspective divide dont work?
-				models->light_space_positions[index_lsp_parts_v0] = projected0.x;
-				models->light_space_positions[index_lsp_parts_v0 + 1] = projected0.y;
-				models->light_space_positions[index_lsp_parts_v0 + 2] = projected0.z;
-				models->light_space_positions[index_lsp_parts_v0 + 3] = projected0.w; 
-
-				models->light_space_positions[index_lsp_parts_v1] = projected1.x;
-				models->light_space_positions[index_lsp_parts_v1 + 1] = projected1.y;
-				models->light_space_positions[index_lsp_parts_v1 + 2] = projected1.z;
-				models->light_space_positions[index_lsp_parts_v1 + 3] = projected1.w;
-
-				models->light_space_positions[index_lsp_parts_v2] = projected2.x;
-				models->light_space_positions[index_lsp_parts_v2 + 1] = projected2.y;
-				models->light_space_positions[index_lsp_parts_v2 + 2] = projected2.z;
-				models->light_space_positions[index_lsp_parts_v2 + 3] = projected2.w;
-				
+				// TODO: Comments and understand all this a bit more.
+				v4_write(models->light_space_positions + index_lsp_parts_v0, projected0);
+				v4_write(models->light_space_positions + index_lsp_parts_v1, projected1);
+				v4_write(models->light_space_positions + index_lsp_parts_v2, projected2);
 
 				draw_depth_triangle(depth_map, ssp0, ssp1, ssp2);
 			}

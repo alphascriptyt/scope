@@ -24,6 +24,7 @@ add_executable (scope "main.c"
 "engine/maths/vector2.h"
 "engine/maths/vector3.h" 
 "engine/maths/vector4.h"
+"engine/maths/vector_maths.h"
 
 "engine/renderer/camera.h" "engine/renderer/camera.c"
 "engine/renderer/frustum_culling.h" "engine/renderer/frustum_culling.c"
