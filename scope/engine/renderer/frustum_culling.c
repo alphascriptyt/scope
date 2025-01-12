@@ -45,8 +45,8 @@ void view_frustum_init(ViewFrustum* view_frustum, float near_dist, float far_dis
 
 	V3 far_top_left = v3_sub_v3(v3_add_v3(far_centre, far_top_offset), far_right_offset);
 	V3 far_top_right = v3_add_v3(v3_add_v3(far_centre, far_top_offset), far_right_offset);
-	V3 far_bottom_left = v3_sub_v3(v3_sub_v3(far_centre, far_top_offset), far_right_offset);
-	V3 far_bottom_right = v3_add_v3(v3_sub_v3(far_centre, far_top_offset), far_right_offset);
+	//V3 far_bottom_left = v3_sub_v3(v3_sub_v3(far_centre, far_top_offset), far_right_offset);
+	//V3 far_bottom_right = v3_add_v3(v3_sub_v3(far_centre, far_top_offset), far_right_offset);
 
 	// Near and far are trivial to define.
 	Plane near = {

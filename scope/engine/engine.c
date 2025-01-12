@@ -141,8 +141,7 @@ void engine_run(Engine* engine)
         timer_restart(&t);
         if (engine->current_scene_id > -1 && engine->current_scene_id < engine->scenes_count)
         {
-            render(&engine->renderer.target, &engine->renderer.settings,
-                &engine->scenes[engine->current_scene_id], &engine->resources, view_matrix);
+            render(&engine->renderer, &engine->scenes[engine->current_scene_id], &engine->resources, view_matrix);
         }
         snprintf(render_str, sizeof(render_str), "Render: %d", timer_get_elapsed(&t));
 

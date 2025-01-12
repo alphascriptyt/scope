@@ -1,12 +1,10 @@
 #ifndef LIGHTS_H
 #define LIGHTS_H
 
+#include "renderer/render_buffers.h"
 #include "renderer/depth_buffer.h"
 
 #include "maths/vector3.h"
-
-#define STRIDE_POINT_LIGHT_ATTRIBUTES 4 // r,g,b,n
-// TODO: I would like to also have STRIDE_POSITION here. Should strides be defined in a separate header to model.h?
 
 /*
 A point light can be defined by a:
@@ -14,13 +12,13 @@ A point light can be defined by a:
 - Colour
 - Strength
 
-A vertex can absorb a certain amount of colour, this is it's colour,
-therefore, if a white light shines on it, it will absorb more red if its
+A vertex can reflect a certain amount of colour, this is it's colour,
+therefore, if a white light shines on it, it will reflect more red if its
 a red colour. 
 
-A light does not need an alpha.
-
 */
+
+// TODO: Not all point lights should cast shadows.
  
 typedef struct
 {
@@ -37,14 +35,14 @@ typedef struct
 	// Cache the point light's view space position.
 	float* view_space_positions; 
 
-	DepthBuffer depth_maps[1];
+	DepthBuffer* depth_maps;
 
 } PointLights;
 
 
 void point_lights_init(PointLights* point_lights);
 
-void point_lights_create(PointLights* point_lights, V3 position, V3 colour, float strength);
+void point_lights_create(PointLights* point_lights, RenderBuffers* rbs, V3 position, V3 colour, float strength);
 
 // TODO: Destroy.
 

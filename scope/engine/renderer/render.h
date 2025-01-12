@@ -1,6 +1,8 @@
 #ifndef RENDER_H
 #define RENDER_H
 
+#include "renderer.h"
+
 // This stuff feels quite renderer specific, maybe except from resources.
 // TODO: Think about global-stuff.
 #include "scene.h"
@@ -44,9 +46,9 @@ float calculate_diffuse_factor(V3 v, V3 n, V3 light_pos, float a, float b);
 // TODO: Should some of this stuff be global? RenderTarget, depth maps? Probably not. 
 // TODO: Could use a triangle/face struct for passing args easier, but at the same time, is there any point?? Not that deep.
 void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, V3 c0, V3 c1, float* lsp0, float* lsp1, int lights_count, DepthBuffer* depth_maps);
-void draw_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps);
-void draw_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps);
-void draw_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, float* lsp0, float* lsp1, float* lsp2, int lights_count, DepthBuffer* depth_maps);
+void draw_flat_bottom_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps);
+void draw_flat_top_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps);
+void draw_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2, float* vc3, int vertex_stride, int lights_count, DepthBuffer* depth_maps);
 
 // TODO: Rename?
 void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, V3 c0, V3 c1, const V2 uv0, const V2 uv1, const Canvas* texture);
@@ -69,20 +71,20 @@ void lights_world_to_view_space(PointLights* point_lights, const M4 view_matrix)
 
 void broad_phase_frustum_culling(Models* models, const ViewFrustum* view_frustum);
 
-void cull_backfaces(Models* models);
+void cull_backfaces(Renderer* renderer, Scene* scene);
 
 void light_front_faces(Scene* scene);
 
-void clip_to_screen(RenderTarget* rt, const M4 projection_matrix, const ViewFrustum* view_frustum, const M4 view_matrix, Scene* scene, const Resources* resources);
+void clip_to_screen(Renderer* renderer, const M4 view_matrix, Scene* scene, const Resources* resources);
 
-void project_and_draw_clipped(RenderTarget* rt, const M4 projection_matrix, Scene* scene, int mi_index, int clipped_face_count, const Resources* resources);
+void project_and_draw_clipped(Renderer* renderer, Scene* scene, int mi_index, int clipped_face_count, const Resources* resources);
 
-void render(RenderTarget* rt, const RenderSettings* settings, Scene* scene, const Resources* resources, const M4 view_matrix);
+void render(Renderer* renderer, Scene* scene, const Resources* resources, const M4 view_matrix);
 
 // TEMP
 
 
-void update_depth_maps(Scene* scene);
+void update_depth_maps(Renderer* renderer, const Scene* scene);
 
 
 #endif

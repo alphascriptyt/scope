@@ -143,6 +143,8 @@ inline V3 v3_read(const float* in)
 	return (V3) {in[0], in[1], in[2] };
 }
 
+// TODO: v3_lerp?
+
 inline char* v3_to_str(V3 v)
 {
 	return format_str("%f %f %f", v.x, v.y, v.z);

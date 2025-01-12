@@ -1,41 +1,13 @@
 #ifndef MODELS_H
 #define MODELS_H
 
+#include "renderer/render_buffers.h"
+
 #include "common/status.h"
 #include "maths/vector3.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-
-// TODO: Make some defines for writing to the buffers i think.
-
-// Define the size of strides for the arrays.
-// TODO: SPecifiy these are vertex strides?
-#define STRIDE_FACE_VERTICES	3
-#define STRIDE_COLOUR	3			// RGB, will need to increase this if we want to add transparency. Which I would like to do one day if performance is okay.
-#define STRIDE_POSITION 3
-#define STRIDE_NORMAL	3
-#define STRIDE_UV		2
-#define STRIDE_SPHERE	4			// Center (x,y,z), Radius	
-// TODO: Not sure on the ENTIRE naming conventions. Could make this better.
-#define STRIDE_ENTIRE_VERTEX 11 // x, y, z, u, v, nx, ny, nz, r, g, b - TODO: Could think about this a bit more.
-#define STRIDE_ENTIRE_FACE (STRIDE_ENTIRE_VERTEX * STRIDE_FACE_VERTICES)
-#define STRIDE_MI_TRANSFORM 9		// Position, Eulers, Scale
-
-// Define indices for the components of a vertex of an ENTIRE_FACE.
-// Not sure if this is necessary but could be helpful.
-// TODO: These need a prefix like ENTIRE_FACE_INDEX_X. or just remove.
-#define INDEX_X 0
-#define INDEX_Y 1
-#define INDEX_Z 2
-#define INDEX_U 3
-#define INDEX_V 4
-#define INDEX_NX 5
-#define INDEX_NY 6
-#define INDEX_NZ 7
-#define INDEX_R 8
-#define INDEX_G 9
-#define INDEX_B 10
 
 /*
 
@@ -65,6 +37,16 @@ I'm not sure. I will need to think about it properly. But let's say we had a bas
 and wanted to do a running animation, it would be nice to be able to animate it's bodyparts,
 for example, we could store transforms for parts of the animation and lerp each mesh in the 
 model for those. Or reloading etc. This will be quite important.
+
+*/
+
+/*
+
+TODO: Gotta think about the buffers again. Do I really need this many? Surely I can reuse the clipping one because that's the biggest?
+	  And I can treat this like a memory arena, this could be a great way to reduce memory. Although remember I need at least two arenas for swapping stuff.
+
+	  Need to think about this more though. Not really sure tbf.
+
 
 */
 
@@ -120,7 +102,7 @@ typedef struct
 	float* mis_bounding_spheres;		// The bounding sphere for each instance in world space.
 
 	// Transform results buffers.
-	// TODO: These are specific to mis, should prefix.
+	// TODO: These are specific to mis, should prefix. - or move to RenderBuffers.
 	float* view_space_positions;
 	float* view_space_normals;
 	
@@ -133,17 +115,6 @@ typedef struct
 	float* temp_clipped_faces_in;	// Used for temporarily storing the faces whilst clipping against multiple planes.
 	float* temp_clipped_faces_out;	// Used for temporarily storing the faces whilst clipping against multiple planes.
 
-
-
-	// TODO: TEMP: Shadow map buffers.
-	// TODO: Doesn't feel like these should be here, these are like shared renderer buffers.
-	float* light_space_positions;
-	float* front_face_light_space_positions;
-
-	float* temp_light_space_positions; 
-
-
-
 } Models;
 
 // Initialises the models struct.
@@ -152,7 +123,7 @@ void models_init(Models* models);
 // Parses the obj file for the number of each component.
 void parse_obj_counts(FILE* file, int* num_vertices, int* num_uvs, int* num_normals, int* num_faces);
 
-Status load_model_base_from_obj(Models* models, const char* filename);
+Status load_model_base_from_obj(Models* models, RenderBuffers* rbs, const char* filename);
 
 // TODO: It would be nice to be able to create different model
 //		 instances without memory allocating each time. I think
@@ -164,7 +135,7 @@ Status load_model_base_from_obj(Models* models, const char* filename);
 //		 But we don't need this for now. Essentially just allocate big blocks, store the used and total capacity etc.
 
 // Allocates memory for n instances of the ModelBase at mb_index.
-void create_model_instances(Models* models, int mb_index, int n);
+void create_model_instances(Models* models, RenderBuffers* rbs, int mb_index, int n);
 
 void free_models(Models* models);
 

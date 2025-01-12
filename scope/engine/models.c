@@ -3,10 +3,13 @@
 #endif
 
 #include "models.h"
-#include "common/status.h"
+
+#include "renderer/render_buffers.h"
 
 #include "maths/vector3.h"
 #include "maths/matrix4.h"
+
+#include "common/status.h"
 
 #include "utils/logger.h"
 #include "utils/str_utils.h"
@@ -16,7 +19,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "models.h"
 
 void models_init(Models* models)
 {
@@ -58,7 +60,7 @@ void parse_obj_counts(FILE* file, int* num_positions, int* num_uvs, int* num_nor
 	}
 }
 
-Status load_model_base_from_obj(Models* models, const char* filename)
+Status load_model_base_from_obj(Models* models, RenderBuffers* rbs, const char* filename)
 {
 	// TODO: Eventually could check the filetype.
 	FILE* file = fopen(filename, "r");
@@ -138,12 +140,9 @@ Status load_model_base_from_obj(Models* models, const char* filename)
 		resize_float_buffer(&models->temp_clipped_faces_out, max_clipped_tris);
 		resize_float_buffer(&models->clipped_faces, max_clipped_tris);
 
-		// TODO: Surely this is gonna take too much memory. May have to refactor some of the rendering code.
-		const int NUM_LIGHTS = 1;
-
-		// TEMP: 4 for 4 vertices, allowing for space when we split triangles for v4.
-		// TODO: TEMP: Also 4 for x,y,z,w
-		resize_float_buffer(&models->temp_light_space_positions, max_tris_factor * face_count * 4 * 4 * NUM_LIGHTS); 
+		// Resize the shared render buffers.
+		rbs->mbs_max_faces = models->max_mb_faces;
+		render_buffers_resize(rbs);
 	}
 
 	// Move to the start of the file again so we can read it.
@@ -319,7 +318,7 @@ Status load_model_base_from_obj(Models* models, const char* filename)
 	return STATUS_OK;
 }
 
-void create_model_instances(Models* models, int mb_index, int n)
+void create_model_instances(Models* models, RenderBuffers* rbs, int mb_index, int n)
 {
 	if (mb_index > models->mbs_count - 1)
 	{
@@ -374,7 +373,7 @@ void create_model_instances(Models* models, int mb_index, int n)
 	for (int i = old_total_faces * STRIDE_FACE_VERTICES * STRIDE_COLOUR; i < new_total_vertices * STRIDE_COLOUR; i += STRIDE_COLOUR)
 	{
 		models->mis_vertex_colours[i]     = 1.f;
-		models->mis_vertex_colours[i + 1] = 1.f;
+		models->mis_vertex_colours[i + 1] = 0.f;
 		models->mis_vertex_colours[i + 2] = 1.f;
 	}
 
@@ -391,15 +390,8 @@ void create_model_instances(Models* models, int mb_index, int n)
 
 
 
-
-	// TODO: TEMP: This stuff is again shared between renderer and lights.
-	const int NUM_LIGHTS = 1;
-	resize_float_buffer(&models->light_space_positions, new_total_vertices * 4 * NUM_LIGHTS); // TODO: TEMP: x,y,z,w
-
-	// NEED THE EXTRA 1 FOR THE V4 LATER... SO SCUFFED.
-	// For each face, need space for 4 vertices per light....
-	resize_float_buffer(&models->front_face_light_space_positions, models->mis_total_faces * 4 * 4 * NUM_LIGHTS); // TODO: TEMP: x,y,z,w
-	
+	// Update the total vertices for resizing the render buffers.
+	rbs->total_faces = models->mis_total_faces;
 }
 
 void free_models(Models* models)
