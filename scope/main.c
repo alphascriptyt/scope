@@ -51,6 +51,7 @@ void engine_on_init(Engine* engine)
 
     if (0)
     {
+
         create_model_instances(&scene->models, &engine->renderer.buffers, 0, 2);
         V3 pos0 = { -1, 1, 3 };
         V3 pos1 = { 1, 1, 3 };
@@ -61,16 +62,18 @@ void engine_on_init(Engine* engine)
     }
     else
     {
+        
         create_model_instances(&scene->models, &engine->renderer.buffers, 1, 1);
         V3 pos = { 0, 1, 0 };
 
         V3 scale = { 1, 1, 1 };
-        mi_set_transform(&scene->models, 1, pos, eulers, scale);   
+        mi_set_transform(&scene->models, 1, pos, eulers, scale);  
+        
     }
 
     V3 pl_pos0 = { 0, 2, 14 };
     V3 pl_col0 = { 1, 1, 1 };
-    //point_lights_create(&scene->point_lights, &engine->renderer.buffers, pl_pos0, pl_col0, 50.f);
+    point_lights_create(&scene->point_lights, &engine->renderer.buffers, pl_pos0, pl_col0, 50.f);
 
     engine->renderer.camera.position.z = 20;
 

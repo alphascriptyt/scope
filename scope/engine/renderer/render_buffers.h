@@ -46,9 +46,13 @@ typedef struct
 	// Temporary buffer for drawing a triangle.
 	float* triangle_vertices;
 
-	float* scanline_light_space_positions;
+	
 
 	float* light_space_pos_deltas;
+
+	float* scanline_light_space_positions;
+	float* scanline_light_space_pos_deltas;
+	float* scanline_light_space_current_pos;
 	
 } RenderBuffers;
 
@@ -99,7 +103,9 @@ inline Status render_buffers_resize(RenderBuffers* rbs)
 	// Buffer for the light spaces for both edges.
 	resize_float_buffer(&rbs->scanline_light_space_positions, rbs->lights_count * STRIDE_V4 * 2); // interleaved buffer of lsp0_v0, lsp0_v1, ... 
 	resize_float_buffer(&rbs->light_space_pos_deltas, rbs->lights_count * STRIDE_V4 * 2); // interleaved buffer of dlsp0_dy_v0, dlsp0_dy_v1, ... 
-
+	resize_float_buffer(&rbs->scanline_light_space_pos_deltas, rbs->lights_count * STRIDE_V4); 
+	resize_float_buffer(&rbs->scanline_light_space_current_pos, rbs->lights_count * STRIDE_V4);
+	
 	return status;
 }
 

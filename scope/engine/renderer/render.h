@@ -42,6 +42,7 @@ float calculate_diffuse_factor(V3 v, V3 n, V3 light_pos, float a, float b);
 
 // SECTION: Triangle rasterisation.
 void draw_scanline(RenderTarget* rt, 
+	RenderBuffers* rbs,
 	int x0, int x1, 
 	int y, 
 	float z0, float z1, 
