@@ -41,14 +41,18 @@ void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const
 float calculate_diffuse_factor(V3 v, V3 n, V3 light_pos, float a, float b);
 
 // SECTION: Triangle rasterisation.
-// TODO: Could have a vertex struct for all these.
+void draw_scanline(RenderTarget* rt, 
+	int x0, int x1, 
+	int y, 
+	float z0, float z1, 
+	float w0, float w1, 
+	V3 ac0, V3 ac1, // Albedo
+	V3 lc0, V3 lc1, // Light colour/contribution
+	float* lsps, int lights_count, DepthBuffer* depth_maps);
 
-// TODO: Should some of this stuff be global? RenderTarget, depth maps? Probably not. 
-// TODO: Could use a triangle/face struct for passing args easier, but at the same time, is there any point?? Not that deep.
-void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, V3 c0, V3 c1, float* lsp0, float* lsp1, int lights_count, DepthBuffer* depth_maps);
-void draw_flat_bottom_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps);
-void draw_flat_top_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps);
-void draw_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2, float* vc3, int vertex_stride, int lights_count, DepthBuffer* depth_maps);
+void draw_flat_bottom_triangle(RenderTarget* rt, RenderBuffers* rbs, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps);
+void draw_flat_top_triangle(RenderTarget* rt, RenderBuffers* rbs, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps);
+void draw_triangle(RenderTarget* rt, RenderBuffers* rbs, float* vc0, float* vc1, float* vc2, float* vc3, int vertex_stride, int lights_count, DepthBuffer* depth_maps);
 
 // TODO: Rename?
 void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, V3 c0, V3 c1, const V2 uv0, const V2 uv1, const Canvas* texture);
@@ -56,7 +60,7 @@ void draw_textured_flat_bottom_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V
 void draw_textured_flat_top_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
 void draw_textured_triangle(RenderTarget* rt, V4 v0, V4 v1, V4 v2, V3 c0, V3 c1, V3 c2, V2 uv0, V2 uv1, V2 uv2, const Canvas* texture);
 
-// TODO: TEMP
+// TODO: Comments etc.
 void draw_depth_scanline(DepthBuffer* db, int x0, int x1, int y, float z0, float z1);
 void draw_depth_flat_bottom_triangle(DepthBuffer* db, V4 v0, V4 v1, V4 v2);
 void draw_depth_flat_top_triangle(DepthBuffer* db, V4 v0, V4 v1, V4 v2);
@@ -71,9 +75,9 @@ void lights_world_to_view_space(PointLights* point_lights, const M4 view_matrix)
 
 void broad_phase_frustum_culling(Models* models, const ViewFrustum* view_frustum);
 
-void cull_backfaces(Renderer* renderer, Scene* scene);
+void cull_backfaces(Renderer* renderer, const Scene* scene);
 
-void light_front_faces(Scene* scene);
+void light_front_faces(Renderer* renderer, Scene* scene);
 
 void clip_to_screen(Renderer* renderer, const M4 view_matrix, Scene* scene, const Resources* resources);
 

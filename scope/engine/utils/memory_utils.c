@@ -6,6 +6,12 @@
 
 Status resize_int_buffer(int** out_buffer, const unsigned int len)
 {
+	// Realloc with size = 0 fails.
+	if (len == 0)
+	{
+		return STATUS_INVALID_ARGUMENT;
+	}
+
 	int* temp_ptr = realloc(*out_buffer, len * sizeof(int));
 	if (0 == temp_ptr)
 	{
@@ -19,6 +25,12 @@ Status resize_int_buffer(int** out_buffer, const unsigned int len)
 
 Status resize_float_buffer(float** out_buffer, const unsigned int len)
 {
+	// Realloc with size = 0 fails.
+	if (len == 0)
+	{
+		return STATUS_INVALID_ARGUMENT;
+	}
+
 	float* temp_ptr = realloc(*out_buffer, len * sizeof(float));
 	if (0 == temp_ptr)
 	{

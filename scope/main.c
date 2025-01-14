@@ -8,6 +8,8 @@
 
 float* directions;
 
+// TODO: Switch to C compiler.
+
 void engine_on_init(Engine* engine)
 {    
     if (STATUS_OK != resources_load_texture(&engine->resources, "C:/Users/olive/source/repos/scope/scope/res/textures/rickreal.bmp"))
@@ -22,7 +24,7 @@ void engine_on_init(Engine* engine)
     Scene* scene = &engine->scenes[0];
     Status status = scene_init(scene);
 
-    scene->ambient_light.x = 0.f;
+    scene->ambient_light.x = 0.1f;
     scene->ambient_light.y = 0.1f;
     scene->ambient_light.z = 0.1f;
 
@@ -38,7 +40,7 @@ void engine_on_init(Engine* engine)
     // Setup scene for shadow testing.
     // TODO: Could be nice to have a wrapper so I dont need to include the buffers param?
     load_model_base_from_obj(&scene->models, &engine->renderer.buffers, "C:/Users/olive/source/repos/scope/scope/res/models/cube.obj");
-    load_model_base_from_obj(&scene->models, &engine->renderer.buffers, "C:/Users/olive/source/repos/scope/scope/res/models/smooth_sphere.obj");
+    load_model_base_from_obj(&scene->models, &engine->renderer.buffers, "C:/Users/olive/source/repos/scope/scope/res/models/suzanne.obj");
     
     V3 eulers = { 0, 0, 0 };
 
@@ -68,7 +70,7 @@ void engine_on_init(Engine* engine)
 
     V3 pl_pos0 = { 0, 2, 14 };
     V3 pl_col0 = { 1, 1, 1 };
-    point_lights_create(&scene->point_lights, &engine->renderer.buffers, pl_pos0, pl_col0, 50.f);
+    //point_lights_create(&scene->point_lights, &engine->renderer.buffers, pl_pos0, pl_col0, 50.f);
 
     engine->renderer.camera.position.z = 20;
 
@@ -124,6 +126,12 @@ void engine_on_keyup(Engine* engine, WPARAM wParam)
         directions[i] = engine->renderer.camera.direction.x;
         directions[i + 1] = engine->renderer.camera.direction.y;
         directions[i + 2] = engine->renderer.camera.direction.z;
+
+
+
+
+        render_buffers_resize(&engine->renderer.buffers);
+
 
         break;
     }

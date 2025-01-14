@@ -131,15 +131,6 @@ Status load_model_base_from_obj(Models* models, RenderBuffers* rbs, const char* 
 	{
 		models->max_mb_faces = face_count;
 
-		// Calculate the maximum number of triangles that one could turn into after clipping against all
-		// enabled planes.
-		const int MAX_FRUSTUM_PLANES = 6;
-		const int max_tris_factor = (int)pow(2, MAX_FRUSTUM_PLANES);
-		const int max_clipped_tris = face_count * STRIDE_ENTIRE_FACE * max_tris_factor;
-		resize_float_buffer(&models->temp_clipped_faces_in, max_clipped_tris);
-		resize_float_buffer(&models->temp_clipped_faces_out, max_clipped_tris);
-		resize_float_buffer(&models->clipped_faces, max_clipped_tris);
-
 		// Resize the shared render buffers.
 		rbs->mbs_max_faces = models->max_mb_faces;
 		render_buffers_resize(rbs);
@@ -373,7 +364,7 @@ void create_model_instances(Models* models, RenderBuffers* rbs, int mb_index, in
 	for (int i = old_total_faces * STRIDE_FACE_VERTICES * STRIDE_COLOUR; i < new_total_vertices * STRIDE_COLOUR; i += STRIDE_COLOUR)
 	{
 		models->mis_vertex_colours[i]     = 1.f;
-		models->mis_vertex_colours[i + 1] = 0.f;
+		models->mis_vertex_colours[i + 1] = 1.f;
 		models->mis_vertex_colours[i + 2] = 1.f;
 	}
 
@@ -381,16 +372,12 @@ void create_model_instances(Models* models, RenderBuffers* rbs, int mb_index, in
 	resize_float_buffer(&models->view_space_positions, models->mis_total_positions * STRIDE_POSITION);
 	resize_float_buffer(&models->view_space_normals, models->mis_total_normals * STRIDE_NORMAL);
 
-	// Resize intermediate/temporary rendering buffers.
-	resize_int_buffer(&models->front_faces_counts, new_instances_count);
-	resize_float_buffer(&models->front_faces, models->mis_total_faces * STRIDE_ENTIRE_FACE);
 	
 	// Update the number of instances.
 	models->mis_count = new_instances_count;
-
-
-
-	// Update the total vertices for resizing the render buffers.
+	
+	// Update render buffer counts.
+	rbs->instances_count = new_instances_count;
 	rbs->total_faces = models->mis_total_faces;
 }
 
@@ -422,14 +409,6 @@ void free_models(Models* models)
 
 	free(models->view_space_positions);
 	free(models->view_space_normals);
-
-	free(models->front_faces_counts);
-	free(models->front_faces);
-
-	free(models->clipped_faces);
-
-	free(models->temp_clipped_faces_in);
-	free(models->temp_clipped_faces_out);
 }
 
 void mi_set_transform(Models* models, int mi_index, V3 position, V3 eulers, V3 scale)

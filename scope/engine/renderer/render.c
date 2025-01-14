@@ -214,6 +214,9 @@ void debug_draw_world_space_line(Canvas* canvas, const RenderSettings* settings,
 
 void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const Models* models, int mi_index)
 {
+	// TODO: Gotta redo all.
+
+	/*
 	// TODO: How can we just access the data without this sort of loop??
 	//		 If we actually need this for something other than debugging,
 	//		 we should store offsets that are calculated per render call.
@@ -221,11 +224,16 @@ void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const
 	for (int i = 0; i < mi_index; ++i)
 	{
 		front_faces_offset += models->front_faces_counts[i];
-	}
+	}*/
 
+
+	// TODO: Will need to calculate the actual stride of a vertex with the number of light space positions
+	//		 too. Maybe to simplify this for all of my functions, should calculate this and keep it in the renderer.
+
+	/*
 	for (int i = front_faces_offset; i < front_faces_offset + models->front_faces_counts[mi_index]; ++i)
 	{
-		int face_index = i * STRIDE_ENTIRE_FACE;
+		int face_index = i * STRIDE_BASE_FRONT_FACE;
 
 		for (int j = 0; j < STRIDE_FACE_VERTICES; ++j)
 		{
@@ -256,14 +264,19 @@ void debug_draw_mi_normals(Canvas* canvas, const RenderSettings* settings, const
 
 			draw_line(canvas, (int)ss_start.x, (int)ss_start.y, (int)ss_end.x, (int)ss_end.y, COLOUR_LIME);
 		}
-	}
+	}*/
 }
 
-void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, V3 c0, V3 c1, float* lsp0, float* lsp1, int lights_count, DepthBuffer* depth_maps)
+void draw_scanline(RenderTarget* rt,
+	int x0, int x1,
+	int y,
+	float z0, float z1,
+	float w0, float w1,
+	V3 ac0, V3 ac1,
+	V3 lc0, V3 lc1,
+	float* lsps, int lights_count, DepthBuffer* depth_maps)
 {
 	// TODO: Globals could be used for the render target pixels and depth buffer to make faster? Maybe? Would need to profile idk.
-
-	// TODO: Refactor function args.
 
 	if (x0 == x1) return;
 
@@ -279,9 +292,6 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 	int start_x = x0 + row_offset;
 	int end_x = x1 + row_offset;
 
-	V3 c_step = v3_mul_f(v3_sub_v3(c1, c0), inv_dx);
-	V3 c = c0;
-
 	// Render the scanline
 	unsigned int* pixels = rt->canvas.pixels + start_x;
 	float* depth_buffer = rt->depth_buffer + start_x;
@@ -290,30 +300,28 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 	float z = z0;
 	float z_step = (z1 - z0) * inv_dx;
 
-	// TODO: TEMP JUST ONE FOR NOW
-	float lsp_start[4] = { lsp0[0], lsp0[1], lsp0[2], lsp0[3] };
-
-	// TODO: why are the z/w almost always equal?
-	//printf("%f %f %f %f\n", lsp0[0], lsp0[1], lsp0[2], lsp0[3]);
-	//printf("%f %f %f %f\n\n", lsp1[0], lsp1[1], lsp1[2], lsp1[3]);
-	float d_lsp[4] = { 
-		(lsp1[0] - lsp0[0]) * inv_dx, 
-		(lsp1[1] - lsp0[1]) * inv_dx, 
-		(lsp1[2] - lsp0[2]) * inv_dx, 
-		(lsp1[3] - lsp0[3]) * inv_dx };
-
+	
 	// TODO: Trying not accessing by pointer
+	/*
 	DepthBuffer db = depth_maps[0];
 
 	// Precalculate screen space scaling factors.
+	// TODO: All depth buffer's will be the same size right?
 	const float hw = 0.5f * db.width;
-	const float hh = 0.5f * db.height;
+	const float hh = 0.5f * db.height;*/
 
 	// TODO: Potentially. Could Calculating things in one go be faster? For example, loop through each and 
 	//		 calculate w, then loop through each one and calculate the shadow coords for each? No idea.
 	//		 NOTE: This could make querying multiple shadow maps faster as only reading one buffer at a time?
 	//		 Only think about this if multiple shadow maps cause a performance issue.
 	
+	V3 ac_step = v3_mul_f(v3_sub_v3(ac1, ac0), inv_dx);
+	V3 lc_step = v3_mul_f(v3_sub_v3(lc1, lc0), inv_dx);
+
+	// TODO: TEMP: HARdcoeded
+	V3 ambient = { 1, 1, 1 };
+
+	V3 ac = ac0;
 
 	for (unsigned int i = 0; i < dx; ++i)
 	{
@@ -323,10 +331,28 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 			// Recover w
 			const float w = 1.0f / inv_w;
 
-			float r = (c.x * w);
-			float g = (c.y * w);
-			float b = (c.z * w);
+			// Calculate the colour of the vertex.
+			// TODO: Ambient.
 
+			// TODO: Why isn't it working with no lights?
+			float light_r = lc0.x * w * ac.x * w;
+			float light_g = lc0.y * w * ac.y * w;
+			float light_b = lc0.z * w * ac.z * w;
+
+			float r = light_r;
+			float g = light_g;
+			float b = light_b;
+
+			//if (r < 0 || g < 0 || b < 0)
+		//		printf("%f %f %f\n", r, g, b);
+
+			// TODO: Determine if in shadow or not. Can return early if in shadow.
+			for (int j = 0; j < lights_count; ++j)
+			{
+
+			}
+
+			/*
 			// TODO: FIX SHADOWS SPILLING OVER SIDES - is it actually a glitch or not.
 
 			// Perform perspective correction to handle the perspective of the
@@ -410,49 +436,8 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 						// TODO: Make albedo and diffuse lighting parts vertex attributes to lerp.
 
 						*pixels = float_rgb_to_int(ambient_r, ambient_g, ambient_b);
-						/*
 						
-						shadow colour = ambient * albedo 
-						
-						
-						otherwise the shadow will just be black, and that's not okay because
-						the shadows will look wrong..
-						
-						*/
 
-						/*
-						if (r > 0)
-						{
-							r = ambient_r;
-						}
-						else
-						{
-							r = 0;
-						}
-						if (g > 0)
-						{
-							g = ambient_g;
-						}
-						else
-						{
-							g = 0;
-						}
-						if (b > 0)
-						{
-							b = ambient_b;
-						}
-						else
-						{
-							b = 0;
-						}
-						
-						
-						
-						// TODO: Ambient/ combine all lights.
-						//printf("%f %f\n", pixel_light_depth, light_min_depth);
-
-						*pixels = float_rgb_to_int(r, g, b);*/
-					}
 				}
 				else
 				{
@@ -464,8 +449,10 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 					*pixels = float_rgb_to_int(r, g, b);
 				}
 			}
-
+			*/
 			*depth_buffer = z;
+			*pixels = float_rgb_to_int(r, g, b);
+			
 		}
 
 		// Move to the next pixel
@@ -476,16 +463,12 @@ void draw_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, 
 		z += z_step;
 		inv_w += w_step;
 
-		lsp_start[0] += d_lsp[0];
-		lsp_start[1] += d_lsp[1];
-		lsp_start[2] += d_lsp[2];
-		lsp_start[3] += d_lsp[3];
-
-		v3_add_eq_v3(&c, c_step);
+		v3_add_eq_v3(&ac, ac_step);
+		v3_add_eq_v3(&lc0, lc_step);
 	}
 }
 
-void draw_flat_bottom_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps)
+void draw_flat_bottom_triangle(RenderTarget* rt, RenderBuffers* rbs, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps)
 {
 	// Sort the flat vertices left to right.
 	if (vc1[0] > vc2[0])
@@ -494,6 +477,10 @@ void draw_flat_bottom_triangle(RenderTarget* rt, float* vc0, float* vc1, float* 
 		vc1 = vc2;
 		vc2 = temp;
 	}
+
+	V4 v0 = v4_read(vc0);
+	V4 v1 = v4_read(vc1);
+	V4 v2 = v4_read(vc2);
 
 	float inv_dy = 1 / (v2.y - v0.y);
 
@@ -506,27 +493,47 @@ void draw_flat_bottom_triangle(RenderTarget* rt, float* vc0, float* vc1, float* 
 	float dwdy0 = (v1.w - v0.w) * inv_dy;
 	float dwdy1 = (v2.w - v0.w) * inv_dy;
 
-	V3 dcdy0 = v3_mul_f(v3_sub_v3(c1, c0), inv_dy);
-	V3 dcdy1 = v3_mul_f(v3_sub_v3(c2, c0), inv_dy);
+	int start_y = (int)(ceil(v0.y - 0.5f));
+	int end_y = (int)(ceil(v2.y - 0.5f));
 
-	int yStart = (int)(ceil(v0.y - 0.5f));
-	int yEnd = (int)(ceil(v2.y - 0.5f));
+	// Albedo
+	V3 ac0 = v3_read(vc0 + 4);
+	V3 ac1 = v3_read(vc1 + 4);
+	V3 ac2 = v3_read(vc2 + 4);
 
-	float lsp0dy[4] = {
-		(lsp1[0] - lsp0[0]) * inv_dy,
-		(lsp1[1] - lsp0[1]) * inv_dy,
-		(lsp1[2] - lsp0[2]) * inv_dy,
-		(lsp1[3] - lsp0[3]) * inv_dy
-	};
+	V3 acdy0 = v3_mul_f(v3_sub_v3(ac1, ac0), inv_dy);
+	V3 acdy1 = v3_mul_f(v3_sub_v3(ac2, ac0), inv_dy);
 
-	float lsp1dy[4] = {
-		(lsp2[0] - lsp0[0]) * inv_dy,
-		(lsp2[1] - lsp0[1]) * inv_dy,
-		(lsp2[2] - lsp0[2]) * inv_dy,
-		(lsp2[3] - lsp0[3]) * inv_dy
-	};
+	V3 lc0 = v3_read(vc0 + 7);
+	V3 lc1 = v3_read(vc1 + 7);
+	V3 lc2 = v3_read(vc2 + 7);
 
-	for (int y = yStart; y < yEnd; ++y) {
+	V3 lcdy0 = v3_mul_f(v3_sub_v3(lc1, lc0), inv_dy);
+	V3 lcdy1 = v3_mul_f(v3_sub_v3(lc2, lc0), inv_dy);
+
+	const float* lsp0 = vc0 + 10;
+	const float* lsp1 = vc1 + 10;
+	const float* lsp2 = vc2 + 10;
+
+	float* dlsp_dy = rbs->light_space_pos_deltas;
+	float* lsp_out = rbs->scanline_light_space_positions;
+
+	for (int i = 0; i < lights_count; ++i)
+	{
+		int index = i * STRIDE_V4 * 2;
+
+		dlsp_dy[index + 0] = (lsp1[0] - lsp0[0]) * inv_dy;
+		dlsp_dy[index + 1] = (lsp2[1] - lsp0[1]) * inv_dy;
+		dlsp_dy[index + 2] = (lsp1[2] - lsp0[2]) * inv_dy;
+		dlsp_dy[index + 3] = (lsp2[3] - lsp0[3]) * inv_dy;
+
+		dlsp_dy[index + 4] = (lsp1[4] - lsp0[4]) * inv_dy;
+		dlsp_dy[index + 5] = (lsp2[5] - lsp0[5]) * inv_dy;
+		dlsp_dy[index + 6] = (lsp1[6] - lsp0[6]) * inv_dy;
+		dlsp_dy[index + 7] = (lsp2[7] - lsp0[7]) * inv_dy;
+	}
+
+	for (int y = start_y; y < end_y; ++y) {
 		// Must lerp for the vertex attributes otherwise the accuracy is poor.
 		// TODO: Would be nice to not have to actually lerp but step instead.
 		float a = (y + 0.5f - v0.y);
@@ -538,44 +545,50 @@ void draw_flat_bottom_triangle(RenderTarget* rt, float* vc0, float* vc1, float* 
 		float z0 = v0.z + dzdy0 * a;
 		float z1 = v0.z + dzdy1 * a;
 
-		float wStart = v0.w + dwdy0 * a;
-		float wEnd = v0.w + dwdy1 * a;
+		float start_w = v0.w + dwdy0 * a;
+		float end_w = v0.w + dwdy1 * a;
 
-		// TODO: Lerp v3 function.
-		V3 tempc0 = v3_add_v3(c0, v3_mul_f(dcdy0, a));
-		V3 tempc1 = v3_add_v3(c0, v3_mul_f(dcdy1, a));
+		int start_x = (int)(ceilf(x0 - 0.5f));
+		int end_x = (int)(ceilf(x1 - 0.5f));
 
-		int xStart = (int)(ceilf(x0 - 0.5f));
-		int xEnd = (int)(ceilf(x1 - 0.5f));
+		V3 start_ac = v3_add_v3(ac0, v3_mul_f(acdy0, a));
+		V3 end_ac = v3_add_v3(ac0, v3_mul_f(acdy1, a));
 
-		float lsp_temp0[4] = { 
-			lsp0[0] + lsp0dy[0] * a, 
-			lsp0[1] + lsp0dy[1] * a, 
-			lsp0[2] + lsp0dy[2] * a, 
-			lsp0[3] + lsp0dy[3] * a };
+		V3 start_lc = v3_add_v3(lc0, v3_mul_f(lcdy0, a));
+		V3 end_lc = v3_add_v3(lc0, v3_mul_f(lcdy1, a));
 
-		float lsp_temp1[4] = { 
-			lsp0[0] + lsp1dy[0] * a, 
-			lsp0[1] + lsp1dy[1] * a, 
-			lsp0[2] + lsp1dy[2] * a, 
-			lsp0[3] + lsp1dy[3] * a };
+		for (int i = 0; i < lights_count; ++i)
+		{
+			int index = i * STRIDE_V4 * 2;
 
-		draw_scanline(rt, xStart, xEnd, y, z0, z1, wStart, wEnd, tempc0, tempc1, lsp_temp0, lsp_temp1, lights_count, depth_maps);
+			lsp_out[index + 0] = lsp0[0] + dlsp_dy[0] * a;
+			lsp_out[index + 1] = lsp0[1] + dlsp_dy[1] * a;
+			lsp_out[index + 2] = lsp0[2] + dlsp_dy[2] * a;
+			lsp_out[index + 3] = lsp0[3] + dlsp_dy[3] * a;
+
+			lsp_out[index + 4] = lsp0[4] + dlsp_dy[4] * a;
+			lsp_out[index + 5] = lsp0[5] + dlsp_dy[5] * a;
+			lsp_out[index + 6] = lsp0[6] + dlsp_dy[6] * a;
+			lsp_out[index + 7] = lsp0[7] + dlsp_dy[7] * a;
+		}
+
+		draw_scanline(rt, start_x, end_x, y, z0, z1, start_w, end_w, start_ac, end_ac, start_lc, end_lc, lsp_out, lights_count, depth_maps);
 	}
 }
 
-void draw_flat_top_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps)
+void draw_flat_top_triangle(RenderTarget* rt, RenderBuffers* rbs, float* vc0, float* vc1, float* vc2, int vertex_stride, int lights_count, DepthBuffer* depth_maps)
 {
 	// Sort the flat vertices left to right.
-	if (v0.x > v1.x) 
+	if (vc0[0] > vc1[0])
 	{	
-		v4_swap(&v0, &v1);
-		v3_swap(&c0, &c1);
-
-		float* temp = lsp0;
-		lsp0 = lsp1;
-		lsp1 = temp;
+		float* temp = vc0;
+		vc0 = vc1;
+		vc1 = temp;
 	}
+
+	V4 v0 = v4_read(vc0);
+	V4 v1 = v4_read(vc1);
+	V4 v2 = v4_read(vc2);
 
 	float inv_dy = 1 / (v2.y - v0.y);
 
@@ -588,33 +601,50 @@ void draw_flat_top_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2
 	float dwdy0 = (v2.w - v0.w) * inv_dy;
 	float dwdy1 = (v2.w - v1.w) * inv_dy;
 
-	V3 dcdy0 = v3_mul_f(v3_sub_v3(c2, c0), inv_dy);
-	V3 dcdy1 = v3_mul_f(v3_sub_v3(c2, c1), inv_dy);
+	int start_y = (int)(ceil(v0.y - 0.5f));
+	int end_y = (int)(ceil(v2.y - 0.5f));
 
-	V3 start_c = c0;
-	V3 end_c = c1;
+	// Albedo
+	V3 ac0 = v3_read(vc0 + 4);
+	V3 ac1 = v3_read(vc1 + 4);
+	V3 ac2 = v3_read(vc2 + 4);
 
-	int yStart = (int)(ceil(v0.y - 0.5f));
-	int yEnd = (int)(ceil(v2.y - 0.5f));
+	V3 acdy0 = v3_mul_f(v3_sub_v3(ac2, ac0), inv_dy);
+	V3 acdy1 = v3_mul_f(v3_sub_v3(ac2, ac1), inv_dy);
 
-	// TODO: TEMP: For now just processing one light rather than lerp loop.
-	float lsp0dy[4] = {
-		(lsp2[0] - lsp0[0]) * inv_dy,
-		(lsp2[1] - lsp0[1]) * inv_dy,
-		(lsp2[2] - lsp0[2]) * inv_dy,
-		(lsp2[3] - lsp0[3]) * inv_dy
-	};
+	V3 lc0 = v3_read(vc0 + 7);
+	V3 lc1 = v3_read(vc1 + 7);
+	V3 lc2 = v3_read(vc2 + 7);
 
-	float lsp1dy[4] = {
-		(lsp2[0] - lsp1[0]) * inv_dy,
-		(lsp2[1] - lsp1[1]) * inv_dy,
-		(lsp2[2] - lsp1[2]) * inv_dy,
-		(lsp2[3] - lsp1[3]) * inv_dy
-	};
+	V3 lcdy0 = v3_mul_f(v3_sub_v3(lc2, lc0), inv_dy);
+	V3 lcdy1 = v3_mul_f(v3_sub_v3(lc2, lc1), inv_dy);
 
-	for (int y = yStart; y < yEnd; ++y) {
+	const float* lsp0 = vc0 + 10;
+	const float* lsp1 = vc1 + 10;
+	const float* lsp2 = vc2 + 10;
+
+	float* dlsp_dy = rbs->light_space_pos_deltas;
+	float* lsp_out = rbs->scanline_light_space_positions;
+
+	for (int i = 0; i < lights_count; ++i)
+	{
+		int index = i * STRIDE_V4 * 2;
+
+		dlsp_dy[index + 0] = (lsp2[0] - lsp0[0]) * inv_dy;
+		dlsp_dy[index + 1] = (lsp2[1] - lsp0[1]) * inv_dy;
+		dlsp_dy[index + 2] = (lsp2[2] - lsp0[2]) * inv_dy;
+		dlsp_dy[index + 3] = (lsp2[3] - lsp0[3]) * inv_dy;
+
+		dlsp_dy[index + 4] = (lsp2[4] - lsp1[4]) * inv_dy;
+		dlsp_dy[index + 5] = (lsp2[5] - lsp1[5]) * inv_dy;
+		dlsp_dy[index + 6] = (lsp2[6] - lsp1[6]) * inv_dy;
+		dlsp_dy[index + 7] = (lsp2[7] - lsp1[7]) * inv_dy;
+	}
+	
+	for (int y = start_y; y < end_y; ++y) {
 		// Must lerp for the vertex attributes to get them accurately.
 		// TODO: Would be nice to find a way to step not lerp.
+		//		 - not sure why stepping wouldn't work....
 		float a = (y + 0.5f - v0.y);
 
 		float x0 = v0.x + dxdy0 * a;
@@ -623,118 +653,98 @@ void draw_flat_top_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2
 		float z0 = v0.z + dzdy0 * a;
 		float z1 = v1.z + dzdy1 * a;
 
-		float wStart = v0.w + dwdy0 * a;
-		float wEnd = v1.w + dwdy1 * a;
+		float start_w = v0.w + dwdy0 * a;
+		float end_w = v1.w + dwdy1 * a;
 
-		V3 tempc0 = v3_add_v3(start_c, v3_mul_f(dcdy0, a));
-		V3 tempc1 = v3_add_v3(end_c, v3_mul_f(dcdy1, a));
+		int start_x = (int)(ceil(x0 - 0.5f));
+		int end_x = (int)(ceil(x1 - 0.5f));
 
-		int xStart = (int)(ceil(x0 - 0.5f));
-		int xEnd = (int)(ceil(x1 - 0.5f));
+		V3 start_ac = v3_add_v3(ac0, v3_mul_f(acdy0, a));
+		V3 end_ac = v3_add_v3(ac1, v3_mul_f(acdy1, a));
 
-		float lsp_temp0[4] = { 
-			lsp0[0] + lsp0dy[0] * a, 
-			lsp0[1] + lsp0dy[1] * a, 
-			lsp0[2] + lsp0dy[2] * a, 
-			lsp0[3] + lsp0dy[3] * a };
+		V3 start_lc = v3_add_v3(lc0, v3_mul_f(lcdy0, a));
+		V3 end_lc = v3_add_v3(lc1, v3_mul_f(lcdy1, a));
 
-		float lsp_temp1[4] = { 
-			lsp1[0] + lsp1dy[0] * a, 
-			lsp1[1] + lsp1dy[1] * a, 
-			lsp1[2] + lsp1dy[2] * a, 
-			lsp1[3] + lsp1dy[3] * a };
+		for (int i = 0; i < lights_count; ++i)
+		{
+			int index = i * STRIDE_V4 * 2;
 
-		draw_scanline(rt, xStart, xEnd, y, z0, z1, wStart, wEnd, tempc0, tempc1, lsp_temp0, lsp_temp1, lights_count, depth_maps);
+			lsp_out[index + 0] = lsp0[0] + dlsp_dy[0] * a;
+			lsp_out[index + 1] = lsp0[1] + dlsp_dy[1] * a;
+			lsp_out[index + 2] = lsp0[2] + dlsp_dy[2] * a;
+			lsp_out[index + 3] = lsp0[3] + dlsp_dy[3] * a;
+
+			lsp_out[index + 4] = lsp1[4] + dlsp_dy[4] * a;
+			lsp_out[index + 5] = lsp1[5] + dlsp_dy[5] * a;
+			lsp_out[index + 6] = lsp1[6] + dlsp_dy[6] * a;
+			lsp_out[index + 7] = lsp1[7] + dlsp_dy[7] * a;
+		}
+
+		draw_scanline(rt, start_x, end_x, y, z0, z1, start_w, end_w, start_ac, end_ac, start_lc, end_lc, lsp_out, lights_count, depth_maps);
 	}
 }
 
-void draw_triangle(RenderTarget* rt, float* vc0, float* vc1, float* vc2, float* vc3, int vertex_stride, int lights_count, DepthBuffer* depth_maps)
+void draw_triangle(RenderTarget* rt, RenderBuffers* rbs, float* vc0, float* vc1, float* vc2, float* vc3, int vertex_stride, int lights_count, DepthBuffer* depth_maps)
 {
 	// vc = vertex components
 
-	// TODO: These refactors. Although, once I get to the scanline, not sure how that will work.
-	// TODO: Gotta think about this args, do I want it done in an array like this..... no clue. Not sure what is best.
-
-	// TODO: Pass in a stride for the size of the vertex?
-	
-	// TODO: Store like: pos, albedo, diffuse, light_pos0, light_pos1, ... for each vertex. 
-	// So stride is: 4 + 3 + 3 + 4 * lights_count?
-
-
-	// A lot of information... oh well.
-	
-	V4 v0 = v4_read(vc0);
-	V4 v1 = v4_read(vc1);
-	V4 v2 = v4_read(vc1);
-
 	// Sort vertices in ascending order.
-	if (v0.y > v1.y) 
+	if (vc0[1] > vc1[1])
 	{ 
 		float* temp = vc0;
 		vc0 = vc1;
 		vc1 = temp;
 	}
-	if (v0.y > v2.y)
+	if (vc0[1] > vc2[1])
 	{
 		float* temp = vc0;
 		vc0 = vc2;
 		vc2 = temp;
 	}
-	if (v1.y > v2.y) 
+	if (vc1[1] > vc2[1])
 	{ 
 		float* temp = vc1;
 		vc1 = vc2;
 		vc2 = temp;
 	}
 	
+	
+
 	// Handle if the triangle is already flat.
-	if (v0.y == v1.y)
+	if (vc0[1] == vc1[1])
 	{
-		draw_flat_top_triangle(rt, vc0, vc1, vc2, vc3, vertex_stride, lights_count, depth_maps);
+		draw_flat_top_triangle(rt, rbs, vc0, vc1, vc2, vertex_stride, lights_count, depth_maps);
 		return;
 	}
 
-	if (v1.y == v2.y)
+	if (vc1[1] == vc2[1])
 	{
-		draw_flat_bottom_triangle(rt, vc0, vc1, vc2, vc3, vertex_stride, lights_count, depth_maps);
+		draw_flat_bottom_triangle(rt, rbs, vc0, vc1, vc2, vertex_stride, lights_count, depth_maps);
 		return;
 	}
 	
 	// The triangle isn't flat, so split it into two flat triangles.
+	float t = (vc1[1] - vc0[1]) / (vc2[1] - vc0[1]);
 
-	// Linear interpolate for v3.
-	float t = (v1.y - v0.y) / (v2.y - v0.y); 
-
-	V4 v3 = {
-		v0.x + (v2.x - v0.x) * t,
-		v1.y,
-		v0.z + (v2.z - v0.z) * t,
-		v0.w + (v2.w - v0.w) * t
-	};
-
-	v4_write(vc3, v3);
-
-
-	// TODO: LERP FOR ALBEDO ETC INSTEAD OF COLOUR. this should be worth it because the plan is more ambient less lights.
-
-	// Lerp for the new colour of the vertex.
-	V3 c3 = v3_add_v3(c0, v3_mul_f(v3_sub_v3(c2, c0), t));
-
-
-	// Where can we get space for a v4 array..... pass one in???
-
-	
-	// TODO: TEMP HARDCODED FOR 1
-	
-
-	
+	// Lerp for v3. 
 	vc3[0] = vc0[0] + (vc2[0] - vc0[0]) * t;
-	vc3[1] = vc0[1] + (vc2[1] - vc0[1]) * t;
+	vc3[1] = vc1[1];
 	vc3[2] = vc0[2] + (vc2[2] - vc0[2]) * t;
 	vc3[3] = vc0[3] + (vc2[3] - vc0[3]) * t;
 
-	draw_flat_top_triangle(rt, vc1, vc3, vc2, vertex_stride, lights_count, depth_maps);
-	draw_flat_bottom_triangle(rt, vc0, vc1, vc3, vertex_stride, lights_count, depth_maps);
+	// Lerp the components / attributes?.
+	// TODO: Could be nice to have this as a stride?
+	// albedo, diffuse, light space pos * count
+	const int STRIDE_COMPONENTS = STRIDE_COLOUR + STRIDE_COLOUR + lights_count * STRIDE_V4;
+	
+	// Lerp for each component.
+	for (int i = 4; i < 4 + STRIDE_COMPONENTS; ++i)
+	{	
+		vc3[i] = vc0[i] + (vc2[i] - vc0[i]) * t;
+	}
+
+	draw_flat_top_triangle(rt, rbs, vc1, vc3, vc2, vertex_stride, lights_count, depth_maps);
+	draw_flat_bottom_triangle(rt, rbs, vc0, vc1, vc3, vertex_stride, lights_count, depth_maps);
 }
 
 void draw_textured_scanline(RenderTarget* rt, int x0, int x1, int y, float z0, float z1, float w0, float w1, const V3 c0, const V3 c1, const V2 uv0, const V2 uv1, const Canvas* texture)
@@ -1505,7 +1515,7 @@ void broad_phase_frustum_culling(Models* models, const ViewFrustum* view_frustum
 	}
 }
 
-void cull_backfaces(Renderer* renderer, Scene* scene)
+void cull_backfaces(Renderer* renderer, const Scene* scene)
 {
 	// TODO: Would it be quicker to copy or not.
 	Models* models = &scene->models;
@@ -1530,8 +1540,8 @@ void cull_backfaces(Renderer* renderer, Scene* scene)
 	const float* view_space_normals = models->view_space_normals;
 	const float* uvs = models->mbs_uvs;
 	
-	float* front_faces = models->front_faces;
-	int* front_faces_counts = models->front_faces_counts;
+	float* front_faces = renderer->buffers.front_faces;
+	int* front_faces_counts = renderer->buffers.front_faces_counts;
 
 	float* light_space_front_faces = renderer->buffers.front_face_light_space_positions;
 	const float* light_space_positions = renderer->buffers.light_space_positions;
@@ -1619,9 +1629,6 @@ void cull_backfaces(Renderer* renderer, Scene* scene)
 				// Copy all the face vertex data.
 				// We copy the attributes over here as well because when clipping we need the data
 				// all together for lerping.
-				
-				// TODO: fix the order of writing out.s
-
 				front_faces[front_face_out++] = v0.x;
 				front_faces[front_face_out++] = v0.y;
 				front_faces[front_face_out++] = v0.z;
@@ -1637,13 +1644,14 @@ void cull_backfaces(Renderer* renderer, Scene* scene)
 				front_faces[front_face_out++] = vertex_colours[index_parts_c0 + 1];
 				front_faces[front_face_out++] = vertex_colours[index_parts_c0 + 2];
 
-				// Diffuse contribution
+				// Light contribution
 				front_faces[front_face_out++] = 0;
 				front_faces[front_face_out++] = 0;
 				front_faces[front_face_out++] = 0;
 
 				for (int k = 0; k < shadow_maps_count; ++k)
 				{
+					
 					// TODO: Is this right...
 					int lsp_index = index_lsp_parts_v0 + models->mis_total_faces * STRIDE_FACE_VERTICES * STRIDE_V4;
 					front_faces[front_face_out++] = light_space_positions[lsp_index];
@@ -1669,13 +1677,14 @@ void cull_backfaces(Renderer* renderer, Scene* scene)
 				front_faces[front_face_out++] = vertex_colours[index_parts_c1 + 1];
 				front_faces[front_face_out++] = vertex_colours[index_parts_c1 + 2];
 
-				// Diffuse contribution
+				// Light contribution
 				front_faces[front_face_out++] = 0;
 				front_faces[front_face_out++] = 0;
 				front_faces[front_face_out++] = 0;
 
 				for (int k = 0; k < shadow_maps_count; ++k)
 				{
+					
 					// TODO: Is this right...
 					int lsp_index = index_lsp_parts_v1 + models->mis_total_faces * STRIDE_FACE_VERTICES * STRIDE_V4;
 					front_faces[front_face_out++] = light_space_positions[lsp_index];
@@ -1699,13 +1708,14 @@ void cull_backfaces(Renderer* renderer, Scene* scene)
 				front_faces[front_face_out++] = vertex_colours[index_parts_c2 + 1];
 				front_faces[front_face_out++] = vertex_colours[index_parts_c2 + 2];
 
-				// Diffuse contribution
+				// Light contribution
 				front_faces[front_face_out++] = 0;
 				front_faces[front_face_out++] = 0;
 				front_faces[front_face_out++] = 0;
 
 				for (int k = 0; k < shadow_maps_count; ++k)
 				{
+					
 					// TODO: Is this right...
 					int lsp_index = index_lsp_parts_v2 + models->mis_total_faces * STRIDE_FACE_VERTICES * STRIDE_V4;
 					front_faces[front_face_out++] = light_space_positions[lsp_index];
@@ -1713,37 +1723,6 @@ void cull_backfaces(Renderer* renderer, Scene* scene)
 					front_faces[front_face_out++] = light_space_positions[lsp_index + 2];
 					front_faces[front_face_out++] = light_space_positions[lsp_index + 3];
 				}
-
-				/*
-				// TODO: TODO: TODO:
-				// * 4 because we need x,y,z,w.
-				
-
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v0];
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v0 + 1];
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v0 + 2];
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v0 + 3];
-
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v1];
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v1 + 1];
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v1 + 2];
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v1 + 3];
-
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v2];
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v2 + 1];
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v2 + 2];
-				light_space_front_faces[light_space_front_face_out++] = light_space_positions[index_lsp_parts_v2 + 3];
-				*/
-
-				
-				/*
-				printf("backface\n");
-				printf("%d %d %d\n", index_lsp_parts_v0, index_lsp_parts_v1, index_lsp_parts_v2);
-				printf("%f %f %f %f\n", light_space_positions[index_lsp_parts_v0], light_space_positions[index_lsp_parts_v0 + 1], light_space_positions[index_lsp_parts_v0 + 2], light_space_positions[index_lsp_parts_v0 + 3]);
-				printf("%f %f %f %f\n", light_space_positions[index_lsp_parts_v1], light_space_positions[index_lsp_parts_v1 + 1], light_space_positions[index_lsp_parts_v1 + 2], light_space_positions[index_lsp_parts_v1 + 3]);
-				printf("%f %f %f %f\n", light_space_positions[index_lsp_parts_v2], light_space_positions[index_lsp_parts_v2 + 1], light_space_positions[index_lsp_parts_v2 + 2], light_space_positions[index_lsp_parts_v2 + 3]);
-				printf("\n");
-				*/
 
 				++front_face_count;
 			}
@@ -1759,15 +1738,15 @@ void cull_backfaces(Renderer* renderer, Scene* scene)
 	}
 }
 
-void light_front_faces(Scene* scene)
+void light_front_faces(Renderer* renderer, Scene* scene)
 {
 	// TODO: For optimising this, some sort of broad phase could be implemented.
 	//		 Potentially when we 
 
 	// Apply lighting to all the front faces.
 	// We do this before clipping so if we don't get inconsistent results. 
-	float* front_faces = scene->models.front_faces;
-	const int* front_faces_counts = scene->models.front_faces_counts;
+	float* front_faces = renderer->buffers.front_faces;
+	const int* front_faces_counts = renderer->buffers.front_faces_counts;
 
 	int face_offset = 0;
 
@@ -1781,6 +1760,8 @@ void light_front_faces(Scene* scene)
 	const float* pls_attributes = scene->point_lights.attributes;
 
 	const V3 ambient_light = scene->ambient_light;
+
+	const int VERTEX_COMPONENTS = STRIDE_BASE_FRONT_VERTEX + point_lights_count * STRIDE_V4;
 
 	for (int i = 0; i < mis_count; ++i)
 	{
@@ -1796,10 +1777,10 @@ void light_front_faces(Scene* scene)
 
 		for (int j = face_offset; j < face_offset + front_faces_count; ++j)
 		{
-			int index_face = j * STRIDE_BASE_FRONT_FACE;
+			int index_face = j * VERTEX_COMPONENTS * STRIDE_FACE_VERTICES;
 
 			// For each vertex calculate the diffuse contribution.
-			for (int k = index_face; k < index_face + STRIDE_BASE_FRONT_FACE; k += STRIDE_BASE_FRONT_VERTEX)
+			for (int k = index_face; k < index_face + VERTEX_COMPONENTS * STRIDE_FACE_VERTICES; k += VERTEX_COMPONENTS)
 			{
 				const V3 pos = v3_read(front_faces + k);
 				const V3 normal = v3_read(front_faces + k + 5);
@@ -1830,9 +1811,16 @@ void light_front_faces(Scene* scene)
 				}
 
 				// Clamp diffuse contribution to a valid range 0-1. 
-				diffuse_part.x = min(max(diffuse_part.x, 0.f), 1.f);
-				diffuse_part.y = min(max(diffuse_part.y, 0.f), 1.f);
-				diffuse_part.z = min(max(diffuse_part.z, 0.f), 1.f);
+				V3 light = {
+					albedo.x * (diffuse_part.x + ambient_light.x),
+					albedo.y * (diffuse_part.y + ambient_light.y),
+					albedo.z * (diffuse_part.z + ambient_light.z)
+				};
+
+				// Clamp to max, should never be negative.
+				light.x = min(1.f, light.x);
+				light.y = min(1.f, light.y);
+				light.z = min(1.f, light.z);
 
 				/*
 				v3_mul_eq_v3(&diffuse_part, albedo);
@@ -1847,7 +1835,9 @@ void light_front_faces(Scene* scene)
 
 				// Write out the calculated diffuse part of the vertex.
 				// If we introduce specular, this can include that.
-				v3_write(front_faces + k + 11, diffuse_part);
+
+				//xyz, uv, xyz, rgb, rgb
+				v3_write(front_faces + k + 11, light);
 			}
 		}
 	
@@ -1868,18 +1858,19 @@ void clip_to_screen(
 
 	Models* models = &scene->models;
 	PointLights* point_lights = &scene->point_lights;
+	RenderBuffers* render_buffers = &renderer->buffers;
 
 	// Frustum culling
 	const int* intersected_planes = models->mis_intersected_planes;
 	const int* passed_broad_phase_flags = models->mis_passed_broad_phase_flags;
 
-	float* clipped_faces = models->clipped_faces;
+	float* clipped_faces = render_buffers->clipped_faces;
 
 	int face_offset = 0;
 	int positions_offset = 0;
 
-	float* front_faces = models->front_faces; // TEMP: Not const whilst drawing normals.
-	const int* front_faces_counts = models->front_faces_counts;
+	float* front_faces = render_buffers->front_faces; // TEMP: Not const whilst drawing normals.
+	const int* front_faces_counts = render_buffers->front_faces_counts;
 
 	int intersected_planes_index = 0;
 
@@ -1904,19 +1895,18 @@ void clip_to_screen(
 		//		 should we share?
 
 		// TODO: Atm we don't really want the normal after this. 
-		const int VERTEX_COMPONENTS = STRIDE_BASE_FRONT_VERTEX *
-			scene->point_lights.count *
-			STRIDE_V4;
+		// Total number of components per vertex.
+		const int VERTEX_COMPONENTS = STRIDE_BASE_FRONT_VERTEX + scene->point_lights.count * STRIDE_V4;
 
 		// Skip the mesh if it's not visible at all.
 		if (0 == num_planes_to_clip_against)
 		{
 			// Entire mesh is visible so just copy the vertices over.
-			int index_face = face_offset * VERTEX_COMPONENTS;
-			int front_faces_count = models->front_faces_counts[i];
+			int index_face = face_offset * VERTEX_COMPONENTS * STRIDE_FACE_VERTICES;
+			int front_faces_count = render_buffers->front_faces_counts[i];
 
 			// TODO: How do we avoid copying the normals.
-			memcpy(clipped_faces, front_faces + index_face, (size_t)front_faces_count * VERTEX_COMPONENTS * sizeof(float));
+			memcpy(clipped_faces, front_faces + index_face, (size_t)front_faces_count * VERTEX_COMPONENTS * STRIDE_FACE_VERTICES * sizeof(float));
 		
 			// Draw the clipped face
 			project_and_draw_clipped(renderer, scene, i, front_faces_count, resources);
@@ -1930,7 +1920,7 @@ void clip_to_screen(
 
 			// Initially read from the front_faces buffer.
 			float* temp_clipped_faces_in = front_faces;
-			float* temp_clipped_faces_out = models->temp_clipped_faces_out;
+			float* temp_clipped_faces_out = render_buffers->temp_clipped_faces_out;
 
 			// Store the index to write out to, needs to be defined here so we can
 			// update the clipped_faces_index after writing to the clipped_faces buffer.
@@ -1938,7 +1928,7 @@ void clip_to_screen(
 
 			// After each plane, we will have a different number of faces to clip again.
 			// Initially set this to the number of front faces.
-			int num_faces_to_process = models->front_faces_counts[i];
+			int num_faces_to_process = render_buffers->front_faces_counts[i];
 
 			// This is needed as an offset into the front_faces buffer for the first plane.
 			int clipped_faces_offset = face_offset;
@@ -1962,7 +1952,7 @@ void clip_to_screen(
 				{
 					// Initially we used the in front faces buffer, after the first iteration 
 					// we have wrote to the out buffer, so that can now be our in buffer.
-					temp_clipped_faces_out = models->temp_clipped_faces_in;
+					temp_clipped_faces_out = render_buffers->temp_clipped_faces_in;
 
 					// Now we want to read from the start of the in buffer, 
 					// not the offset into the front faces buffer.
@@ -1973,7 +1963,7 @@ void clip_to_screen(
 				if (num_planes_clipped_against == num_planes_to_clip_against - 1)
 				{
 					// On the last plane, we want to write out to the clipped faces.
-					temp_clipped_faces_out = models->clipped_faces;
+					temp_clipped_faces_out = render_buffers->clipped_faces;
 				}
 
 				// For faces in mesh.
@@ -2047,12 +2037,6 @@ void clip_to_screen(
 						const V3 ip0 = v3_read(temp_clipped_faces_in + index_ip0);
 						const V3 op0 = v3_read(temp_clipped_faces_in + index_op0);
 						const V3 op1 = v3_read(temp_clipped_faces_in + index_op1);
-						
-						// Calculate how many components in the total vertex, including
-						// light space positions.
-						const int vertex_components = STRIDE_FRONT_FACE_VERTEX *
-							scene->point_lights.count *
-							STRIDE_POSITION;
 
 						// There are 14 attributes total... 
 						// without light positions.
@@ -2062,9 +2046,9 @@ void clip_to_screen(
 						memcpy(
 							temp_clipped_faces_out + index_out, 
 							temp_clipped_faces_in + index_ip0, 
-							vertex_components * sizeof(float)
+							VERTEX_COMPONENTS * sizeof(float)
 						);
-						index_out += vertex_components;
+						index_out += VERTEX_COMPONENTS;
 
 						// Lerp for the first new vertex.
 						V3 p0;
@@ -2108,24 +2092,20 @@ void clip_to_screen(
 						const V3 ip1 = v3_read(temp_clipped_faces_in + index_ip1);
 						const V3 op0 = v3_read(temp_clipped_faces_in + index_op0);
 
-						const int vertex_components = STRIDE_FRONT_FACE_VERTEX *
-							scene->point_lights.count *
-							STRIDE_POSITION;
-
 						// Copy the first inside vertex.
 						memcpy(temp_clipped_faces_out + index_out,
 							temp_clipped_faces_in + index_ip0,
-							vertex_components * sizeof(float)
+							VERTEX_COMPONENTS * sizeof(float)
 						);
-						index_out += vertex_components;
+						index_out += VERTEX_COMPONENTS;
 
 						// Copy the second inside vertex.
 						memcpy(
 							temp_clipped_faces_out + index_out,
 							temp_clipped_faces_in + index_ip1,
-							vertex_components * sizeof(float)
+							VERTEX_COMPONENTS * sizeof(float)
 						);
-						index_out += vertex_components;
+						index_out += VERTEX_COMPONENTS;
 
 						// Lerp for the first new vertex.
 						V3 p0;
@@ -2150,7 +2130,7 @@ void clip_to_screen(
 						// First triangle done.
 						
 						// Copy the first new vertex for the second triangle.
-						for (int k = new_v0_index; k < new_v0_index + vertex_components; ++k)
+						for (int k = new_v0_index; k < new_v0_index + VERTEX_COMPONENTS; ++k)
 						{
 							temp_clipped_faces_out[index_out++] = temp_clipped_faces_out[k];
 						}
@@ -2172,8 +2152,10 @@ void clip_to_screen(
 						memcpy(
 							temp_clipped_faces_out + index_out,
 							temp_clipped_faces_in + index_ip1,
-							vertex_components * sizeof(float)
+							VERTEX_COMPONENTS * sizeof(float)
 						);
+						index_out += VERTEX_COMPONENTS;
+						
 
 						++temp_visible_faces_count;
 					}
@@ -2227,14 +2209,14 @@ void project_and_draw_clipped(
 	PointLights* point_lights = &scene->point_lights;
 
 	// TODO: Comments. This function renders out the triangles in the clipped face buffer. 
-	const float* clipped_faces = models->clipped_faces;
+	const float* clipped_faces = renderer->buffers.clipped_faces;
 
 	// TODO: Refactor, how do I get rid of this duplicated code.
 
-	const int CLIPPED_VERTEX_COMPONENTS = STRIDE_BASE_CLIPPED_VERTEX *
+	const int CLIPPED_VERTEX_COMPONENTS = STRIDE_BASE_CLIPPED_VERTEX +
 		scene->point_lights.count *
-		STRIDE_POSITION;
-
+		STRIDE_V4;
+	
 	const int texture_index = models->mis_texture_ids[mi_index];
 	if (texture_index == -1)
 	{
@@ -2252,7 +2234,10 @@ void project_and_draw_clipped(
 			project(&rt->canvas, renderer->settings.projection_matrix, v1, &pv1);
 			project(&rt->canvas, renderer->settings.projection_matrix, v2, &pv2);
 
+			
+
 			// TODO: Just write straight into buffer probably.
+			// Ignore the uv (4,5) and normal (5,6,7)
 			V3 albedo0 = v3_read(clipped_faces + clipped_face_index + 8);
 			V3 albedo1 = v3_read(clipped_faces + clipped_face_index + CLIPPED_VERTEX_COMPONENTS + 8);
 			V3 albedo2 = v3_read(clipped_faces + clipped_face_index + CLIPPED_VERTEX_COMPONENTS + CLIPPED_VERTEX_COMPONENTS + 8);
@@ -2261,26 +2246,19 @@ void project_and_draw_clipped(
 			V3 diffuse1 = v3_read(clipped_faces + clipped_face_index + CLIPPED_VERTEX_COMPONENTS + 11);
 			V3 diffuse2 = v3_read(clipped_faces + clipped_face_index + CLIPPED_VERTEX_COMPONENTS + CLIPPED_VERTEX_COMPONENTS + 11);
 
-			/* TODO: I think this is actually setup correctly.
-			//		 Just a few more steps:
-			//			2) Update flat triangle methods
-			//			3) Update scanline methods
-			*/ 
 			// Calculate pointers to vertex data.
 			float* tri_data = renderer->buffers.triangle_vertices;
 
 			// Load in data for each vertex.
-
 			// TODO: Could be nice to have this as a stride?
 			// pos, albedo, diffuse, light space pos * count
-			const int STRIDE = 4 + 3 + 3 + 4 * point_lights->count;
+			const int STRIDE = STRIDE_V4 + STRIDE_COLOUR + STRIDE_COLOUR + point_lights->count * STRIDE_V4;
 
 			// Load the data into the triangle buffer.
 			float* vc0 = tri_data;
 			float* vc1 = tri_data + STRIDE;
 			float* vc2 = tri_data + STRIDE * 2;
 			float* vc3 = tri_data + STRIDE * 3;
-
 
 			// Front faces need a pos (V3), UV (V2), normal (V3), albedo (V3), diffuse (V3)
 			vc0[0] = pv0.x;
@@ -2299,6 +2277,7 @@ void project_and_draw_clipped(
 			int offset = 10;
 			for (int j = 0; j < point_lights->count; ++j)
 			{
+				// TODO: Surely these offsets are wrong.......
 				int lsp_index = clipped_face_index + STRIDE_BASE_CLIPPED_VERTEX;
 				vc0[offset++] = clipped_faces[lsp_index];
 				vc0[offset++] = clipped_faces[lsp_index + 1];
@@ -2312,46 +2291,66 @@ void project_and_draw_clipped(
 				vc0[j] *= pv0.w;
 			}
 
-			// TODO: Next vertices.
+			vc1[0] = pv1.x;
+			vc1[1] = pv1.y;
+			vc1[2] = pv1.z;
+			vc1[3] = pv1.w;
 
-			
+			vc1[4] = albedo1.x;
+			vc1[5] = albedo1.y;
+			vc1[6] = albedo1.z;
 
+			vc1[7] = diffuse1.x;
+			vc1[8] = diffuse1.y;
+			vc1[9] = diffuse1.z;
 
-
-			/*
-			// Perspective divide for all light space positions.
-			// Hardcoded offset to light space position.
-			const int offset_to_lsp = 10; 
-
+			offset = 10;
 			for (int j = 0; j < point_lights->count; ++j)
 			{
-				int index = STRIDE * j + offset_to_lsp;
-
-				// Perform perspective divide for camera perspective.
-				vc0[index] *= pv0.w;
-				vc0[index + 1] *= pv0.w;
-				vc0[index + 2] *= pv0.w;
-				vc0[index + 3] *= pv0.w;
-
-				vc1[index] *= pv1.w;
-				vc1[index + 1] *= pv1.w;
-				vc1[index + 2] *= pv1.w;
-				vc1[index + 3] *= pv1.w;
-
-				vc2[index] *= pv2.w;
-				vc2[index + 1] *= pv2.w;
-				vc2[index + 2] *= pv2.w;
-				vc2[index + 3] *= pv2.w;
+				int lsp_index = clipped_face_index + CLIPPED_VERTEX_COMPONENTS + STRIDE_BASE_CLIPPED_VERTEX;
+				vc1[offset++] = clipped_faces[lsp_index];
+				vc1[offset++] = clipped_faces[lsp_index + 1];
+				vc1[offset++] = clipped_faces[lsp_index + 2];
+				vc1[offset++] = clipped_faces[lsp_index + 3];
 			}
-			*/
 
-			
+			// Apply perspective divide to all components other than the position.
+			for (int j = 4; j < STRIDE; ++j)
+			{
+				vc1[j] *= pv1.w;
+			}
 
+			vc2[0] = pv2.x;
+			vc2[1] = pv2.y;
+			vc2[2] = pv2.z;
+			vc2[3] = pv2.w;
 
+			vc2[4] = albedo2.x;
+			vc2[5] = albedo2.y;
+			vc2[6] = albedo2.z;
 
+			vc2[7] = diffuse2.x;
+			vc2[8] = diffuse2.y;
+			vc2[9] = diffuse2.z;
 
-			// 
-			draw_triangle(rt, vc0, vc1, vc2, vc3, STRIDE, point_lights->count, point_lights->depth_maps);
+			offset = 10;
+			for (int j = 0; j < point_lights->count; ++j)
+			{
+				int lsp_index = clipped_face_index + CLIPPED_VERTEX_COMPONENTS + CLIPPED_VERTEX_COMPONENTS + STRIDE_BASE_CLIPPED_VERTEX;
+				vc2[offset++] = clipped_faces[lsp_index];
+				vc2[offset++] = clipped_faces[lsp_index + 1];
+				vc2[offset++] = clipped_faces[lsp_index + 2];
+				vc2[offset++] = clipped_faces[lsp_index + 3];
+			}
+
+			// Apply perspective divide to all components other than the position.
+			for (int j = 4; j < STRIDE; ++j)
+			{
+				vc2[j] *= pv2.w;
+			}
+
+			// Render the triangle.
+			draw_triangle(rt, &renderer->buffers, vc0, vc1, vc2, vc3, STRIDE, point_lights->count, point_lights->depth_maps);
 		}
 	}
 	else
@@ -2411,8 +2410,9 @@ void render(
 	update_depth_maps(renderer, scene);
 
 	// Draw the depth map temporarily.
-	//depth_buffer_draw(&scene->point_lights.depth_maps[0], &rt->canvas, rt->canvas.width - scene->point_lights.depth_maps[0].width, 0);
+	//depth_buffer_draw(&scene->point_lights.depth_maps[0], &renderer->target.canvas, renderer->target.canvas.width - scene->point_lights.depth_maps[0].width, 0);
 
+	
 	Timer t = timer_start();
 	
 	// Transform object space positions to view space.
@@ -2436,7 +2436,7 @@ void render(
 
 	// Apply lighting here so that the if a vertex is clipped closer
 	// to the light, the lighing doesn't change.
-	light_front_faces(scene);
+	light_front_faces(renderer, scene);
 	//printf("light_front_faces took: %d\n", timer_get_elapsed(&t));
 	timer_restart(&t);
 
